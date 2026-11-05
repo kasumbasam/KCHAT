@@ -67,9 +67,7 @@
             background: #121925;
         }
 
-        select {
-            cursor: pointer;
-        }
+        select { cursor: pointer; }
 
         input:focus, select:focus {
             border-color: #70d6ff;
@@ -124,15 +122,13 @@
         .message strong { color: #70d6ff; }
 
         .status-dot {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 900;
             color: #ffffff;
             letter-spacing: 2px;
         }
 
-        .status-dot.read {
-            color: #2196ff;
-        }
+        .status-dot.read { color: #2196ff; }
 
         .system {
             max-width: 100%;
@@ -174,7 +170,7 @@
         </div>
 
         <div class="private-area">
-            <select id="recipient">
+            <select id="recipient" disabled>
                 <option value="">Select a contact</option>
                 <option value="John">John</option>
                 <option value="Mary">Mary</option>
@@ -247,6 +243,40 @@
         recipientInput.disabled = !connected;
     }
 
+    function savePrivateMessage(item) {
+        if (item.id) {
+            privateMessages[item.id] = item;
+        }
+    }
+
+    function renderPrivateConversation() {
+        messages.innerHTML = "";
+
+        addMessage(
+            "Private conversation with " + activeRecipient,
+            null,
+            true
+        );
+
+        const conversation = Object.values(privateMessages).filter(function(item) {
+            const involvesMe =
+                item.username.toLowerCase() === myUsername.toLowerCase() ||
+                item.to.toLowerCase() === myUsername.toLowerCase();
+
+            const involvesRecipient =
+                item.username.toLowerCase() === activeRecipient.toLowerCase() ||
+                item.to.toLowerCase() === activeRecipient.toLowerCase();
+
+            return involvesMe && involvesRecipient;
+        });
+
+        conversation.sort(function(a, b) {
+            return (a.timestamp || 0) - (b.timestamp || 0);
+        });
+
+        conversation.forEach(showPrivateMessage);
+    }
+
     function showPrivateMessage(item) {
         const sender =
             item.username.toLowerCase() === myUsername.toLowerCase()
@@ -278,12 +308,7 @@
             line.appendChild(dots);
         }
 
-        if (item.id) {
-            privateMessages[item.id] = item;
-        }
-
         messages.appendChild(line);
-        messages.scrollTop = messages.scrollHeight;
     }
 
     function joinChat() {
@@ -301,6 +326,11 @@
 
         myUsername = username;
         activeRecipient = null;
+
+        Object.keys(privateMessages).forEach(function(key) {
+            delete privateMessages[key];
+        });
+
         messages.innerHTML = "";
         onlineUsers.textContent = "Online: Connecting...";
         status.textContent = "Connecting...";
@@ -314,21 +344,21 @@
 
         socket = new WebSocket(wsUrl);
 
-        socket.onopen = function () {
+        socket.onopen = function() {
             status.textContent = "Connected to room: " + room;
             status.style.color = "#80ed99";
             setConnected(true);
             messageInput.focus();
         };
 
-        socket.onmessage = function (event) {
+        socket.onmessage = function(event) {
             const data = JSON.parse(event.data);
 
             if (data.type === "welcome") {
                 messages.innerHTML = "";
 
                 if (data.history) {
-                    data.history.forEach(function (item) {
+                    data.history.forEach(function(item) {
                         addMessage(item.text || "", item.username || null);
                     });
                 }
@@ -359,21 +389,14 @@
                     activeRecipient &&
                     data.with.toLowerCase() === activeRecipient.toLowerCase()
                 ) {
-                    messages.innerHTML = "";
-
-                    addMessage(
-                        "Private conversation with " + data.with,
-                        null,
-                        true
-                    );
-
-                    data.history.forEach(function (item) {
-                        showPrivateMessage(item);
-                    });
+                    data.history.forEach(savePrivateMessage);
+                    renderPrivateConversation();
                 }
             }
 
             if (data.type === "private") {
+                savePrivateMessage(data);
+
                 const outgoing =
                     data.username.toLowerCase() === myUsername.toLowerCase() &&
                     activeRecipient &&
@@ -385,7 +408,7 @@
                     data.username.toLowerCase() === activeRecipient.toLowerCase();
 
                 if (outgoing || incoming) {
-                    showPrivateMessage(data);
+                    renderPrivateConversation();
                 } else if (
                     data.to.toLowerCase() === myUsername.toLowerCase()
                 ) {
@@ -404,32 +427,14 @@
                 if (item) {
                     item.status = data.status;
 
-                    if (
-                        activeRecipient &&
-                        item.to.toLowerCase() === activeRecipient.toLowerCase()
-                    ) {
-                        messages.innerHTML = "";
-
-                        addMessage(
-                            "Private conversation with " + activeRecipient,
-                            null,
-                            true
-                        );
-
-                        Object.values(privateMessages).forEach(function (msg) {
-                            if (
-                                msg.username.toLowerCase() === myUsername.toLowerCase() ||
-                                msg.to.toLowerCase() === myUsername.toLowerCase()
-                            ) {
-                                showPrivateMessage(msg);
-                            }
-                        });
+                    if (activeRecipient) {
+                        renderPrivateConversation();
                     }
                 }
             }
         };
 
-        socket.onclose = function () {
+        socket.onclose = function() {
             status.textContent = "Disconnected";
             status.style.color = "#f6c453";
             onlineUsers.textContent = "Online: Nobody";
@@ -438,7 +443,7 @@
             activeRecipient = null;
         };
 
-        socket.onerror = function () {
+        socket.onerror = function() {
             status.textContent = "Connection error. Is the backend running?";
             status.style.color = "#ff7b7b";
         };
@@ -463,14 +468,10 @@
         }
 
         activeRecipient = recipient;
-        messages.innerHTML = "";
         chatMode.textContent = "Mode: Private Chat with " + recipient;
 
-        addMessage(
-            "Opening private conversation with " + recipient + "...",
-            null,
-            true
-        );
+        messages.innerHTML = "";
+        addMessage("Loading conversation...", null, true);
 
         socket.send(JSON.stringify({
             type: "open_private",
@@ -521,15 +522,16 @@
         messageInput.focus();
     }
 
-    messageInput.addEventListener("keydown", function (event) {
+    messageInput.addEventListener("keydown", function(event) {
         if (event.key === "Enter") {
             sendMessage();
         }
     });
 
-    recipientInput.addEventListener("keydown", function (event) {
-        if (event.key === "Enter") {
-            openPrivate();
+    recipientInput.addEventListener("change", function() {
+        if (recipientInput.value) {
+            privateButton.disabled = !socket ||
+                socket.readyState !== WebSocket.OPEN;
         }
     });
 </script>
