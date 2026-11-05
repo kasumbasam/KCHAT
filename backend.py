@@ -1,3 +1,4 @@
+
 import json
 import os
 import uuid
@@ -25,8 +26,11 @@ def load_history():
 
 
 def save_history():
-    with open(HISTORY_FILE, "w", encoding="utf-8") as file:
-        json.dump(history, file, indent=4)
+    try:
+        with open(HISTORY_FILE, "w", encoding="utf-8") as file:
+            json.dump(history, file, indent=4)
+    except OSError:
+        pass
 
 
 load_history()
@@ -40,11 +44,11 @@ async def broadcast(room, message):
             pass
 
 
-def find_user(room, username):
-    for user in connected_users.get(room, []):
-        if user["username"].lower() == username.lower():
-            return user
-    return None
+def find_users(room, username):
+    return [
+        user for user in connected_users.get(room, [])
+        if user["username"].lower() == username.lower()
+    ]
 
 
 def private_key(room, user1, user2):
@@ -53,10 +57,10 @@ def private_key(room, user1, user2):
 
 
 async def send_online_users(room):
-    users = [
+    users = list(dict.fromkeys(
         user["username"]
         for user in connected_users.get(room, [])
-    ]
+    ))
 
     await broadcast(room, {
         "type": "users",
@@ -88,10 +92,9 @@ async def chat(websocket: WebSocket, room: str):
     await websocket.send_json({
         "type": "welcome",
         "history": history[room],
-        "users": [
-            user["username"]
-            for user in connected_users[room]
-        ]
+        "users": list(dict.fromkeys(
+            user["username"] for user in connected_users[room]
+        ))
     })
 
     await broadcast(room, {
@@ -104,8 +107,9 @@ async def chat(websocket: WebSocket, room: str):
     try:
         while True:
             data = await websocket.receive_json()
+            message_type = data.get("type")
 
-            if data.get("type") == "chat":
+            if message_type == "chat":
                 message = str(data.get("text", "")).strip()
 
                 if not message:
@@ -121,42 +125,47 @@ async def chat(websocket: WebSocket, room: str):
                 history[room] = history[room][-200:]
 
                 save_history()
-
                 await broadcast(room, item)
 
-            elif data.get("type") == "open_private":
+            elif message_type == "open_private":
                 recipient = str(data.get("to", "")).strip()[:30]
 
                 if not recipient or recipient.lower() == username.lower():
                     continue
 
                 key = private_key(room, username, recipient)
+                conversation = history.get(key, [])
 
                 await websocket.send_json({
                     "type": "private_history",
                     "with": recipient,
-                    "history": history.get(key, [])
+                    "history": conversation
                 })
 
-                for item in history.get(key, []):
+                changed = False
+
+                for item in conversation:
                     if (
                         item.get("to", "").lower() == username.lower()
                         and item.get("status") != "read"
                     ):
                         item["status"] = "read"
+                        changed = True
 
-                        sender = find_user(room, item["username"])
+                        for sender in find_users(room, item["username"]):
+                            try:
+                                await sender["websocket"].send_json({
+                                    "type": "private_status",
+                                    "id": item["id"],
+                                    "status": "read"
+                                })
+                            except Exception:
+                                pass
 
-                        if sender:
-                            await sender["websocket"].send_json({
-                                "type": "private_status",
-                                "id": item["id"],
-                                "status": "read"
-                            })
+                if changed:
+                    save_history()
 
-                save_history()
-
-            elif data.get("type") == "private":
+            elif message_type == "private":
                 recipient = str(data.get("to", "")).strip()[:30]
                 message = str(data.get("text", "")).strip()
 
@@ -185,25 +194,25 @@ async def chat(websocket: WebSocket, room: str):
 
                 await websocket.send_json(item)
 
-                target = find_user(room, recipient)
+                targets = find_users(room, recipient)
+                delivered = False
 
-                if target:
+                for target in targets:
                     try:
-                        item["status"] = "delivered"
-
                         await target["websocket"].send_json(item)
-
-                        await websocket.send_json({
-                            "type": "private_status",
-                            "id": item["id"],
-                            "status": "delivered"
-                        })
-
-                        save_history()
-
+                        delivered = True
                     except Exception:
                         pass
 
+                if delivered:
+                    item["status"] = "delivered"
+                    save_history()
+
+                    await websocket.send_json({
+                        "type": "private_status",
+                        "id": item["id"],
+                        "status": "delivered"
+                    })
                 else:
                     await websocket.send_json({
                         "type": "system",
@@ -215,7 +224,7 @@ async def chat(websocket: WebSocket, room: str):
 
     finally:
         connected_users[room] = [
-            user for user in connected_users[room]
+            user for user in connected_users.get(room, [])
             if user["websocket"] != websocket
         ]
 
