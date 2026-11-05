@@ -56,6 +56,46 @@ def private_key(room, user1, user2):
     return f"{room}:private:{names[0]}:{names[1]}"
 
 
+async def update_sender_status(room, item):
+    for sender in find_users(room, item["username"]):
+        try:
+            await sender["websocket"].send_json({
+                "type": "private_status",
+                "id": item["id"],
+                "status": item["status"]
+            })
+        except Exception:
+            pass
+
+
+async def deliver_pending_messages(room, username, websocket):
+    prefix = f"{room}:private:"
+
+    for key, conversation in history.items():
+        if not key.startswith(prefix):
+            continue
+
+        for item in conversation:
+            if (
+                item.get("type") == "private"
+                and item.get("to", "").lower() == username.lower()
+                and item.get("status") == "sent"
+            ):
+                delivery_item = dict(item)
+                delivery_item["status"] = "delivered"
+
+                try:
+                    await websocket.send_json(delivery_item)
+
+                    item["status"] = "delivered"
+                    save_history()
+
+                    await update_sender_status(room, item)
+
+                except Exception:
+                    pass
+
+
 async def send_online_users(room):
     users = list(dict.fromkeys(
         user["username"]
@@ -104,6 +144,9 @@ async def chat(websocket: WebSocket, room: str):
 
     await send_online_users(room)
 
+    # Deliver messages that were waiting while this user was offline.
+    await deliver_pending_messages(room, username, websocket)
+
     try:
         while True:
             data = await websocket.receive_json()
@@ -136,12 +179,7 @@ async def chat(websocket: WebSocket, room: str):
                 key = private_key(room, username, recipient)
                 conversation = history.get(key, [])
 
-                await websocket.send_json({
-                    "type": "private_history",
-                    "with": recipient,
-                    "history": conversation
-                })
-
+                # Opening the conversation marks received messages as read.
                 changed = False
 
                 for item in conversation:
@@ -152,18 +190,16 @@ async def chat(websocket: WebSocket, room: str):
                         item["status"] = "read"
                         changed = True
 
-                        for sender in find_users(room, item["username"]):
-                            try:
-                                await sender["websocket"].send_json({
-                                    "type": "private_status",
-                                    "id": item["id"],
-                                    "status": "read"
-                                })
-                            except Exception:
-                                pass
+                        await update_sender_status(room, item)
 
                 if changed:
                     save_history()
+
+                await websocket.send_json({
+                    "type": "private_history",
+                    "with": recipient,
+                    "history": conversation
+                })
 
             elif message_type == "private":
                 recipient = str(data.get("to", "")).strip()[:30]
@@ -192,14 +228,18 @@ async def chat(websocket: WebSocket, room: str):
 
                 save_history()
 
+                # Show the sender's message first with one dot.
                 await websocket.send_json(item)
 
                 targets = find_users(room, recipient)
                 delivered = False
 
                 for target in targets:
+                    delivery_item = dict(item)
+                    delivery_item["status"] = "delivered"
+
                     try:
-                        await target["websocket"].send_json(item)
+                        await target["websocket"].send_json(delivery_item)
                         delivered = True
                     except Exception:
                         pass
@@ -207,12 +247,8 @@ async def chat(websocket: WebSocket, room: str):
                 if delivered:
                     item["status"] = "delivered"
                     save_history()
+                    await update_sender_status(room, item)
 
-                    await websocket.send_json({
-                        "type": "private_status",
-                        "id": item["id"],
-                        "status": "delivered"
-                    })
                 else:
                     await websocket.send_json({
                         "type": "system",
