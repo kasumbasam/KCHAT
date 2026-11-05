@@ -52,12 +52,12 @@
 
         .private-area { margin-top: 10px; }
 
-        input, button {
+        input, select, button {
             font: inherit;
             border-radius: 8px;
         }
 
-        input {
+        input, select {
             flex: 1 1 150px;
             min-width: 0;
             padding: 11px 12px;
@@ -67,7 +67,13 @@
             background: #121925;
         }
 
-        input:focus { border-color: #70d6ff; }
+        select {
+            cursor: pointer;
+        }
+
+        input:focus, select:focus {
+            border-color: #70d6ff;
+        }
 
         button {
             padding: 11px 16px;
@@ -168,7 +174,14 @@
         </div>
 
         <div class="private-area">
-            <input id="recipient" type="text" placeholder="Private message to..." maxlength="30">
+            <select id="recipient">
+                <option value="">Select a contact</option>
+                <option value="John">John</option>
+                <option value="Mary">Mary</option>
+                <option value="Samuel">Samuel</option>
+                <option value="David">David</option>
+            </select>
+
             <button id="privateButton" onclick="openPrivate()" disabled>Open Private Chat</button>
             <button id="groupButton" onclick="openGroup()" disabled>Group Chat</button>
         </div>
@@ -231,6 +244,7 @@
         roomInput.disabled = connected;
         privateButton.disabled = !connected;
         groupButton.disabled = !connected;
+        recipientInput.disabled = !connected;
     }
 
     function showPrivateMessage(item) {
@@ -439,7 +453,7 @@
         }
 
         if (!recipient) {
-            alert("Enter the username you want to message.");
+            alert("Select a contact first.");
             return;
         }
 
@@ -521,4 +535,3 @@
 </script>
 </body>
 </html>
-
