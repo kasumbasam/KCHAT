@@ -1,0 +1,524 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KCHAT</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #10131a;
+            color: #edf2f7;
+        }
+
+        .chat-app {
+            width: min(760px, 100%);
+            height: min(760px, calc(100vh - 40px));
+            min-height: 520px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #1b2230;
+            border: 1px solid #303b50;
+            border-radius: 16px;
+        }
+
+        header {
+            padding: 20px;
+            background: #202a3b;
+            border-bottom: 1px solid #303b50;
+        }
+
+        h1 {
+            margin: 0 0 14px;
+            font-size: 24px;
+            color: #70d6ff;
+        }
+
+        .join-area, .private-area, .send-area {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .private-area { margin-top: 10px; }
+
+        input, button {
+            font: inherit;
+            border-radius: 8px;
+        }
+
+        input {
+            flex: 1 1 150px;
+            min-width: 0;
+            padding: 11px 12px;
+            border: 1px solid #43516b;
+            outline: none;
+            color: #fff;
+            background: #121925;
+        }
+
+        input:focus { border-color: #70d6ff; }
+
+        button {
+            padding: 11px 16px;
+            border: 0;
+            cursor: pointer;
+            font-weight: bold;
+            color: #07131d;
+            background: #70d6ff;
+        }
+
+        button:hover { background: #9ae3ff; }
+        button:disabled { cursor: not-allowed; opacity: .55; }
+
+        #status {
+            margin: 12px 0 0;
+            font-size: 14px;
+            color: #f6c453;
+        }
+
+        #chatMode {
+            margin: 10px 0 0;
+            font-size: 14px;
+            color: #70d6ff;
+        }
+
+        #onlineUsers {
+            margin: 8px 0 0;
+            font-size: 14px;
+            color: #80ed99;
+        }
+
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 18px;
+            background: #151b27;
+        }
+
+        .message {
+            max-width: 82%;
+            margin: 0 0 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            overflow-wrap: anywhere;
+            background: #263249;
+        }
+
+        .message strong { color: #70d6ff; }
+
+        .status-dot {
+            font-size: 20px;
+            font-weight: 900;
+            color: #ffffff;
+            letter-spacing: 2px;
+        }
+
+        .status-dot.read {
+            color: #2196ff;
+        }
+
+        .system {
+            max-width: 100%;
+            text-align: center;
+            font-size: 13px;
+            color: #aebbd0;
+            background: transparent;
+        }
+
+        .send-area {
+            padding: 14px;
+            border-top: 1px solid #303b50;
+            background: #202a3b;
+        }
+
+        #message { flex: 1; }
+
+        @media (max-width: 520px) {
+            body { padding: 0; }
+
+            .chat-app {
+                height: 100vh;
+                border: 0;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<main class="chat-app">
+    <header>
+        <h1>KCHAT</h1>
+
+        <div class="join-area">
+            <input id="username" type="text" placeholder="Your username" maxlength="30">
+            <input id="room" type="text" placeholder="Room name" value="general" maxlength="40">
+            <button id="joinButton" onclick="joinChat()">Join Chat</button>
+        </div>
+
+        <div class="private-area">
+            <input id="recipient" type="text" placeholder="Private message to..." maxlength="30">
+            <button id="privateButton" onclick="openPrivate()" disabled>Open Private Chat</button>
+            <button id="groupButton" onclick="openGroup()" disabled>Group Chat</button>
+        </div>
+
+        <p id="status">Not connected</p>
+        <p id="chatMode">Mode: Group Chat</p>
+        <p id="onlineUsers">Online: Nobody</p>
+    </header>
+
+    <section id="messages" aria-live="polite"></section>
+
+    <div class="send-area">
+        <input id="message" type="text" placeholder="Write a message..." disabled>
+        <button id="sendButton" onclick="sendMessage()" disabled>Send</button>
+    </div>
+</main>
+
+<script>
+    let socket = null;
+    let myUsername = "";
+    let activeRecipient = null;
+
+    const messages = document.getElementById("messages");
+    const usernameInput = document.getElementById("username");
+    const roomInput = document.getElementById("room");
+    const recipientInput = document.getElementById("recipient");
+    const messageInput = document.getElementById("message");
+
+    const joinButton = document.getElementById("joinButton");
+    const privateButton = document.getElementById("privateButton");
+    const groupButton = document.getElementById("groupButton");
+    const sendButton = document.getElementById("sendButton");
+
+    const status = document.getElementById("status");
+    const chatMode = document.getElementById("chatMode");
+    const onlineUsers = document.getElementById("onlineUsers");
+
+    const privateMessages = {};
+
+    function addMessage(text, username = null, isSystem = false) {
+        const line = document.createElement("div");
+        line.className = isSystem ? "message system" : "message";
+
+        if (username) {
+            const name = document.createElement("strong");
+            name.textContent = username + ": ";
+            line.appendChild(name);
+        }
+
+        line.appendChild(document.createTextNode(text));
+        messages.appendChild(line);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function setConnected(connected) {
+        messageInput.disabled = !connected;
+        sendButton.disabled = !connected;
+        joinButton.disabled = connected;
+        usernameInput.disabled = connected;
+        roomInput.disabled = connected;
+        privateButton.disabled = !connected;
+        groupButton.disabled = !connected;
+    }
+
+    function showPrivateMessage(item) {
+        const sender =
+            item.username.toLowerCase() === myUsername.toLowerCase()
+                ? "You"
+                : item.username;
+
+        const line = document.createElement("div");
+        line.className = "message";
+
+        const name = document.createElement("strong");
+        name.textContent = sender + ": ";
+        line.appendChild(name);
+
+        line.appendChild(document.createTextNode(item.text));
+
+        if (sender === "You") {
+            const dots = document.createElement("span");
+            dots.className = "status-dot";
+
+            if (item.status === "read") {
+                dots.classList.add("read");
+                dots.textContent = " ●●";
+            } else if (item.status === "delivered") {
+                dots.textContent = " ●●";
+            } else {
+                dots.textContent = " ●";
+            }
+
+            line.appendChild(dots);
+        }
+
+        if (item.id) {
+            privateMessages[item.id] = item;
+        }
+
+        messages.appendChild(line);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function joinChat() {
+        const username = usernameInput.value.trim();
+        const room = roomInput.value.trim();
+
+        if (!username || !room) {
+            alert("Enter both a username and room name.");
+            return;
+        }
+
+        if (socket) {
+            socket.close();
+        }
+
+        myUsername = username;
+        activeRecipient = null;
+        messages.innerHTML = "";
+        onlineUsers.textContent = "Online: Connecting...";
+        status.textContent = "Connecting...";
+        chatMode.textContent = "Mode: Group Chat";
+
+        const wsUrl =
+            (window.location.protocol === "https:" ? "wss://" : "ws://") +
+            window.location.host +
+            "/ws/" + encodeURIComponent(room) +
+            "?username=" + encodeURIComponent(username);
+
+        socket = new WebSocket(wsUrl);
+
+        socket.onopen = function () {
+            status.textContent = "Connected to room: " + room;
+            status.style.color = "#80ed99";
+            setConnected(true);
+            messageInput.focus();
+        };
+
+        socket.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+
+            if (data.type === "welcome") {
+                messages.innerHTML = "";
+
+                if (data.history) {
+                    data.history.forEach(function (item) {
+                        addMessage(item.text || "", item.username || null);
+                    });
+                }
+
+                if (data.users) {
+                    onlineUsers.textContent =
+                        "Online: " + data.users.join(", ");
+                }
+            }
+
+            if (data.type === "users") {
+                onlineUsers.textContent =
+                    "Online: " + data.users.join(", ");
+            }
+
+            if (data.type === "chat") {
+                if (activeRecipient === null) {
+                    addMessage(data.text, data.username);
+                }
+            }
+
+            if (data.type === "system") {
+                addMessage(data.text, null, true);
+            }
+
+            if (data.type === "private_history") {
+                if (
+                    activeRecipient &&
+                    data.with.toLowerCase() === activeRecipient.toLowerCase()
+                ) {
+                    messages.innerHTML = "";
+
+                    addMessage(
+                        "Private conversation with " + data.with,
+                        null,
+                        true
+                    );
+
+                    data.history.forEach(function (item) {
+                        showPrivateMessage(item);
+                    });
+                }
+            }
+
+            if (data.type === "private") {
+                const outgoing =
+                    data.username.toLowerCase() === myUsername.toLowerCase() &&
+                    activeRecipient &&
+                    data.to.toLowerCase() === activeRecipient.toLowerCase();
+
+                const incoming =
+                    data.to.toLowerCase() === myUsername.toLowerCase() &&
+                    activeRecipient &&
+                    data.username.toLowerCase() === activeRecipient.toLowerCase();
+
+                if (outgoing || incoming) {
+                    showPrivateMessage(data);
+                } else if (
+                    data.to.toLowerCase() === myUsername.toLowerCase()
+                ) {
+                    addMessage(
+                        "New private message from " + data.username +
+                        ". Open a private chat with them to read it.",
+                        null,
+                        true
+                    );
+                }
+            }
+
+            if (data.type === "private_status") {
+                const item = privateMessages[data.id];
+
+                if (item) {
+                    item.status = data.status;
+
+                    if (
+                        activeRecipient &&
+                        item.to.toLowerCase() === activeRecipient.toLowerCase()
+                    ) {
+                        messages.innerHTML = "";
+
+                        addMessage(
+                            "Private conversation with " + activeRecipient,
+                            null,
+                            true
+                        );
+
+                        Object.values(privateMessages).forEach(function (msg) {
+                            if (
+                                msg.username.toLowerCase() === myUsername.toLowerCase() ||
+                                msg.to.toLowerCase() === myUsername.toLowerCase()
+                            ) {
+                                showPrivateMessage(msg);
+                            }
+                        });
+                    }
+                }
+            }
+        };
+
+        socket.onclose = function () {
+            status.textContent = "Disconnected";
+            status.style.color = "#f6c453";
+            onlineUsers.textContent = "Online: Nobody";
+            setConnected(false);
+            socket = null;
+            activeRecipient = null;
+        };
+
+        socket.onerror = function () {
+            status.textContent = "Connection error. Is the backend running?";
+            status.style.color = "#ff7b7b";
+        };
+    }
+
+    function openPrivate() {
+        const recipient = recipientInput.value.trim();
+
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            alert("Join a chat room first.");
+            return;
+        }
+
+        if (!recipient) {
+            alert("Enter the username you want to message.");
+            return;
+        }
+
+        if (recipient.toLowerCase() === myUsername.toLowerCase()) {
+            alert("You cannot message yourself.");
+            return;
+        }
+
+        activeRecipient = recipient;
+        messages.innerHTML = "";
+        chatMode.textContent = "Mode: Private Chat with " + recipient;
+
+        addMessage(
+            "Opening private conversation with " + recipient + "...",
+            null,
+            true
+        );
+
+        socket.send(JSON.stringify({
+            type: "open_private",
+            to: recipient
+        }));
+
+        messageInput.focus();
+    }
+
+    function openGroup() {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+
+        activeRecipient = null;
+        messages.innerHTML = "";
+        chatMode.textContent = "Mode: Group Chat";
+
+        addMessage("You are back in the group chat.", null, true);
+    }
+
+    function sendMessage() {
+        const text = messageInput.value.trim();
+
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            alert("Join a chat room first.");
+            return;
+        }
+
+        if (!text) {
+            return;
+        }
+
+        if (activeRecipient) {
+            socket.send(JSON.stringify({
+                type: "private",
+                to: activeRecipient,
+                text: text
+            }));
+        } else {
+            socket.send(JSON.stringify({
+                type: "chat",
+                text: text
+            }));
+        }
+
+        messageInput.value = "";
+        messageInput.focus();
+    }
+
+    messageInput.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+            sendMessage();
+        }
+    });
+
+    recipientInput.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+            openPrivate();
+        }
+    });
+</script>
+</body>
+</html>
+
