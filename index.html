@@ -124,7 +124,7 @@
         .status-dot {
             font-size: 18px;
             font-weight: 900;
-            color: #ffffff;
+            color: #fff;
             letter-spacing: 2px;
         }
 
@@ -136,6 +136,10 @@
             font-size: 13px;
             color: #aebbd0;
             background: transparent;
+        }
+
+        .pending {
+            opacity: .7;
         }
 
         .send-area {
@@ -178,8 +182,13 @@
                 <option value="David">David</option>
             </select>
 
-            <button id="privateButton" onclick="openPrivate()" disabled>Open Private Chat</button>
-            <button id="groupButton" onclick="openGroup()" disabled>Group Chat</button>
+            <button id="privateButton" onclick="openPrivate()" disabled>
+                Open Private Chat
+            </button>
+
+            <button id="groupButton" onclick="openGroup()" disabled>
+                Group Chat
+            </button>
         </div>
 
         <p id="status">Not connected</p>
@@ -198,7 +207,15 @@
 <script>
     let socket = null;
     let myUsername = "";
+    let currentRoom = "";
     let activeRecipient = null;
+
+    let hasJoined = false;
+    let reconnectAttempts = 0;
+    let reconnectTimer = null;
+    let manualClose = false;
+
+    let pendingMessages = [];
 
     const messages = document.getElementById("messages");
     const usernameInput = document.getElementById("username");
@@ -233,14 +250,33 @@
     }
 
     function setConnected(connected) {
-        messageInput.disabled = !connected;
-        sendButton.disabled = !connected;
-        joinButton.disabled = connected;
-        usernameInput.disabled = connected;
-        roomInput.disabled = connected;
-        privateButton.disabled = !connected;
-        groupButton.disabled = !connected;
-        recipientInput.disabled = !connected;
+        usernameInput.disabled = hasJoined;
+        roomInput.disabled = hasJoined;
+        joinButton.disabled = hasJoined;
+
+        recipientInput.disabled = !hasJoined;
+        privateButton.disabled = !hasJoined;
+        groupButton.disabled = !hasJoined;
+
+        messageInput.disabled = !hasJoined;
+        sendButton.disabled = !hasJoined;
+    }
+
+    function sendPendingMessages() {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+
+        while (pendingMessages.length > 0) {
+            const item = pendingMessages.shift();
+
+            try {
+                socket.send(JSON.stringify(item));
+            } catch (error) {
+                pendingMessages.unshift(item);
+                break;
+            }
+        }
     }
 
     function savePrivateMessage(item) {
@@ -250,6 +286,10 @@
     }
 
     function renderPrivateConversation() {
+        if (!activeRecipient) {
+            return;
+        }
+
         messages.innerHTML = "";
 
         addMessage(
@@ -268,10 +308,6 @@
                 item.to.toLowerCase() === activeRecipient.toLowerCase();
 
             return involvesMe && involvesRecipient;
-        });
-
-        conversation.sort(function(a, b) {
-            return (a.timestamp || 0) - (b.timestamp || 0);
         });
 
         conversation.forEach(showPrivateMessage);
@@ -309,58 +345,63 @@
         }
 
         messages.appendChild(line);
+        messages.scrollTop = messages.scrollHeight;
     }
 
-    function joinChat() {
-        const username = usernameInput.value.trim();
-        const room = roomInput.value.trim();
-
-        if (!username || !room) {
-            alert("Enter both a username and room name.");
+    function connectSocket() {
+        if (!hasJoined) {
             return;
         }
 
-        if (socket) {
-            socket.close();
-        }
+        clearTimeout(reconnectTimer);
 
-        myUsername = username;
-        activeRecipient = null;
-
-        Object.keys(privateMessages).forEach(function(key) {
-            delete privateMessages[key];
-        });
-
-        messages.innerHTML = "";
-        onlineUsers.textContent = "Online: Connecting...";
         status.textContent = "Connecting...";
-        chatMode.textContent = "Mode: Group Chat";
+        status.style.color = "#f6c453";
+        onlineUsers.textContent = "Online: Connecting...";
 
         const wsUrl =
             (window.location.protocol === "https:" ? "wss://" : "ws://") +
             window.location.host +
-            "/ws/" + encodeURIComponent(room) +
-            "?username=" + encodeURIComponent(username);
+            "/ws/" + encodeURIComponent(currentRoom) +
+            "?username=" + encodeURIComponent(myUsername);
 
-        socket = new WebSocket(wsUrl);
+        const newSocket = new WebSocket(wsUrl);
+        socket = newSocket;
 
-        socket.onopen = function() {
-            status.textContent = "Connected to room: " + room;
+        newSocket.onopen = function() {
+            if (socket !== newSocket) return;
+
+            reconnectAttempts = 0;
+
+            status.textContent = "Connected to room: " + currentRoom;
             status.style.color = "#80ed99";
+
             setConnected(true);
-            messageInput.focus();
+
+            if (activeRecipient) {
+                newSocket.send(JSON.stringify({
+                    type: "open_private",
+                    to: activeRecipient
+                }));
+            }
+
+            sendPendingMessages();
         };
 
-        socket.onmessage = function(event) {
+        newSocket.onmessage = function(event) {
+            if (socket !== newSocket) return;
+
             const data = JSON.parse(event.data);
 
             if (data.type === "welcome") {
-                messages.innerHTML = "";
+                if (activeRecipient === null) {
+                    messages.innerHTML = "";
 
-                if (data.history) {
-                    data.history.forEach(function(item) {
-                        addMessage(item.text || "", item.username || null);
-                    });
+                    if (data.history) {
+                        data.history.forEach(function(item) {
+                            addMessage(item.text || "", item.username || null);
+                        });
+                    }
                 }
 
                 if (data.users) {
@@ -434,25 +475,73 @@
             }
         };
 
-        socket.onclose = function() {
-            status.textContent = "Disconnected";
-            status.style.color = "#f6c453";
-            onlineUsers.textContent = "Online: Nobody";
-            setConnected(false);
+        newSocket.onclose = function() {
+            if (socket !== newSocket) return;
+
             socket = null;
-            activeRecipient = null;
+
+            if (!hasJoined || manualClose) {
+                return;
+            }
+
+            status.textContent = "Connection lost. Reconnecting...";
+            status.style.color = "#f6c453";
+            onlineUsers.textContent = "Online: Reconnecting...";
+
+            const delay = Math.min(
+                1000 * Math.pow(2, reconnectAttempts),
+                30000
+            );
+
+            reconnectAttempts++;
+
+            reconnectTimer = setTimeout(function() {
+                if (hasJoined && !manualClose) {
+                    connectSocket();
+                }
+            }, delay);
         };
 
-        socket.onerror = function() {
-            status.textContent = "Connection error. Is the backend running?";
-            status.style.color = "#ff7b7b";
+        newSocket.onerror = function() {
+            if (socket !== newSocket) return;
+
+            status.textContent = "Connection problem. Trying again...";
+            status.style.color = "#f6c453";
         };
+    }
+
+    function joinChat() {
+        const username = usernameInput.value.trim();
+        const room = roomInput.value.trim();
+
+        if (!username || !room) {
+            alert("Enter both a username and room name.");
+            return;
+        }
+
+        if (hasJoined) {
+            return;
+        }
+
+        myUsername = username;
+        currentRoom = room;
+        activeRecipient = null;
+        pendingMessages = [];
+        reconnectAttempts = 0;
+        manualClose = false;
+        hasJoined = true;
+
+        messages.innerHTML = "";
+        chatMode.textContent = "Mode: Group Chat";
+
+        setConnected(true);
+        connectSocket();
     }
 
     function openPrivate() {
         const recipient = recipientInput.value.trim();
 
-        if (!socket || socket.readyState !== WebSocket.OPEN) {
+        if (!hasJoined) {
             alert("Join a chat room first.");
             return;
         }
@@ -471,20 +560,26 @@
         chatMode.textContent = "Mode: Private Chat with " + recipient;
 
         messages.innerHTML = "";
-        addMessage("Loading conversation...", null, true);
+        addMessage("Opening private conversation...", null, true);
 
-        socket.send(JSON.stringify({
-            type: "open_private",
-            to: recipient
-        }));
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: "open_private",
+                to: recipient
+            }));
+        } else {
+            addMessage(
+                "You are reconnecting. Your conversation will load when connected.",
+                null,
+                true
+            );
+        }
 
         messageInput.focus();
     }
 
     function openGroup() {
-        if (!socket || socket.readyState !== WebSocket.OPEN) {
-            return;
-        }
+        if (!hasJoined) return;
 
         activeRecipient = null;
         messages.innerHTML = "";
@@ -496,26 +591,35 @@
     function sendMessage() {
         const text = messageInput.value.trim();
 
-        if (!socket || socket.readyState !== WebSocket.OPEN) {
-            alert("Join a chat room first.");
+        if (!hasJoined || !text) {
             return;
         }
 
-        if (!text) {
-            return;
-        }
+        let outgoing;
 
         if (activeRecipient) {
-            socket.send(JSON.stringify({
+            outgoing = {
                 type: "private",
                 to: activeRecipient,
                 text: text
-            }));
+            };
         } else {
-            socket.send(JSON.stringify({
+            outgoing = {
                 type: "chat",
                 text: text
-            }));
+            };
+        }
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(outgoing));
+        } else {
+            pendingMessages.push(outgoing);
+
+            addMessage(
+                "Message saved temporarily. It will be sent when KCHAT reconnects.",
+                null,
+                true
+            );
         }
 
         messageInput.value = "";
@@ -528,10 +632,10 @@
         }
     });
 
-    recipientInput.addEventListener("change", function() {
-        if (recipientInput.value) {
-            privateButton.disabled = !socket ||
-                socket.readyState !== WebSocket.OPEN;
+    window.addEventListener("online", function() {
+        if (hasJoined && (!socket || socket.readyState !== WebSocket.OPEN)) {
+            clearTimeout(reconnectTimer);
+            connectSocket();
         }
     });
 </script>
