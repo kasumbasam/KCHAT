@@ -369,20 +369,30 @@ async function loadContacts() {
     }
 }
 
+/* UPDATED LOGOUT FUNCTION */
 function logout() {
+    // Stop automatic reconnection first
+    hasJoined = false;
+
+    clearTimeout(reconnectTimer);
+
     if (socket) {
+        // Tell the backend that this user is logging out
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: "logout"
+            }));
+        }
+
         socket.close();
         socket = null;
     }
-
-    clearTimeout(reconnectTimer);
 
     localStorage.removeItem("kchat_token");
     localStorage.removeItem("kchat_username");
 
     token = "";
     myUsername = "";
-    hasJoined = false;
 
     document.getElementById("chatScreen").style.display = "none";
     document.getElementById("authScreen").style.display = "block";
