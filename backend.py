@@ -1,4 +1,3 @@
-
 import os
 import uuid
 import hashlib
@@ -199,7 +198,8 @@ async def register(request: Request):
             status_code=409
         )
 
-    except Exception:
+    except Exception as error:
+        print("Registration error:", error)
         return JSONResponse(
             {"error": "Registration failed. Please try again."},
             status_code=500
@@ -236,7 +236,8 @@ async def login(request: Request):
             "username": account["username"]
         }
 
-    except Exception:
+    except Exception as error:
+        print("Login error:", error)
         return JSONResponse(
             {"error": "Login failed. Please try again."},
             status_code=500
@@ -268,11 +269,19 @@ async def contacts(request: Request):
 # ---------------- CHAT HELPERS ----------------
 
 async def broadcast(room, message):
+    disconnected = []
+
     for user in list(connected_users.get(room, [])):
         try:
             await user["websocket"].send_json(message)
-        except Exception:
-            pass
+
+        except Exception as error:
+            print("Broadcast error:", error)
+            disconnected.append(user)
+
+    for user in disconnected:
+        if user in connected_users.get(room, []):
+            connected_users[room].remove(user)
 
 
 def find_users(room, username):
@@ -361,8 +370,9 @@ async def update_sender_status(room, item):
                 "id": item["id"],
                 "status": item["status"]
             })
-        except Exception:
-            pass
+
+        except Exception as error:
+            print("Status update error:", error)
 
 
 async def deliver_pending_messages(room, username, websocket):
@@ -477,14 +487,8 @@ async def chat(websocket: WebSocket, room: str):
                 if not recipient or recipient.lower() == username.lower():
                     continue
 
-                conversation = load_private_history(
-                    room, username, recipient
-                )
-
-                changed_items = []
-
                 with get_db() as conn:
-                    rows = conn.execute("""
+                    conn.execute("""
                         UPDATE messages
                         SET status = 'read'
                         WHERE room = %s
@@ -492,26 +496,21 @@ async def chat(websocket: WebSocket, room: str):
                         AND LOWER(username) = %s
                         AND LOWER(recipient) = %s
                         AND status != 'read'
-                        RETURNING id, username, recipient, text
                     """, (
                         room, recipient.lower(), username.lower()
-                    )).fetchall()
-
-                    for row in rows:
-                        changed_items.append({
-                            "id": row["id"],
-                            "username": row["username"],
-                            "to": row["recipient"],
-                            "text": row["text"],
-                            "status": "read"
-                        })
-
-                for item in changed_items:
-                    await update_sender_status(room, item)
+                    ))
 
                 conversation = load_private_history(
                     room, username, recipient
                 )
+
+                for item in conversation:
+                    if (
+                        item["username"].lower() == recipient.lower()
+                        and item["to"].lower() == username.lower()
+                        and item["status"] == "read"
+                    ):
+                        await update_sender_status(room, item)
 
                 await websocket.send_json({
                     "type": "private_history",
@@ -564,8 +563,9 @@ async def chat(websocket: WebSocket, room: str):
                     try:
                         await target["websocket"].send_json(delivery_item)
                         delivered = True
-                    except Exception:
-                        pass
+
+                    except Exception as error:
+                        print("Private delivery error:", error)
 
                 if delivered:
                     item["status"] = "delivered"
@@ -586,10 +586,10 @@ async def chat(websocket: WebSocket, room: str):
                     })
 
     except WebSocketDisconnect:
-        pass
+        print(username, "disconnected")
 
-    except Exception:
-        pass
+    except Exception as error:
+        print("WebSocket error for", username, ":", error)
 
     finally:
         connected_users[room] = [
