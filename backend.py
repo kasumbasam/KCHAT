@@ -46,12 +46,30 @@ def init_db():
         """)
 
         conn.execute("""
+            ALTER TABLE accounts
+            ADD COLUMN IF NOT EXISTS profile_picture TEXT
+        """)
+
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
                 id BIGSERIAL PRIMARY KEY,
                 account_id BIGINT REFERENCES accounts(id)
                     ON DELETE CASCADE,
                 token_hash TEXT UNIQUE NOT NULL,
                 expires_at TIMESTAMPTZ NOT NULL
+            )
+        """)
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS contacts (
+                id BIGSERIAL PRIMARY KEY,
+                owner_id BIGINT REFERENCES accounts(id)
+                    ON DELETE CASCADE,
+                contact_id BIGINT REFERENCES accounts(id)
+                    ON DELETE CASCADE,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(owner_id, contact_id),
+                CHECK(owner_id != contact_id)
             )
         """)
 
@@ -151,6 +169,12 @@ def get_account_from_token(token):
         """, (token_hash(token),)).fetchone()
 
 
+def get_account_from_request(request):
+    authorization = request.headers.get("Authorization", "")
+    token = authorization.replace("Bearer ", "", 1)
+    return get_account_from_token(token)
+
+
 # ---------------- REGISTRATION AND LOGIN ----------------
 
 @app.post("/api/register")
@@ -244,11 +268,11 @@ async def login(request: Request):
         )
 
 
+# ---------------- CONTACT MANAGEMENT ----------------
+
 @app.get("/api/contacts")
 async def contacts(request: Request):
-    authorization = request.headers.get("Authorization", "")
-    token = authorization.replace("Bearer ", "", 1)
-    account = get_account_from_token(token)
+    account = get_account_from_request(request)
 
     if not account:
         return JSONResponse(
@@ -258,12 +282,203 @@ async def contacts(request: Request):
 
     with get_db() as conn:
         rows = conn.execute("""
-            SELECT username FROM accounts
-            WHERE id != %s
-            ORDER BY username
+            SELECT accounts.username
+            FROM contacts
+            JOIN accounts
+                ON accounts.id = contacts.contact_id
+            WHERE contacts.owner_id = %s
+            ORDER BY accounts.username
         """, (account["id"],)).fetchall()
 
-    return {"contacts": [row["username"] for row in rows]}
+    return {
+        "contacts": [row["username"] for row in rows]
+    }
+
+
+@app.post("/api/contacts")
+async def add_contact(request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse(
+            {"error": "Please log in again."},
+            status_code=401
+        )
+
+    try:
+        data = await request.json()
+        username = str(data.get("username", "")).strip()
+
+        if not username:
+            return JSONResponse(
+                {"error": "Enter a username."},
+                status_code=400
+            )
+
+        with get_db() as conn:
+            target = conn.execute("""
+                SELECT id, username
+                FROM accounts
+                WHERE username_key = %s
+            """, (username.lower(),)).fetchone()
+
+            if not target:
+                return JSONResponse(
+                    {"error": "No KCHAT account found with that username."},
+                    status_code=404
+                )
+
+            if target["id"] == account["id"]:
+                return JSONResponse(
+                    {"error": "You cannot add yourself."},
+                    status_code=400
+                )
+
+            conn.execute("""
+                INSERT INTO contacts (owner_id, contact_id)
+                VALUES (%s, %s)
+                ON CONFLICT (owner_id, contact_id) DO NOTHING
+            """, (account["id"], target["id"]))
+
+        return {
+            "success": True,
+            "username": target["username"],
+            "message": "Contact added successfully."
+        }
+
+    except Exception as error:
+        print("Add contact error:", error)
+        return JSONResponse(
+            {"error": "Could not add contact."},
+            status_code=500
+        )
+
+
+@app.delete("/api/contacts/{username}")
+async def remove_contact(username: str, request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse(
+            {"error": "Please log in again."},
+            status_code=401
+        )
+
+    with get_db() as conn:
+        target = conn.execute("""
+            SELECT id FROM accounts
+            WHERE username_key = %s
+        """, (username.lower(),)).fetchone()
+
+        if not target:
+            return JSONResponse(
+                {"error": "Contact not found."},
+                status_code=404
+            )
+
+        result = conn.execute("""
+            DELETE FROM contacts
+            WHERE owner_id = %s AND contact_id = %s
+            RETURNING id
+        """, (account["id"], target["id"])).fetchone()
+
+    if not result:
+        return JSONResponse(
+            {"error": "That user is not in your contacts."},
+            status_code=404
+        )
+
+    return {
+        "success": True,
+        "message": "Contact removed."
+    }
+
+
+# ---------------- PROFILE PICTURES ----------------
+
+@app.get("/api/profile/{username}")
+async def get_profile(username: str, request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse(
+            {"error": "Please log in again."},
+            status_code=401
+        )
+
+    with get_db() as conn:
+        profile = conn.execute("""
+            SELECT username, profile_picture
+            FROM accounts
+            WHERE username_key = %s
+        """, (username.lower(),)).fetchone()
+
+    if not profile:
+        return JSONResponse(
+            {"error": "User not found."},
+            status_code=404
+        )
+
+    return {
+        "username": profile["username"],
+        "profile_picture": profile["profile_picture"]
+    }
+
+
+@app.put("/api/profile")
+async def update_profile(request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse(
+            {"error": "Please log in again."},
+            status_code=401
+        )
+
+    try:
+        data = await request.json()
+        picture = data.get("profile_picture")
+
+        if picture is not None:
+            if not isinstance(picture, str):
+                return JSONResponse(
+                    {"error": "Invalid picture."},
+                    status_code=400
+                )
+
+            if len(picture) > 2_500_000:
+                return JSONResponse(
+                    {"error": "Picture is too large. Choose a smaller image."},
+                    status_code=413
+                )
+
+            if not re.fullmatch(
+                r"data:image/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+",
+                picture
+            ):
+                return JSONResponse(
+                    {"error": "Use a PNG, JPG or WEBP image."},
+                    status_code=400
+                )
+
+        with get_db() as conn:
+            conn.execute("""
+                UPDATE accounts
+                SET profile_picture = %s
+                WHERE id = %s
+            """, (picture, account["id"]))
+
+        return {
+            "success": True,
+            "message": "Profile picture updated."
+        }
+
+    except Exception as error:
+        print("Profile update error:", error)
+        return JSONResponse(
+            {"error": "Could not update profile picture."},
+            status_code=500
+        )
 
 
 # ---------------- CHAT HELPERS ----------------
@@ -476,7 +691,6 @@ async def chat(websocket: WebSocket, room: str):
             data = await websocket.receive_json()
             message_type = data.get("type")
 
-            # EXPLICIT LOGOUT
             if message_type == "logout":
                 print(username, "logged out")
                 break
