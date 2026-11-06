@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -334,6 +333,8 @@ let hasJoined = false;
 let reconnectAttempts = 0;
 let reconnectTimer = null;
 let pendingMessages = [];
+let currentView = "none";
+let groupMessages = [];
 
 const messages = document.getElementById("messages");
 const recipientInput = document.getElementById("recipient");
@@ -816,10 +817,12 @@ function connectSocket() {
         const data = JSON.parse(event.data);
 
         if (data.type === "welcome") {
-            if (!activeRecipient) {
+            groupMessages = data.history || [];
+
+            if (currentView === "group") {
                 messages.innerHTML = "";
 
-                (data.history || []).forEach(function(item) {
+                groupMessages.forEach(function(item) {
                     addMessage(item.text || "", item.username || null);
                 });
             }
@@ -833,11 +836,15 @@ function connectSocket() {
                 "Online: " + data.users.join(", ");
         }
 
-        if (data.type === "chat" && !activeRecipient) {
-            addMessage(data.text, data.username);
+        if (data.type === "chat") {
+            groupMessages.push(data);
+
+            if (currentView === "group") {
+                addMessage(data.text, data.username);
+            }
         }
 
-        if (data.type === "system") {
+        if (data.type === "system" && currentView === "group") {
             addMessage(data.text, null, true);
         }
 
@@ -866,13 +873,6 @@ function connectSocket() {
 
             if (outgoing || incoming) {
                 renderPrivateConversation();
-            } else if (data.to.toLowerCase() === myUsername.toLowerCase()) {
-                addMessage(
-                    "New private message from " + data.username +
-                    ". Open their private chat to read it.",
-                    null,
-                    true
-                );
             }
 
             if (incoming && socket.readyState === WebSocket.OPEN) {
@@ -932,12 +932,14 @@ function joinChat() {
 
     currentRoom = room;
     activeRecipient = null;
+    currentView = "none";
+    groupMessages = [];
     pendingMessages = [];
     reconnectAttempts = 0;
     hasJoined = true;
 
     messages.innerHTML = "";
-    chatMode.textContent = "Mode: Group Chat";
+    chatMode.textContent = "Mode: Select a chat";
 
     setConnected();
     connectSocket();
@@ -957,6 +959,7 @@ function openPrivate() {
     }
 
     activeRecipient = recipient;
+    currentView = "private";
 
     chatMode.textContent = "Mode: Private Chat with " + recipient;
     messages.innerHTML = "";
@@ -976,8 +979,13 @@ function openGroup() {
     if (!hasJoined) return;
 
     activeRecipient = null;
+    currentView = "group";
     messages.innerHTML = "";
     chatMode.textContent = "Mode: Group Chat";
+
+    groupMessages.forEach(function(item) {
+        addMessage(item.text || "", item.username || null);
+    });
 
     addMessage("You are back in the group chat.", null, true);
 }
