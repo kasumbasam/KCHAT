@@ -8,30 +8,23 @@
 <style>
 * { box-sizing: border-box; }
 
-html {
-    min-height: 100%;
-    overflow-y: auto;
-}
+html { min-height: 100%; overflow-y: auto; }
 
 body {
     margin: 0;
     min-height: 100vh;
-    display: block;
     padding: 0;
     font-family: Arial, sans-serif;
     background: #10131a;
     color: #edf2f7;
-    overflow-y: auto;
 }
 
 .chat-app {
     width: min(760px, 100%);
     min-height: 100vh;
-    height: auto;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    overflow: visible;
     background: #1b2230;
     border: 1px solid #303b50;
     border-radius: 16px;
@@ -101,7 +94,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 #chatScreen {
     display: none;
     min-height: 100vh;
-    height: auto;
     flex-direction: column;
 }
 
@@ -126,7 +118,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     font-weight: bold;
 }
 
-.profile-controls, .contact-controls {
+.profile-controls, .contact-controls, .groups-controls {
     padding: 10px;
     margin: 10px 0;
     border: 1px solid #43516b;
@@ -134,15 +126,13 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     background: #182232;
 }
 
-.profile-controls h3, .contact-controls h3 {
+.profile-controls h3, .contact-controls h3, .groups-controls h3 {
     margin: 3px 0 8px;
     color: #70d6ff;
     font-size: 15px;
 }
 
-.profile-controls input[type="file"] {
-    padding: 7px;
-}
+.profile-controls input[type="file"] { padding: 7px; }
 
 .join-area, .private-area, .send-area {
     display: flex;
@@ -236,29 +226,39 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
 #message { flex: 1; min-width: 100px; }
 
-#contactMessage, #profileMessage {
+#contactMessage, #profileMessage, #groupMessage {
     min-height: 18px;
     margin: 5px 0;
     font-size: 13px;
     color: #80ed99;
 }
 
+.group-member {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px;
+    margin: 5px 0;
+    background: #263249;
+    border-radius: 7px;
+}
+
+.group-member button {
+    padding: 6px 9px;
+    background: #ff8585;
+}
+
 @media (max-width: 520px) {
     .chat-app {
         width: 100%;
         min-height: 100vh;
-        height: auto;
         border: 0;
         border-radius: 0;
     }
 
-    header {
-        padding: 14px;
-    }
-
-    #messages {
-        max-height: 450px;
-    }
+    header { padding: 14px; }
+    #messages { max-height: 450px; }
 }
 </style>
 </head>
@@ -297,9 +297,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
                 <h3>My Profile Picture</h3>
                 <input id="profileFile" type="file"
                        accept="image/png,image/jpeg,image/webp">
-                <button onclick="uploadProfilePicture()">
-                    Upload Picture
-                </button>
+                <button onclick="uploadProfilePicture()">Upload Picture</button>
                 <p id="profileMessage"></p>
             </div>
 
@@ -309,6 +307,29 @@ button:disabled { opacity: .55; cursor: not-allowed; }
                 <button onclick="addContact()">Add Contact</button>
                 <button onclick="removeContact()">Remove Selected Contact</button>
                 <p id="contactMessage"></p>
+            </div>
+
+            <!-- NEW MANAGED GROUPS SECTION -->
+            <div class="groups-controls">
+                <h3>My Groups</h3>
+
+                <input id="newGroupName" placeholder="Enter a new group name">
+                <button onclick="createGroup()">Create Group</button>
+
+                <select id="myGroups" onchange="selectGroup()">
+                    <option value="">Select one of your groups</option>
+                </select>
+
+                <button onclick="openManagedGroup()">Open Group Chat</button>
+                <button onclick="loadGroupMembers()">View Members</button>
+
+                <input id="groupMemberName"
+                       placeholder="Username to add to selected group">
+
+                <button onclick="addGroupMember()">Add Member</button>
+
+                <div id="groupMembers"></div>
+                <p id="groupMessage"></p>
             </div>
 
             <div class="join-area">
@@ -362,6 +383,9 @@ let pendingMessages = [];
 let currentView = "none";
 let groupMessages = [];
 
+let myGroups = [];
+let selectedGroup = null;
+
 const messages = document.getElementById("messages");
 const recipientInput = document.getElementById("recipient");
 const messageInput = document.getElementById("message");
@@ -370,6 +394,7 @@ const chatMode = document.getElementById("chatMode");
 const onlineUsers = document.getElementById("onlineUsers");
 
 const privateMessages = {};
+
 
 function switchAuth() {
     registerMode = !registerMode;
@@ -387,6 +412,7 @@ function switchAuth() {
 
     document.getElementById("authError").textContent = "";
 }
+
 
 async function submitAuth() {
     const username =
@@ -438,6 +464,7 @@ async function submitAuth() {
     }
 }
 
+
 function showChatScreen() {
     document.getElementById("authScreen").style.display = "none";
     document.getElementById("chatScreen").style.display = "flex";
@@ -447,7 +474,9 @@ function showChatScreen() {
 
     loadMyProfile();
     loadContacts();
+    loadGroups();
 }
+
 
 async function loadContacts() {
     try {
@@ -483,6 +512,7 @@ async function loadContacts() {
         console.error("Could not load contacts:", error);
     }
 }
+
 
 async function addContact() {
     const username =
@@ -520,6 +550,7 @@ async function addContact() {
         message.textContent = error.message;
     }
 }
+
 
 async function removeContact() {
     const username = recipientInput.value.trim();
@@ -567,6 +598,304 @@ async function removeContact() {
     }
 }
 
+
+// ---------------- MY GROUPS ----------------
+
+async function loadGroups() {
+    const message = document.getElementById("groupMessage");
+
+    try {
+        const response = await fetch("/api/groups", {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Could not load groups.");
+        }
+
+        myGroups = data.groups || [];
+
+        const select = document.getElementById("myGroups");
+        const previousId = select.value;
+
+        select.innerHTML =
+            '<option value="">Select one of your groups</option>';
+
+        myGroups.forEach(function(group) {
+            const option = document.createElement("option");
+            option.value = group.id;
+            option.textContent =
+                group.name + " (" + group.member_count + " members)";
+            select.appendChild(option);
+        });
+
+        if (previousId && myGroups.some(function(group) {
+            return String(group.id) === previousId;
+        })) {
+            select.value = previousId;
+        }
+
+        selectGroup();
+
+        if (myGroups.length === 0) {
+            message.textContent = "You have not joined any groups yet.";
+        } else {
+            message.textContent = "Your groups are loaded.";
+        }
+
+    } catch (error) {
+        message.textContent = error.message;
+    }
+}
+
+
+function selectGroup() {
+    const groupId = document.getElementById("myGroups").value;
+
+    selectedGroup = myGroups.find(function(group) {
+        return String(group.id) === groupId;
+    }) || null;
+
+    document.getElementById("groupMembers").innerHTML = "";
+}
+
+
+async function createGroup() {
+    const name = document.getElementById("newGroupName").value.trim();
+    const message = document.getElementById("groupMessage");
+
+    if (!name) {
+        message.textContent = "Enter a group name first.";
+        return;
+    }
+
+    try {
+        const response = await fetch("/api/groups", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({ name: name })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Could not create group.");
+        }
+
+        document.getElementById("newGroupName").value = "";
+        message.textContent = "Group created successfully.";
+
+        await loadGroups();
+
+        if (data.group) {
+            document.getElementById("myGroups").value =
+                String(data.group.id);
+            selectGroup();
+        }
+
+    } catch (error) {
+        message.textContent = error.message;
+    }
+}
+
+
+async function addGroupMember() {
+    const username =
+        document.getElementById("groupMemberName").value.trim();
+
+    const message = document.getElementById("groupMessage");
+
+    if (!selectedGroup) {
+        message.textContent = "Select a group first.";
+        return;
+    }
+
+    if (!username) {
+        message.textContent = "Enter the username to add.";
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            "/api/groups/" + selectedGroup.id + "/members",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({ username: username })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Could not add member.");
+        }
+
+        document.getElementById("groupMemberName").value = "";
+        message.textContent = username + " added to the group.";
+
+        await loadGroups();
+        await loadGroupMembers();
+
+    } catch (error) {
+        message.textContent = error.message;
+    }
+}
+
+
+async function loadGroupMembers() {
+    const message = document.getElementById("groupMessage");
+    const container = document.getElementById("groupMembers");
+
+    if (!selectedGroup) {
+        message.textContent = "Select a group first.";
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            "/api/groups/" + selectedGroup.id + "/members",
+            {
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Could not load members.");
+        }
+
+        container.innerHTML = "";
+
+        const heading = document.createElement("p");
+        heading.textContent = "Members of " + selectedGroup.name;
+        container.appendChild(heading);
+
+        (data.members || []).forEach(function(member) {
+            const row = document.createElement("div");
+            row.className = "group-member";
+
+            const label = document.createElement("span");
+            label.textContent =
+                member.username + " (" + member.role + ")";
+
+            row.appendChild(label);
+
+            if (
+                selectedGroup.role === "admin" &&
+                member.username.toLowerCase() !== myUsername.toLowerCase()
+            ) {
+                const removeButton = document.createElement("button");
+                removeButton.textContent = "Remove";
+                removeButton.onclick = function() {
+                    removeGroupMember(member.username);
+                };
+                row.appendChild(removeButton);
+            }
+
+            container.appendChild(row);
+        });
+
+        message.textContent =
+            (data.members || []).length + " group member(s).";
+
+    } catch (error) {
+        message.textContent = error.message;
+    }
+}
+
+
+async function removeGroupMember(username) {
+    if (!selectedGroup) return;
+
+    if (!confirm("Remove " + username + " from this group?")) {
+        return;
+    }
+
+    const message = document.getElementById("groupMessage");
+
+    try {
+        const response = await fetch(
+            "/api/groups/" + selectedGroup.id +
+            "/members/" + encodeURIComponent(username),
+            {
+                method: "DELETE",
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Could not remove member.");
+        }
+
+        message.textContent = data.message || "Member removed.";
+
+        await loadGroups();
+        await loadGroupMembers();
+
+    } catch (error) {
+        message.textContent = error.message;
+    }
+}
+
+
+function openManagedGroup() {
+    if (!selectedGroup) {
+        alert("Select one of your groups first.");
+        return;
+    }
+
+    clearTimeout(reconnectTimer);
+
+    const oldSocket = socket;
+    socket = null;
+
+    if (oldSocket) {
+        try {
+            oldSocket.close();
+        } catch (error) {
+            console.log("Previous connection closed.");
+        }
+    }
+
+    currentRoom = "group_" + selectedGroup.id;
+    activeRecipient = null;
+    currentView = "group";
+    groupMessages = [];
+    pendingMessages = [];
+    reconnectAttempts = 0;
+    hasJoined = true;
+
+    messages.innerHTML = "";
+    delete messages.dataset.lastDateKey;
+
+    chatMode.textContent = "Mode: Group - " + selectedGroup.name;
+    status.textContent = "Connecting to " + selectedGroup.name + "...";
+
+    setConnected();
+    connectSocket();
+}
+
+
+// ---------------- PROFILE PICTURES ----------------
+
 async function loadMyProfile() {
     try {
         const response = await fetch(
@@ -591,6 +920,7 @@ async function loadMyProfile() {
         console.error("Could not load profile:", error);
     }
 }
+
 
 async function uploadProfilePicture() {
     const fileInput = document.getElementById("profileFile");
@@ -638,6 +968,7 @@ async function uploadProfilePicture() {
     }
 }
 
+
 function resizeImage(file) {
     return new Promise(function(resolve, reject) {
         const reader = new FileReader();
@@ -683,20 +1014,23 @@ function resizeImage(file) {
     });
 }
 
+
+// ---------------- LOGOUT ----------------
+
 function logout() {
     hasJoined = false;
 
     clearTimeout(reconnectTimer);
 
     if (socket) {
-        if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-                type: "logout"
-            }));
+        const oldSocket = socket;
+        socket = null;
+
+        if (oldSocket.readyState === WebSocket.OPEN) {
+            oldSocket.send(JSON.stringify({ type: "logout" }));
         }
 
-        socket.close();
-        socket = null;
+        oldSocket.close();
     }
 
     localStorage.removeItem("kchat_token");
@@ -713,18 +1047,25 @@ function logout() {
     messages.innerHTML = "";
 }
 
+
+// ---------------- MESSAGE DISPLAY ----------------
+
 function dateKey(dateValue) {
     const date = new Date(dateValue);
+
     if (Number.isNaN(date.getTime())) return "unknown-date";
+
     return date.getFullYear() + "-" +
         String(date.getMonth() + 1).padStart(2, "0") + "-" +
         String(date.getDate()).padStart(2, "0");
 }
 
+
 function dateHeading(dateValue) {
     const date = new Date(dateValue);
     const today = new Date();
     const yesterday = new Date();
+
     yesterday.setDate(today.getDate() - 1);
 
     if (dateKey(date) === dateKey(today)) return "Today";
@@ -738,18 +1079,22 @@ function dateHeading(dateValue) {
     });
 }
 
+
 function addDateSeparator(createdAt) {
     if (!createdAt) return;
 
     const key = dateKey(createdAt);
+
     if (messages.dataset.lastDateKey === key) return;
 
     const separator = document.createElement("div");
     separator.className = "date-separator";
     separator.textContent = dateHeading(createdAt);
+
     messages.appendChild(separator);
     messages.dataset.lastDateKey = key;
 }
+
 
 function addMessage(text, username = null, isSystem = false, createdAt = null) {
     const line = document.createElement("div");
@@ -770,15 +1115,22 @@ function addMessage(text, username = null, isSystem = false, createdAt = null) {
     if (createdAt && !isSystem) {
         const meta = document.createElement("small");
         meta.className = "message-time";
+
         const time = new Date(createdAt);
+
         meta.textContent = Number.isNaN(time.getTime()) ? "" :
-            time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            time.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+
         line.appendChild(meta);
     }
 
     messages.appendChild(line);
     messages.scrollTop = messages.scrollHeight;
 }
+
 
 function setConnected() {
     recipientInput.disabled = !hasJoined;
@@ -790,9 +1142,11 @@ function setConnected() {
     document.getElementById("room").disabled = hasJoined;
 }
 
+
 function savePrivateMessage(item) {
     if (item.id) privateMessages[item.id] = item;
 }
+
 
 function renderPrivateConversation() {
     if (!activeRecipient) return;
@@ -813,11 +1167,13 @@ function renderPrivateConversation() {
             (sender === other && recipient === me)
         );
     }).sort(function(a, b) {
-        return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+        return new Date(a.created_at || 0) -
+            new Date(b.created_at || 0);
     });
 
     conversation.forEach(showPrivateMessage);
 }
+
 
 function showPrivateMessage(item) {
     const mine =
@@ -837,9 +1193,14 @@ function showPrivateMessage(item) {
     if (item.created_at) {
         const meta = document.createElement("small");
         meta.className = "message-time";
+
         const time = new Date(item.created_at);
+
         meta.textContent = Number.isNaN(time.getTime()) ? "" :
-            time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            time.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+            });
 
         if (mine) {
             const dots = document.createElement("span");
@@ -863,6 +1224,9 @@ function showPrivateMessage(item) {
     messages.appendChild(line);
     messages.scrollTop = messages.scrollHeight;
 }
+
+
+// ---------------- WEBSOCKET ----------------
 
 function connectSocket() {
     if (!hasJoined || !token) return;
@@ -917,7 +1281,12 @@ function connectSocket() {
                 delete messages.dataset.lastDateKey;
 
                 groupMessages.forEach(function(item) {
-                    addMessage(item.text || "", item.username || null, false, item.created_at);
+                    addMessage(
+                        item.text || "",
+                        item.username || null,
+                        false,
+                        item.created_at
+                    );
                 });
             }
 
@@ -934,7 +1303,12 @@ function connectSocket() {
             groupMessages.push(data);
 
             if (currentView === "group") {
-                addMessage(data.text, data.username, false, data.created_at);
+                addMessage(
+                    data.text,
+                    data.username,
+                    false,
+                    data.created_at
+                );
             }
         }
 
@@ -982,7 +1356,10 @@ function connectSocket() {
 
             if (item) {
                 item.status = data.status;
-                if (activeRecipient) renderPrivateConversation();
+
+                if (activeRecipient) {
+                    renderPrivateConversation();
+                }
             }
         }
     };
@@ -1014,6 +1391,9 @@ function connectSocket() {
     };
 }
 
+
+// ---------------- OPEN CHATS ----------------
+
 function joinChat() {
     const room = document.getElementById("room").value.trim();
 
@@ -1026,7 +1406,7 @@ function joinChat() {
 
     currentRoom = room;
     activeRecipient = null;
-    currentView = "none";
+    currentView = "group";
     groupMessages = [];
     pendingMessages = [];
     reconnectAttempts = 0;
@@ -1034,11 +1414,13 @@ function joinChat() {
 
     messages.innerHTML = "";
     delete messages.dataset.lastDateKey;
-    chatMode.textContent = "Mode: Select a chat";
+
+    chatMode.textContent = "Mode: Group Chat";
 
     setConnected();
     connectSocket();
 }
+
 
 function openPrivate() {
     const recipient = recipientInput.value.trim();
@@ -1070,21 +1452,32 @@ function openPrivate() {
     messageInput.focus();
 }
 
+
 function openGroup() {
     if (!hasJoined) return;
 
     activeRecipient = null;
     currentView = "group";
+
     messages.innerHTML = "";
     delete messages.dataset.lastDateKey;
+
     chatMode.textContent = "Mode: Group Chat";
 
     groupMessages.forEach(function(item) {
-        addMessage(item.text || "", item.username || null, false, item.created_at);
+        addMessage(
+            item.text || "",
+            item.username || null,
+            false,
+            item.created_at
+        );
     });
 
     addMessage("You are back in the group chat.", null, true);
 }
+
+
+// ---------------- SEND MESSAGE ----------------
 
 function sendMessage() {
     const text = messageInput.value.trim();
@@ -1110,16 +1503,22 @@ function sendMessage() {
         socket.send(JSON.stringify(outgoing));
     } else {
         pendingMessages.push(outgoing);
-        addMessage("Message queued. It will send when reconnected.", null, true);
+        addMessage(
+            "Message queued. It will send when reconnected.",
+            null,
+            true
+        );
     }
 
     messageInput.value = "";
     messageInput.focus();
 }
 
+
 messageInput.addEventListener("keydown", function(event) {
     if (event.key === "Enter") sendMessage();
 });
+
 
 window.addEventListener("online", function() {
     if (hasJoined && (!socket || socket.readyState !== WebSocket.OPEN)) {
@@ -1128,9 +1527,11 @@ window.addEventListener("online", function() {
     }
 });
 
+
 if (token && myUsername) {
     showChatScreen();
 }
+
 </script>
 
 </body>
