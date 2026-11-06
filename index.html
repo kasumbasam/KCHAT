@@ -329,10 +329,8 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
 <main class="chat-app">
 
-    <!-- AUTHENTICATION AND REGISTRATION PAGES -->
     <section id="authScreen" class="auth-box">
 
-        <!-- WELCOME PAGE -->
         <div id="welcomePage" class="auth-page active">
             <div class="auth-logo">
                 <h1>KCHAT</h1>
@@ -354,8 +352,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
             </div>
         </div>
 
-
-        <!-- LOGIN PAGE -->
         <div id="loginPage" class="auth-page">
             <h1>KCHAT</h1>
             <h2>Login</h2>
@@ -390,8 +386,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
             </p>
         </div>
 
-
-        <!-- REGISTRATION PAGE 1: PHONE -->
         <div id="registerPhonePage" class="auth-page">
             <h1>KCHAT</h1>
             <p class="step-indicator">Registration - Step 1 of 4</p>
@@ -415,8 +409,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
             </button>
         </div>
 
-
-        <!-- REGISTRATION PAGE 2: PASSWORD -->
         <div id="registerPasswordPage" class="auth-page">
             <h1>KCHAT</h1>
             <p class="step-indicator">Registration - Step 2 of 4</p>
@@ -445,8 +437,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
             </button>
         </div>
 
-
-        <!-- REGISTRATION PAGE 3: USERNAME -->
         <div id="registerUsernamePage" class="auth-page">
             <h1>KCHAT</h1>
             <p class="step-indicator">Registration - Step 3 of 4</p>
@@ -471,8 +461,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
             </button>
         </div>
 
-
-        <!-- REGISTRATION PAGE 4: PROFILE PICTURE -->
         <div id="registerPicturePage" class="auth-page">
             <h1>KCHAT</h1>
             <p class="step-indicator">Registration - Step 4 of 4</p>
@@ -505,8 +493,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
             </button>
         </div>
 
-
-        <!-- REGISTRATION SUCCESS PAGE -->
         <div id="registrationSuccessPage" class="auth-page">
             <div class="auth-logo">
                 <h1>KCHAT</h1>
@@ -526,8 +512,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
     </section>
 
-
-    <!-- MAIN CHAT APPLICATION -->
     <section id="chatScreen">
 
         <header>
@@ -612,7 +596,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
 </main>
 
-
 <script>
 let token = localStorage.getItem("kchat_token") || "";
 let myUsername = localStorage.getItem("kchat_username") || "";
@@ -658,11 +641,9 @@ function showAuthPage(pageId) {
     document.getElementById(pageId).classList.add("active");
 }
 
-
 function showWelcomePage() {
     showAuthPage("welcomePage");
 }
-
 
 function showLoginPage() {
     document.getElementById("loginError").textContent = "";
@@ -670,11 +651,9 @@ function showLoginPage() {
     showAuthPage("loginPage");
 }
 
-
 function showRegisterPage(pageId) {
     showAuthPage(pageId);
 }
-
 
 function startRegistration() {
     registrationData = {
@@ -702,7 +681,6 @@ function startRegistration() {
     showRegisterPage("registerPhonePage");
 }
 
-
 function nextToPassword() {
     const phone = document.getElementById("registerPhone").value.trim();
     const error = document.getElementById("phoneError");
@@ -719,7 +697,6 @@ function nextToPassword() {
     error.textContent = "";
     showRegisterPage("registerPasswordPage");
 }
-
 
 function nextToUsername() {
     const password =
@@ -751,7 +728,6 @@ function nextToUsername() {
     showRegisterPage("registerUsernamePage");
 }
 
-
 function nextToPicture() {
     const username =
         document.getElementById("registerUsername").value.trim();
@@ -774,14 +750,13 @@ function nextToPicture() {
     showRegisterPage("registerPicturePage");
 }
 
-
 function previewRegistrationPicture() {
     const fileInput = document.getElementById("registerPictureFile");
     const file = fileInput.files[0];
-    const error = document.getElementById("pictureError");
+    const errorBox = document.getElementById("pictureError");
     const preview = document.getElementById("registerPicturePreview");
 
-    error.textContent = "";
+    errorBox.textContent = "";
 
     if (!file) {
         registrationProfilePicture = null;
@@ -790,7 +765,7 @@ function previewRegistrationPicture() {
     }
 
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-        error.textContent = "Choose a PNG, JPG or WEBP picture.";
+        errorBox.textContent = "Choose a PNG, JPG or WEBP picture.";
         fileInput.value = "";
         registrationProfilePicture = null;
         preview.removeAttribute("src");
@@ -807,16 +782,18 @@ function previewRegistrationPicture() {
 }
 
 
+// ---------------- FINISH REGISTRATION ----------------
+
 async function finishRegistration() {
     const button =
         document.getElementById("finishRegistrationButton");
 
-    const error =
+    const errorBox =
         document.getElementById("pictureError");
 
     button.disabled = true;
     button.textContent = "Creating account...";
-    error.textContent = "Please wait...";
+    errorBox.textContent = "Please wait...";
 
     try {
         const fileInput =
@@ -844,7 +821,9 @@ async function finishRegistration() {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || "Registration failed.");
+            throw new Error(
+                data.error || "Registration failed."
+            );
         }
 
         token = data.token;
@@ -853,17 +832,16 @@ async function finishRegistration() {
         localStorage.setItem("kchat_token", token);
         localStorage.setItem("kchat_username", myUsername);
 
-        error.textContent = "";
+        errorBox.textContent = "";
         showAuthPage("registrationSuccessPage");
 
-    } catch (error) {
-        error.textContent = error.message;
+    } catch (err) {
+        errorBox.textContent = err.message || "Registration failed. Please try again.";
     } finally {
         button.disabled = false;
         button.textContent = "Create My Account";
     }
 }
-
 
 function enterNewAccount() {
     showChatScreen();
@@ -917,8 +895,8 @@ async function submitLogin() {
         errorBox.textContent = "";
         showChatScreen();
 
-    } catch (error) {
-        errorBox.textContent = error.message;
+    } catch (err) {
+        errorBox.textContent = err.message || "Login failed. Please try again.";
     } finally {
         button.disabled = false;
     }
@@ -972,11 +950,10 @@ async function loadContacts() {
             ? "Your contacts are loaded."
             : "No saved contacts yet. Add a contact above.";
 
-    } catch (error) {
-        console.error("Could not load contacts:", error);
+    } catch (err) {
+        console.error("Could not load contacts:", err);
     }
 }
-
 
 async function addContact() {
     const username =
@@ -1010,11 +987,10 @@ async function addContact() {
 
         await loadContacts();
 
-    } catch (error) {
-        message.textContent = error.message;
+    } catch (err) {
+        message.textContent = err.message;
     }
 }
-
 
 async function removeContact() {
     const username = recipientInput.value.trim();
@@ -1057,8 +1033,8 @@ async function removeContact() {
         message.textContent = "Contact removed.";
         await loadContacts();
 
-    } catch (error) {
-        message.textContent = error.message;
+    } catch (err) {
+        message.textContent = err.message;
     }
 }
 
@@ -1111,11 +1087,10 @@ async function loadGroups() {
             message.textContent = "Your groups are loaded.";
         }
 
-    } catch (error) {
-        message.textContent = error.message;
+    } catch (err) {
+        message.textContent = err.message;
     }
 }
-
 
 function selectGroup() {
     const groupId = document.getElementById("myGroups").value;
@@ -1126,7 +1101,6 @@ function selectGroup() {
 
     document.getElementById("groupMembers").innerHTML = "";
 }
-
 
 async function createGroup() {
     const name = document.getElementById("newGroupName").value.trim();
@@ -1164,11 +1138,10 @@ async function createGroup() {
             selectGroup();
         }
 
-    } catch (error) {
-        message.textContent = error.message;
+    } catch (err) {
+        message.textContent = err.message;
     }
 }
-
 
 async function addGroupMember() {
     const username =
@@ -1211,11 +1184,10 @@ async function addGroupMember() {
         await loadGroups();
         await loadGroupMembers();
 
-    } catch (error) {
-        message.textContent = error.message;
+    } catch (err) {
+        message.textContent = err.message;
     }
 }
-
 
 async function loadGroupMembers() {
     const message = document.getElementById("groupMessage");
@@ -1276,11 +1248,10 @@ async function loadGroupMembers() {
         message.textContent =
             (data.members || []).length + " group member(s).";
 
-    } catch (error) {
-        message.textContent = error.message;
+    } catch (err) {
+        message.textContent = err.message;
     }
 }
-
 
 async function removeGroupMember(username) {
     if (!selectedGroup) return;
@@ -1314,11 +1285,10 @@ async function removeGroupMember(username) {
         await loadGroups();
         await loadGroupMembers();
 
-    } catch (error) {
-        message.textContent = error.message;
+    } catch (err) {
+        message.textContent = err.message;
     }
 }
-
 
 function openManagedGroup() {
     if (!selectedGroup) {
@@ -1334,7 +1304,7 @@ function openManagedGroup() {
     if (oldSocket) {
         try {
             oldSocket.close();
-        } catch (error) {
+        } catch (err) {
             console.log("Previous connection closed.");
         }
     }
@@ -1380,11 +1350,10 @@ async function loadMyProfile() {
                 data.profile_picture;
         }
 
-    } catch (error) {
-        console.error("Could not load profile:", error);
+    } catch (err) {
+        console.error("Could not load profile:", err);
     }
 }
-
 
 async function uploadProfilePicture() {
     const fileInput = document.getElementById("profileFile");
@@ -1427,11 +1396,10 @@ async function uploadProfilePicture() {
         message.textContent = "Profile picture updated successfully.";
         fileInput.value = "";
 
-    } catch (error) {
-        message.textContent = error.message;
+    } catch (err) {
+        message.textContent = err.message;
     }
 }
-
 
 function resizeImage(file) {
     return new Promise(function(resolve, reject) {
@@ -1527,7 +1495,6 @@ function dateKey(dateValue) {
         String(date.getDate()).padStart(2, "0");
 }
 
-
 function dateHeading(dateValue) {
     const date = new Date(dateValue);
     const today = new Date();
@@ -1546,7 +1513,6 @@ function dateHeading(dateValue) {
     });
 }
 
-
 function addDateSeparator(createdAt) {
     if (!createdAt) return;
 
@@ -1561,7 +1527,6 @@ function addDateSeparator(createdAt) {
     messages.appendChild(separator);
     messages.dataset.lastDateKey = key;
 }
-
 
 function addMessage(text, username = null, isSystem = false, createdAt = null) {
     const line = document.createElement("div");
@@ -1598,7 +1563,6 @@ function addMessage(text, username = null, isSystem = false, createdAt = null) {
     messages.scrollTop = messages.scrollHeight;
 }
 
-
 function setConnected() {
     recipientInput.disabled = !hasJoined;
     document.getElementById("privateButton").disabled = !hasJoined;
@@ -1609,11 +1573,9 @@ function setConnected() {
     document.getElementById("room").disabled = hasJoined;
 }
 
-
 function savePrivateMessage(item) {
     if (item.id) privateMessages[item.id] = item;
 }
-
 
 function renderPrivateConversation() {
     if (!activeRecipient) return;
@@ -1640,7 +1602,6 @@ function renderPrivateConversation() {
 
     conversation.forEach(showPrivateMessage);
 }
-
 
 function showPrivateMessage(item) {
     const mine =
@@ -1888,7 +1849,6 @@ function joinChat() {
     connectSocket();
 }
 
-
 function openPrivate() {
     const recipient = recipientInput.value.trim();
 
@@ -1918,7 +1878,6 @@ function openPrivate() {
 
     messageInput.focus();
 }
-
 
 function openGroup() {
     if (!hasJoined) return;
@@ -1981,11 +1940,9 @@ function sendMessage() {
     messageInput.focus();
 }
 
-
 messageInput.addEventListener("keydown", function(event) {
     if (event.key === "Enter") sendMessage();
 });
-
 
 window.addEventListener("online", function() {
     if (hasJoined && (!socket || socket.readyState !== WebSocket.OPEN)) {
