@@ -1,3 +1,4 @@
+
 import os
 import uuid
 import hashlib
@@ -86,16 +87,6 @@ def init_db():
         """)
 
         conn.execute("""
-            ALTER TABLE messages
-            ADD COLUMN IF NOT EXISTS reply_to TEXT
-        """)
-
-        conn.execute("""
-            ALTER TABLE messages
-            ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ
-        """)
-
-        conn.execute("""
             CREATE INDEX IF NOT EXISTS messages_room_idx
             ON messages(room, created_at)
         """)
@@ -103,29 +94,6 @@ def init_db():
         conn.execute("""
             CREATE INDEX IF NOT EXISTS messages_recipient_idx
             ON messages(room, recipient, status)
-        """)
-
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS chat_groups (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                room TEXT UNIQUE NOT NULL,
-                owner_id BIGINT REFERENCES accounts(id)
-                    ON DELETE CASCADE,
-                created_at TIMESTAMPTZ DEFAULT NOW()
-            )
-        """)
-
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS group_members (
-                id BIGSERIAL PRIMARY KEY,
-                group_id TEXT REFERENCES chat_groups(id)
-                    ON DELETE CASCADE,
-                account_id BIGINT REFERENCES accounts(id)
-                    ON DELETE CASCADE,
-                joined_at TIMESTAMPTZ DEFAULT NOW(),
-                UNIQUE(group_id, account_id)
-            )
         """)
 
 
@@ -513,226 +481,355 @@ async def update_profile(request: Request):
         )
 
 
-# ---------------- GROUP MANAGEMENT ----------------
+# ---------------- CHAT HELPERS ----------------
 
-@app.get("/api/groups")
-async def get_groups(request: Request):
-    account = get_account_from_request(request)
+async def broadcast(room, message):
+    disconnected = []
 
-    if not account:
-        return JSONResponse(
-            {"error": "Please log in again."},
-            status_code=401
-        )
+    for user in list(connected_users.get(room, [])):
+        try:
+            await user["websocket"].send_json(message)
+
+        except Exception as error:
+            print("Broadcast error:", error)
+            disconnected.append(user)
+
+    for user in disconnected:
+        if user in connected_users.get(room, []):
+            connected_users[room].remove(user)
+
+
+def find_users(room, username):
+    active = []
+
+    for user in connected_users.get(room, []):
+        websocket = user["websocket"]
+
+        if websocket.client_state == WebSocketState.CONNECTED:
+            active.append(user)
+
+    connected_users[room] = active
+
+    return [
+        user for user in active
+        if user["username"].lower() == username.lower()
+    ]
+
+
+def private_pair(user1, user2):
+    return sorted([user1.lower(), user2.lower()])
+
+
+def save_message(item, room):
+    with get_db() as conn:
+        conn.execute("""
+            INSERT INTO messages
+                (id, type, room, username, recipient, text, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            item["id"],
+            item["type"],
+            room,
+            item["username"],
+            item.get("to"),
+            item["text"],
+            item.get("status")
+        ))
+
+
+def message_from_row(row):
+    return {
+        "id": row["id"],
+        "type": row["type"],
+        "username": row["username"],
+        "to": row["recipient"],
+        "text": row["text"],
+        "status": row["status"]
+    }
+
+
+def load_group_history(room):
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT * FROM messages
+            WHERE room = %s AND type = 'chat'
+            ORDER BY created_at ASC
+            LIMIT 200
+        """, (room,)).fetchall()
+
+    return [
+        {
+            "type": "chat",
+            "username": row["username"],
+            "text": row["text"]
+        }
+        for row in rows
+    ]
+
+
+def load_private_history(room, user1, user2):
+    first, second = private_pair(user1, user2)
 
     with get_db() as conn:
         rows = conn.execute("""
-            SELECT g.id, g.name, g.room, a.username AS owner
-            FROM chat_groups g
-            JOIN group_members gm ON gm.group_id = g.id
-            JOIN accounts a ON a.id = g.owner_id
-            WHERE gm.account_id = %s
-            ORDER BY g.created_at DESC
-        """, (account["id"],)).fetchall()
-
-    return {"groups": rows}
-
-
-@app.post("/api/groups")
-async def create_group(request: Request):
-    account = get_account_from_request(request)
-
-    if not account:
-        return JSONResponse(
-            {"error": "Please log in again."},
-            status_code=401
-        )
-
-    try:
-        data = await request.json()
-        name = str(data.get("name", "")).strip()[:50]
-
-        if not name:
-            return JSONResponse(
-                {"error": "Enter a group name."},
-                status_code=400
+            SELECT * FROM messages
+            WHERE room = %s
+            AND type = 'private'
+            AND (
+                (LOWER(username) = %s AND LOWER(recipient) = %s)
+                OR
+                (LOWER(username) = %s AND LOWER(recipient) = %s)
             )
+            ORDER BY created_at ASC
+            LIMIT 200
+        """, (room, first, second, second, first)).fetchall()
 
-        group_id = uuid.uuid4().hex
-        room = "group_" + group_id
-
-        with get_db() as conn:
-            conn.execute("""
-                INSERT INTO chat_groups (id, name, room, owner_id)
-                VALUES (%s, %s, %s, %s)
-            """, (group_id, name, room, account["id"]))
-
-            conn.execute("""
-                INSERT INTO group_members (group_id, account_id)
-                VALUES (%s, %s)
-            """, (group_id, account["id"]))
-
-        return {
-            "success": True,
-            "id": group_id,
-            "name": name,
-            "room": room
-        }
-
-    except Exception as error:
-        print("Create group error:", error)
-        return JSONResponse(
-            {"error": "Could not create group."},
-            status_code=500
-        )
+    return [message_from_row(row) for row in rows]
 
 
-@app.post("/api/groups/{group_id}/members")
-async def add_group_member(group_id: str, request: Request):
-    account = get_account_from_request(request)
+async def update_sender_status(room, item):
+    for sender in find_users(room, item["username"]):
+        try:
+            await sender["websocket"].send_json({
+                "type": "private_status",
+                "id": item["id"],
+                "status": item["status"]
+            })
 
-    if not account:
-        return JSONResponse(
-            {"error": "Please log in again."},
-            status_code=401
-        )
-
-    try:
-        data = await request.json()
-        username = str(data.get("username", "")).strip()
-
-        if not username:
-            return JSONResponse(
-                {"error": "Enter a username."},
-                status_code=400
-            )
-
-        with get_db() as conn:
-            group = conn.execute("""
-                SELECT id FROM chat_groups
-                WHERE id = %s AND owner_id = %s
-            """, (group_id, account["id"])).fetchone()
-
-            if not group:
-                return JSONResponse(
-                    {"error": "Only the group owner can add members."},
-                    status_code=403
-                )
-
-            target = conn.execute("""
-                SELECT id, username FROM accounts
-                WHERE username_key = %s
-            """, (username.lower(),)).fetchone()
-
-            if not target:
-                return JSONResponse(
-                    {"error": "User not found."},
-                    status_code=404
-                )
-
-            conn.execute("""
-                INSERT INTO group_members (group_id, account_id)
-                VALUES (%s, %s)
-                ON CONFLICT (group_id, account_id) DO NOTHING
-            """, (group_id, target["id"]))
-
-        return {
-            "success": True,
-            "username": target["username"]
-        }
-
-    except Exception as error:
-        print("Add group member error:", error)
-        return JSONResponse(
-            {"error": "Could not add group member."},
-            status_code=500
-        )
+        except Exception as error:
+            print("Status update error:", error)
 
 
-@app.delete("/api/groups/{group_id}/members/{username}")
-async def remove_group_member(
-    group_id: str,
-    username: str,
-    request: Request
-):
-    account = get_account_from_request(request)
-
-    if not account:
-        return JSONResponse(
-            {"error": "Please log in again."},
-            status_code=401
-        )
-
+async def deliver_pending_messages(room, username, websocket):
     with get_db() as conn:
-        group = conn.execute("""
-            SELECT id FROM chat_groups
-            WHERE id = %s AND owner_id = %s
-        """, (group_id, account["id"])).fetchone()
-
-        if not group:
-            return JSONResponse(
-                {"error": "Only the group owner can remove members."},
-                status_code=403
-            )
-
-        target = conn.execute("""
-            SELECT id FROM accounts
-            WHERE username_key = %s
-        """, (username.lower(),)).fetchone()
-
-        if not target:
-            return JSONResponse(
-                {"error": "User not found."},
-                status_code=404
-            )
-
-        if target["id"] == account["id"]:
-            return JSONResponse(
-                {"error": "The group owner cannot remove themselves."},
-                status_code=400
-            )
-
-        result = conn.execute("""
-            DELETE FROM group_members
-            WHERE group_id = %s AND account_id = %s
-            RETURNING id
-        """, (group_id, target["id"])).fetchone()
-
-    if not result:
-        return JSONResponse(
-            {"error": "That user is not a group member."},
-            status_code=404
-        )
-
-    return {"success": True, "message": "Member removed."}
-
-
-@app.get("/api/groups/{group_id}/members")
-async def get_group_members(group_id: str, request: Request):
-    account = get_account_from_request(request)
-
-    if not account:
-        return JSONResponse(
-            {"error": "Please log in again."},
-            status_code=401
-        )
-
-    with get_db() as conn:
-        membership = conn.execute("""
-            SELECT id FROM group_members
-            WHERE group_id = %s AND account_id = %s
-        """, (group_id, account["id"])).fetchone()
-
-        if not membership:
-            return JSONResponse(
-                {"error": "You are not a member of this group."},
-                status_code=403
-            )
-
         rows = conn.execute("""
-            SELECT a.username
-            FROM group_members gm
-            JOIN accounts a ON a.id = gm.account_id
-            WHERE gm.group_id = %s
-            ORDER BY a.username
-        """,
+            SELECT * FROM messages
+            WHERE room = %s
+            AND type = 'private'
+            AND LOWER(recipient) = %s
+            AND status = 'sent'
+            ORDER BY created_at ASC
+        """, (room, username.lower())).fetchall()
+
+        for row in rows:
+            item = message_from_row(row)
+            item["status"] = "delivered"
+
+            await websocket.send_json(item)
+
+            conn.execute("""
+                UPDATE messages
+                SET status = 'delivered'
+                WHERE id = %s
+            """, (item["id"],))
+
+            await update_sender_status(room, item)
+
+
+async def send_online_users(room):
+    users = list(dict.fromkeys(
+        user["username"]
+        for user in connected_users.get(room, [])
+        if user["websocket"].client_state == WebSocketState.CONNECTED
+    ))
+
+    await broadcast(room, {
+        "type": "users",
+        "users": users
+    })
+
+
+# ---------------- WEBSITE ----------------
+
+@app.get("/")
+async def home():
+    return FileResponse("index.html")
+
+
+# ---------------- WEBSOCKET CHAT ----------------
+
+@app.websocket("/ws/{room}")
+async def chat(websocket: WebSocket, room: str):
+    await websocket.accept()
+
+    token = websocket.query_params.get("token", "")
+    account = get_account_from_token(token)
+
+    if not account:
+        await websocket.close(code=4401)
+        return
+
+    username = account["username"]
+    room = room.strip()[:40] or "general"
+
+    connected_users.setdefault(room, [])
+
+    connected_users[room].append({
+        "username": username,
+        "websocket": websocket
+    })
+
+    await websocket.send_json({
+        "type": "welcome",
+        "history": load_group_history(room),
+        "users": list(dict.fromkeys(
+            user["username"] for user in connected_users[room]
+        ))
+    })
+
+    await broadcast(room, {
+        "type": "system",
+        "text": username + " joined the room."
+    })
+
+    await send_online_users(room)
+
+    try:
+        await deliver_pending_messages(room, username, websocket)
+
+        while True:
+            data = await websocket.receive_json()
+            message_type = data.get("type")
+
+            if message_type == "logout":
+                print(username, "logged out")
+                break
+
+            if message_type == "chat":
+                message = str(data.get("text", "")).strip()
+
+                if not message:
+                    continue
+
+                item = {
+                    "id": uuid.uuid4().hex,
+                    "type": "chat",
+                    "username": username,
+                    "text": message
+                }
+
+                save_message(item, room)
+                await broadcast(room, item)
+
+            elif message_type == "open_private":
+                recipient = str(data.get("to", "")).strip()[:30]
+
+                if not recipient or recipient.lower() == username.lower():
+                    continue
+
+                with get_db() as conn:
+                    conn.execute("""
+                        UPDATE messages
+                        SET status = 'read'
+                        WHERE room = %s
+                        AND type = 'private'
+                        AND LOWER(username) = %s
+                        AND LOWER(recipient) = %s
+                        AND status != 'read'
+                    """, (
+                        room, recipient.lower(), username.lower()
+                    ))
+
+                conversation = load_private_history(
+                    room, username, recipient
+                )
+
+                for item in conversation:
+                    if (
+                        item["username"].lower() == recipient.lower()
+                        and item["to"].lower() == username.lower()
+                        and item["status"] == "read"
+                    ):
+                        await update_sender_status(room, item)
+
+                await websocket.send_json({
+                    "type": "private_history",
+                    "with": recipient,
+                    "history": conversation
+                })
+
+            elif message_type == "private":
+                recipient = str(data.get("to", "")).strip()[:30]
+                message = str(data.get("text", "")).strip()
+
+                if not recipient or not message:
+                    continue
+
+                if recipient.lower() == username.lower():
+                    continue
+
+                with get_db() as conn:
+                    exists = conn.execute("""
+                        SELECT id FROM accounts
+                        WHERE username_key = %s
+                    """, (recipient.lower(),)).fetchone()
+
+                if not exists:
+                    await websocket.send_json({
+                        "type": "system",
+                        "text": "That user does not exist."
+                    })
+                    continue
+
+                item = {
+                    "id": uuid.uuid4().hex,
+                    "type": "private",
+                    "username": username,
+                    "to": recipient,
+                    "text": message,
+                    "status": "sent"
+                }
+
+                save_message(item, room)
+                await websocket.send_json(item)
+
+                targets = find_users(room, recipient)
+                delivered = False
+
+                for target in targets:
+                    delivery_item = dict(item)
+                    delivery_item["status"] = "delivered"
+
+                    try:
+                        await target["websocket"].send_json(delivery_item)
+                        delivered = True
+
+                    except Exception as error:
+                        print("Private delivery error:", error)
+
+                if delivered:
+                    item["status"] = "delivered"
+
+                    with get_db() as conn:
+                        conn.execute("""
+                            UPDATE messages
+                            SET status = 'delivered'
+                            WHERE id = %s
+                        """, (item["id"],))
+
+                    await update_sender_status(room, item)
+
+                else:
+                    await websocket.send_json({
+                        "type": "system",
+                        "text": recipient + " is offline. Message saved."
+                    })
+
+    except WebSocketDisconnect:
+        print(username, "disconnected")
+
+    except Exception as error:
+        print("WebSocket error for", username, ":", error)
+
+    finally:
+        connected_users[room] = [
+            user for user in connected_users.get(room, [])
+            if user["websocket"] != websocket
+        ]
+
+        await broadcast(room, {
+            "type": "system",
+            "text": username + " left the room."
+        })
+
+        await send_online_users(room)
