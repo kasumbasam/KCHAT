@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -80,13 +79,9 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
 .auth-box button { width: 100%; }
 
-.auth-page {
-    display: none;
-}
+.auth-page { display: none; }
 
-.auth-page.active {
-    display: block;
-}
+.auth-page.active { display: block; }
 
 .auth-logo {
     text-align: center;
@@ -109,18 +104,14 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     font-size: 14px;
 }
 
-.auth-actions {
-    margin-top: 22px;
-}
+.auth-actions { margin-top: 22px; }
 
 .secondary-button {
     background: #354258;
     color: white;
 }
 
-.secondary-button:hover {
-    background: #465773;
-}
+.secondary-button:hover { background: #465773; }
 
 .switch {
     color: #70d6ff;
@@ -151,6 +142,19 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     border: 3px solid #70d6ff;
     background: #354258;
 }
+
+.upload-status {
+    min-height: 20px;
+    margin: 8px 0;
+    text-align: center;
+    font-size: 13px;
+    font-weight: bold;
+    color: #aebbd0;
+}
+
+.upload-status.uploading { color: #f6c453; }
+.upload-status.uploaded { color: #80ed99; }
+.upload-status.failed { color: #ff8585; }
 
 #chatScreen {
     display: none;
@@ -345,8 +349,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
             <div class="auth-actions">
                 <button onclick="showLoginPage()">Login</button>
-                <button class="secondary-button"
-                        onclick="startRegistration()">
+                <button class="secondary-button" onclick="startRegistration()">
                     Create Account
                 </button>
             </div>
@@ -360,24 +363,17 @@ button:disabled { opacity: .55; cursor: not-allowed; }
                 Enter your phone number and password to continue.
             </p>
 
-            <input id="loginPhone"
-                   type="tel"
-                   placeholder="Phone number"
-                   autocomplete="tel">
+            <input id="loginPhone" type="tel"
+                   placeholder="Phone number" autocomplete="tel">
 
-            <input id="loginPassword"
-                   type="password"
-                   placeholder="Password"
-                   autocomplete="current-password">
+            <input id="loginPassword" type="password"
+                   placeholder="Password" autocomplete="current-password">
 
-            <button id="loginButton" onclick="submitLogin()">
-                Login
-            </button>
+            <button id="loginButton" onclick="submitLogin()">Login</button>
 
             <p id="loginError" class="error"></p>
 
-            <button class="secondary-button"
-                    onclick="showWelcomePage()">
+            <button class="secondary-button" onclick="showWelcomePage()">
                 Back
             </button>
 
@@ -395,18 +391,14 @@ button:disabled { opacity: .55; cursor: not-allowed; }
                 Enter your phone number. You will use it to log in to KCHAT.
             </p>
 
-            <input id="registerPhone"
-                   type="tel"
-                   placeholder="Example: +2567XXXXXXXX"
-                   autocomplete="tel">
+            <input id="registerPhone" type="tel"
+                   placeholder="Example: +2567XXXXXXXX" autocomplete="tel">
 
             <p id="phoneError" class="error"></p>
 
             <button onclick="nextToPassword()">Continue</button>
             <button class="secondary-button"
-                    onclick="showWelcomePage()">
-                Cancel
-            </button>
+                    onclick="showWelcomePage()">Cancel</button>
         </div>
 
         <div id="registerPasswordPage" class="auth-page">
@@ -418,23 +410,17 @@ button:disabled { opacity: .55; cursor: not-allowed; }
                 Choose a password that you can remember and keep private.
             </p>
 
-            <input id="registerPassword"
-                   type="password"
-                   placeholder="Create password"
-                   autocomplete="new-password">
+            <input id="registerPassword" type="password"
+                   placeholder="Create password" autocomplete="new-password">
 
-            <input id="confirmPassword"
-                   type="password"
-                   placeholder="Confirm password"
-                   autocomplete="new-password">
+            <input id="confirmPassword" type="password"
+                   placeholder="Confirm password" autocomplete="new-password">
 
             <p id="passwordError" class="error"></p>
 
             <button onclick="nextToUsername()">Continue</button>
             <button class="secondary-button"
-                    onclick="showRegisterPage('registerPhonePage')">
-                Back
-            </button>
+                    onclick="showRegisterPage('registerPhonePage')">Back</button>
         </div>
 
         <div id="registerUsernamePage" class="auth-page">
@@ -446,19 +432,15 @@ button:disabled { opacity: .55; cursor: not-allowed; }
                 This is the name other people will see when they chat with you.
             </p>
 
-            <input id="registerUsername"
-                   type="text"
-                   placeholder="Choose a username"
-                   maxlength="30"
+            <input id="registerUsername" type="text"
+                   placeholder="Choose a username" maxlength="30"
                    autocomplete="username">
 
             <p id="usernameError" class="error"></p>
 
             <button onclick="nextToPicture()">Continue</button>
             <button class="secondary-button"
-                    onclick="showRegisterPage('registerPasswordPage')">
-                Back
-            </button>
+                    onclick="showRegisterPage('registerPasswordPage')">Back</button>
         </div>
 
         <div id="registerPicturePage" class="auth-page">
@@ -472,15 +454,16 @@ button:disabled { opacity: .55; cursor: not-allowed; }
             </p>
 
             <img id="registerPicturePreview"
-                 class="picture-preview"
-                 alt="Profile picture preview">
+                 class="picture-preview" alt="Profile picture preview">
 
-            <input id="registerPictureFile"
-                   type="file"
+            <input id="registerPictureFile" type="file"
                    accept="image/png,image/jpeg,image/webp"
                    onchange="previewRegistrationPicture()">
 
             <p id="pictureError" class="error"></p>
+            <p id="registrationUploadStatus" class="upload-status">
+                No picture selected.
+            </p>
 
             <button id="finishRegistrationButton"
                     onclick="finishRegistration()">
@@ -488,9 +471,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
             </button>
 
             <button class="secondary-button"
-                    onclick="showRegisterPage('registerUsernamePage')">
-                Back
-            </button>
+                    onclick="showRegisterPage('registerUsernamePage')">Back</button>
         </div>
 
         <div id="registrationSuccessPage" class="auth-page">
@@ -505,9 +486,9 @@ button:disabled { opacity: .55; cursor: not-allowed; }
                 You can now start connecting with people.
             </p>
 
-            <button onclick="enterNewAccount()">
-                Continue to KCHAT
-            </button>
+            <p id="registrationResultMessage" class="upload-status uploaded"></p>
+
+            <button onclick="enterNewAccount()">Continue to KCHAT</button>
         </div>
 
     </section>
@@ -526,8 +507,9 @@ button:disabled { opacity: .55; cursor: not-allowed; }
                 <h3>My Profile Picture</h3>
                 <input id="profileFile" type="file"
                        accept="image/png,image/jpeg,image/webp">
-                <button onclick="uploadProfilePicture()">Upload Picture</button>
-                <p id="profileMessage"></p>
+                <button id="profileUploadButton"
+                        onclick="uploadProfilePicture()">Upload Picture</button>
+                <p id="profileMessage" class="upload-status"></p>
             </div>
 
             <div class="contact-controls">
@@ -631,6 +613,83 @@ const onlineUsers = document.getElementById("onlineUsers");
 const privateMessages = {};
 
 
+// ---------------- UPLOAD STATUS HELPERS ----------------
+
+function setUploadStatus(element, text, type) {
+    element.textContent = text;
+    element.className = "upload-status";
+
+    if (type) {
+        element.classList.add(type);
+    }
+}
+
+
+// This sends JSON and reports real upload progress.
+// It also detects slow or failed connections.
+
+function sendJsonWithProgress(url, method, body, onProgress) {
+    return new Promise(function(resolve, reject) {
+        const xhr = new XMLHttpRequest();
+
+        xhr.open(method, url, true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.timeout = 120000;
+
+        if (token) {
+            xhr.setRequestHeader("Authorization", "Bearer " + token);
+        }
+
+        xhr.upload.onprogress = function(event) {
+            if (event.lengthComputable && onProgress) {
+                const percent = Math.round(
+                    (event.loaded / event.total) * 100
+                );
+
+                onProgress(percent);
+            }
+        };
+
+        xhr.onload = function() {
+            let data = {};
+
+            try {
+                data = JSON.parse(xhr.responseText || "{}");
+            } catch (err) {
+                reject(new Error("The server returned an invalid response."));
+                return;
+            }
+
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve(data);
+            } else {
+                reject(new Error(
+                    data.error || "Upload failed. Server error: " + xhr.status
+                ));
+            }
+        };
+
+        xhr.onerror = function() {
+            reject(new Error(
+                "Network connection failed. Check your internet and try again."
+            ));
+        };
+
+        xhr.ontimeout = function() {
+            reject(new Error(
+                "Upload timed out. Your network may be slow. Please try again."
+            ));
+        };
+
+        xhr.onabort = function() {
+            reject(new Error("Upload was cancelled."));
+        };
+
+        xhr.send(JSON.stringify(body));
+    });
+}
+
+
 // ---------------- AUTHENTICATION PAGES ----------------
 
 function showAuthPage(pageId) {
@@ -677,6 +736,12 @@ function startRegistration() {
     document.getElementById("passwordError").textContent = "";
     document.getElementById("usernameError").textContent = "";
     document.getElementById("pictureError").textContent = "";
+
+    setUploadStatus(
+        document.getElementById("registrationUploadStatus"),
+        "No picture selected.",
+        ""
+    );
 
     showRegisterPage("registerPhonePage");
 }
@@ -755,27 +820,56 @@ function previewRegistrationPicture() {
     const file = fileInput.files[0];
     const errorBox = document.getElementById("pictureError");
     const preview = document.getElementById("registerPicturePreview");
+    const uploadStatus =
+        document.getElementById("registrationUploadStatus");
 
     errorBox.textContent = "";
+    registrationProfilePicture = null;
 
     if (!file) {
-        registrationProfilePicture = null;
         preview.removeAttribute("src");
+
+        setUploadStatus(
+            uploadStatus,
+            "No picture selected.",
+            ""
+        );
         return;
     }
 
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
         errorBox.textContent = "Choose a PNG, JPG or WEBP picture.";
         fileInput.value = "";
-        registrationProfilePicture = null;
         preview.removeAttribute("src");
+
+        setUploadStatus(uploadStatus, "Failed: unsupported picture type.", "failed");
         return;
     }
+
+    if (file.size > 10 * 1024 * 1024) {
+        errorBox.textContent = "Picture is too large. Choose one under 10 MB.";
+        fileInput.value = "";
+        preview.removeAttribute("src");
+
+        setUploadStatus(uploadStatus, "Failed: picture is too large.", "failed");
+        return;
+    }
+
+    setUploadStatus(
+        uploadStatus,
+        "Picture selected. It has not been uploaded yet.",
+        ""
+    );
 
     const reader = new FileReader();
 
     reader.onload = function(event) {
         preview.src = event.target.result;
+    };
+
+    reader.onerror = function() {
+        errorBox.textContent = "Could not preview that picture.";
+        setUploadStatus(uploadStatus, "Failed to read picture.", "failed");
     };
 
     reader.readAsDataURL(file);
@@ -791,40 +885,65 @@ async function finishRegistration() {
     const errorBox =
         document.getElementById("pictureError");
 
+    const uploadStatus =
+        document.getElementById("registrationUploadStatus");
+
+    const resultMessage =
+        document.getElementById("registrationResultMessage");
+
+    if (button.disabled) return;
+
     button.disabled = true;
-    button.textContent = "Creating account...";
-    errorBox.textContent = "Please wait...";
+    button.textContent = "Preparing account...";
+    errorBox.textContent = "";
+
+    const fileInput =
+        document.getElementById("registerPictureFile");
+
+    const file = fileInput.files[0];
 
     try {
-        const fileInput =
-            document.getElementById("registerPictureFile");
-
-        const file = fileInput.files[0];
-
         if (file) {
+            setUploadStatus(uploadStatus, "Preparing picture...", "uploading");
+
             registrationProfilePicture = await resizeImage(file);
+
+            setUploadStatus(uploadStatus, "Uploading... 0%", "uploading");
         } else {
             registrationProfilePicture = null;
+
+            setUploadStatus(
+                uploadStatus,
+                "No profile picture selected. Creating account...",
+                "uploading"
+            );
         }
 
         registrationData.profile_picture =
             registrationProfilePicture;
 
-        const response = await fetch("/api/register", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(registrationData)
-        });
+        button.textContent = "Uploading...";
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(
-                data.error || "Registration failed."
-            );
-        }
+        const data = await sendJsonWithProgress(
+            "/api/register",
+            "POST",
+            registrationData,
+            function(percent) {
+                if (file) {
+                    setUploadStatus(
+                        uploadStatus,
+                        "Uploading... " + percent + "%",
+                        "uploading"
+                    );
+                } else {
+                    setUploadStatus(
+                        uploadStatus,
+                        "Creating your account...",
+                        "uploading"
+                    );
+                }
+            }
+        );
 
         token = data.token;
         myUsername = data.username;
@@ -832,11 +951,31 @@ async function finishRegistration() {
         localStorage.setItem("kchat_token", token);
         localStorage.setItem("kchat_username", myUsername);
 
-        errorBox.textContent = "";
+        if (file) {
+            setUploadStatus(uploadStatus, "Uploaded", "uploaded");
+            resultMessage.textContent = "Profile picture: Uploaded";
+        } else {
+            resultMessage.textContent = "Profile picture: Not added";
+        }
+
         showAuthPage("registrationSuccessPage");
 
     } catch (err) {
-        errorBox.textContent = err.message || "Registration failed. Please try again.";
+        const errorMessage =
+            err.message || "Registration failed. Please try again.";
+
+        errorBox.textContent = errorMessage;
+
+        if (file) {
+            setUploadStatus(
+                uploadStatus,
+                "Failed. Check your connection and try again.",
+                "failed"
+            );
+        } else {
+            setUploadStatus(uploadStatus, "Account creation failed.", "failed");
+        }
+
     } finally {
         button.disabled = false;
         button.textContent = "Create My Account";
@@ -896,7 +1035,8 @@ async function submitLogin() {
         showChatScreen();
 
     } catch (err) {
-        errorBox.textContent = err.message || "Login failed. Please try again.";
+        errorBox.textContent =
+            err.message || "Login failed. Please try again.";
     } finally {
         button.disabled = false;
     }
@@ -1358,46 +1498,72 @@ async function loadMyProfile() {
 async function uploadProfilePicture() {
     const fileInput = document.getElementById("profileFile");
     const message = document.getElementById("profileMessage");
+    const button = document.getElementById("profileUploadButton");
     const file = fileInput.files[0];
 
+    if (button.disabled) return;
+
     if (!file) {
-        message.textContent = "Choose a picture first.";
+        setUploadStatus(message, "Choose a picture first.", "failed");
         return;
     }
 
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-        message.textContent = "Choose a PNG, JPG or WEBP image.";
+        setUploadStatus(
+            message,
+            "Failed: choose a PNG, JPG or WEBP image.",
+            "failed"
+        );
         return;
     }
 
-    message.textContent = "Preparing picture...";
+    if (file.size > 10 * 1024 * 1024) {
+        setUploadStatus(
+            message,
+            "Failed: picture must be under 10 MB.",
+            "failed"
+        );
+        return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Uploading...";
+
+    setUploadStatus(message, "Preparing picture...", "uploading");
 
     try {
         const dataUrl = await resizeImage(file);
 
-        const response = await fetch("/api/profile", {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            },
-            body: JSON.stringify({
-                profile_picture: dataUrl
-            })
-        });
+        setUploadStatus(message, "Uploading... 0%", "uploading");
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || "Picture upload failed.");
-        }
+        await sendJsonWithProgress(
+            "/api/profile",
+            "PUT",
+            { profile_picture: dataUrl },
+            function(percent) {
+                setUploadStatus(
+                    message,
+                    "Uploading... " + percent + "%",
+                    "uploading"
+                );
+            }
+        );
 
         document.getElementById("myAvatar").src = dataUrl;
-        message.textContent = "Profile picture updated successfully.";
+
+        setUploadStatus(message, "Uploaded", "uploaded");
+
         fileInput.value = "";
 
     } catch (err) {
-        message.textContent = err.message;
+        setUploadStatus(
+            message,
+            "Failed: " + (err.message || "Picture upload failed."),
+            "failed"
+        );
+    } finally {
+        button.disabled = false;
+        button.textContent = "Upload Picture";
     }
 }
 
@@ -1426,6 +1592,12 @@ function resizeImage(file) {
                 canvas.height = height;
 
                 const context = canvas.getContext("2d");
+
+                if (!context) {
+                    reject(new Error("Could not prepare the picture."));
+                    return;
+                }
+
                 context.drawImage(image, 0, 0, width, height);
 
                 resolve(canvas.toDataURL("image/jpeg", 0.8));
