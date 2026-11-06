@@ -476,6 +476,11 @@ async def chat(websocket: WebSocket, room: str):
             data = await websocket.receive_json()
             message_type = data.get("type")
 
+            # EXPLICIT LOGOUT
+            if message_type == "logout":
+                print(username, "logged out")
+                break
+
             if message_type == "chat":
                 message = str(data.get("text", "")).strip()
 
