@@ -202,6 +202,32 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
 .status-dot.read { color: #2196ff; }
 
+.date-separator {
+    width: fit-content;
+    max-width: 90%;
+    margin: 16px auto 12px;
+    padding: 6px 12px;
+    border-radius: 14px;
+    background: #354258;
+    color: #d5deeb;
+    text-align: center;
+    font-size: 12px;
+}
+
+.message-time {
+    display: block;
+    margin-top: 6px;
+    text-align: right;
+    color: #aebbd0;
+    font-size: 10px;
+    line-height: 1.2;
+}
+
+.message-time .status-dot {
+    margin-left: 5px;
+    font-size: 12px;
+}
+
 .send-area {
     padding: 14px;
     border-top: 1px solid #303b50;
@@ -687,9 +713,51 @@ function logout() {
     messages.innerHTML = "";
 }
 
-function addMessage(text, username = null, isSystem = false) {
+function dateKey(dateValue) {
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return "unknown-date";
+    return date.getFullYear() + "-" +
+        String(date.getMonth() + 1).padStart(2, "0") + "-" +
+        String(date.getDate()).padStart(2, "0");
+}
+
+function dateHeading(dateValue) {
+    const date = new Date(dateValue);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (dateKey(date) === dateKey(today)) return "Today";
+    if (dateKey(date) === dateKey(yesterday)) return "Yesterday";
+
+    return date.toLocaleDateString(undefined, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+    });
+}
+
+function addDateSeparator(createdAt) {
+    if (!createdAt) return;
+
+    const key = dateKey(createdAt);
+    if (messages.dataset.lastDateKey === key) return;
+
+    const separator = document.createElement("div");
+    separator.className = "date-separator";
+    separator.textContent = dateHeading(createdAt);
+    messages.appendChild(separator);
+    messages.dataset.lastDateKey = key;
+}
+
+function addMessage(text, username = null, isSystem = false, createdAt = null) {
     const line = document.createElement("div");
     line.className = isSystem ? "message system" : "message";
+
+    if (createdAt && !isSystem) {
+        addDateSeparator(createdAt);
+    }
 
     if (username) {
         const name = document.createElement("strong");
@@ -698,6 +766,16 @@ function addMessage(text, username = null, isSystem = false) {
     }
 
     line.appendChild(document.createTextNode(text));
+
+    if (createdAt && !isSystem) {
+        const meta = document.createElement("small");
+        meta.className = "message-time";
+        const time = new Date(createdAt);
+        meta.textContent = Number.isNaN(time.getTime()) ? "" :
+            time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        line.appendChild(meta);
+    }
+
     messages.appendChild(line);
     messages.scrollTop = messages.scrollHeight;
 }
@@ -720,6 +798,7 @@ function renderPrivateConversation() {
     if (!activeRecipient) return;
 
     messages.innerHTML = "";
+    delete messages.dataset.lastDateKey;
 
     addMessage("Private conversation with " + activeRecipient, null, true);
 
@@ -733,6 +812,8 @@ function renderPrivateConversation() {
             (sender === me && recipient === other) ||
             (sender === other && recipient === me)
         );
+    }).sort(function(a, b) {
+        return new Date(a.created_at || 0) - new Date(b.created_at || 0);
     });
 
     conversation.forEach(showPrivateMessage);
@@ -741,6 +822,8 @@ function renderPrivateConversation() {
 function showPrivateMessage(item) {
     const mine =
         item.username.toLowerCase() === myUsername.toLowerCase();
+
+    if (item.created_at) addDateSeparator(item.created_at);
 
     const line = document.createElement("div");
     line.className = "message";
@@ -751,20 +834,30 @@ function showPrivateMessage(item) {
 
     line.appendChild(document.createTextNode(item.text));
 
-    if (mine) {
-        const dots = document.createElement("span");
-        dots.className = "status-dot";
+    if (item.created_at) {
+        const meta = document.createElement("small");
+        meta.className = "message-time";
+        const time = new Date(item.created_at);
+        meta.textContent = Number.isNaN(time.getTime()) ? "" :
+            time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-        if (item.status === "read") {
-            dots.classList.add("read");
-            dots.textContent = "••";
-        } else if (item.status === "delivered") {
-            dots.textContent = "••";
-        } else {
-            dots.textContent = "•";
+        if (mine) {
+            const dots = document.createElement("span");
+            dots.className = "status-dot";
+
+            if (item.status === "read") {
+                dots.classList.add("read");
+                dots.textContent = "••";
+            } else if (item.status === "delivered") {
+                dots.textContent = "••";
+            } else {
+                dots.textContent = "•";
+            }
+
+            meta.appendChild(dots);
         }
 
-        line.appendChild(dots);
+        line.appendChild(meta);
     }
 
     messages.appendChild(line);
@@ -821,9 +914,10 @@ function connectSocket() {
 
             if (currentView === "group") {
                 messages.innerHTML = "";
+                delete messages.dataset.lastDateKey;
 
                 groupMessages.forEach(function(item) {
-                    addMessage(item.text || "", item.username || null);
+                    addMessage(item.text || "", item.username || null, false, item.created_at);
                 });
             }
 
@@ -840,7 +934,7 @@ function connectSocket() {
             groupMessages.push(data);
 
             if (currentView === "group") {
-                addMessage(data.text, data.username);
+                addMessage(data.text, data.username, false, data.created_at);
             }
         }
 
@@ -939,6 +1033,7 @@ function joinChat() {
     hasJoined = true;
 
     messages.innerHTML = "";
+    delete messages.dataset.lastDateKey;
     chatMode.textContent = "Mode: Select a chat";
 
     setConnected();
@@ -981,10 +1076,11 @@ function openGroup() {
     activeRecipient = null;
     currentView = "group";
     messages.innerHTML = "";
+    delete messages.dataset.lastDateKey;
     chatMode.textContent = "Mode: Group Chat";
 
     groupMessages.forEach(function(item) {
-        addMessage(item.text || "", item.username || null);
+        addMessage(item.text || "", item.username || null, false, item.created_at);
     });
 
     addMessage("You are back in the group chat.", null, true);
