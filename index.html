@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -79,6 +80,48 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
 .auth-box button { width: 100%; }
 
+.auth-page {
+    display: none;
+}
+
+.auth-page.active {
+    display: block;
+}
+
+.auth-logo {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.auth-logo h1 {
+    font-size: 42px;
+    margin-bottom: 8px;
+}
+
+.auth-logo p {
+    color: #aebbd0;
+    margin: 0;
+}
+
+.auth-description {
+    color: #aebbd0;
+    line-height: 1.5;
+    font-size: 14px;
+}
+
+.auth-actions {
+    margin-top: 22px;
+}
+
+.secondary-button {
+    background: #354258;
+    color: white;
+}
+
+.secondary-button:hover {
+    background: #465773;
+}
+
 .switch {
     color: #70d6ff;
     cursor: pointer;
@@ -89,6 +132,24 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .error {
     color: #ff8585;
     min-height: 20px;
+    font-size: 14px;
+}
+
+.step-indicator {
+    color: #aebbd0;
+    font-size: 13px;
+    margin-bottom: 15px;
+}
+
+.picture-preview {
+    display: block;
+    width: 115px;
+    height: 115px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin: 20px auto;
+    border: 3px solid #70d6ff;
+    background: #354258;
 }
 
 #chatScreen {
@@ -259,6 +320,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
     header { padding: 14px; }
     #messages { max-height: 450px; }
+    .auth-box { margin: 20px auto; }
 }
 </style>
 </head>
@@ -267,22 +329,205 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
 <main class="chat-app">
 
+    <!-- AUTHENTICATION AND REGISTRATION PAGES -->
     <section id="authScreen" class="auth-box">
-        <h1>KCHAT</h1>
-        <h2 id="authTitle">Login</h2>
 
-        <input id="authUsername" placeholder="Username" maxlength="30">
-        <input id="authPassword" type="password" placeholder="Password">
+        <!-- WELCOME PAGE -->
+        <div id="welcomePage" class="auth-page active">
+            <div class="auth-logo">
+                <h1>KCHAT</h1>
+                <p>Your conversations. Your people.</p>
+            </div>
 
-        <button id="authButton" onclick="submitAuth()">Login</button>
+            <h2>Welcome to KCHAT</h2>
 
-        <p id="authError" class="error"></p>
+            <p class="auth-description">
+                Connect with friends, send messages and stay in touch.
+            </p>
 
-        <p class="switch" onclick="switchAuth()">
-            Don't have an account? Register
-        </p>
+            <div class="auth-actions">
+                <button onclick="showLoginPage()">Login</button>
+                <button class="secondary-button"
+                        onclick="startRegistration()">
+                    Create Account
+                </button>
+            </div>
+        </div>
+
+
+        <!-- LOGIN PAGE -->
+        <div id="loginPage" class="auth-page">
+            <h1>KCHAT</h1>
+            <h2>Login</h2>
+
+            <p class="auth-description">
+                Enter your phone number and password to continue.
+            </p>
+
+            <input id="loginPhone"
+                   type="tel"
+                   placeholder="Phone number"
+                   autocomplete="tel">
+
+            <input id="loginPassword"
+                   type="password"
+                   placeholder="Password"
+                   autocomplete="current-password">
+
+            <button id="loginButton" onclick="submitLogin()">
+                Login
+            </button>
+
+            <p id="loginError" class="error"></p>
+
+            <button class="secondary-button"
+                    onclick="showWelcomePage()">
+                Back
+            </button>
+
+            <p class="switch" onclick="startRegistration()">
+                Don't have an account? Create Account
+            </p>
+        </div>
+
+
+        <!-- REGISTRATION PAGE 1: PHONE -->
+        <div id="registerPhonePage" class="auth-page">
+            <h1>KCHAT</h1>
+            <p class="step-indicator">Registration - Step 1 of 4</p>
+            <h2>Your Phone Number</h2>
+
+            <p class="auth-description">
+                Enter your phone number. You will use it to log in to KCHAT.
+            </p>
+
+            <input id="registerPhone"
+                   type="tel"
+                   placeholder="Example: +2567XXXXXXXX"
+                   autocomplete="tel">
+
+            <p id="phoneError" class="error"></p>
+
+            <button onclick="nextToPassword()">Continue</button>
+            <button class="secondary-button"
+                    onclick="showWelcomePage()">
+                Cancel
+            </button>
+        </div>
+
+
+        <!-- REGISTRATION PAGE 2: PASSWORD -->
+        <div id="registerPasswordPage" class="auth-page">
+            <h1>KCHAT</h1>
+            <p class="step-indicator">Registration - Step 2 of 4</p>
+            <h2>Create Password</h2>
+
+            <p class="auth-description">
+                Choose a password that you can remember and keep private.
+            </p>
+
+            <input id="registerPassword"
+                   type="password"
+                   placeholder="Create password"
+                   autocomplete="new-password">
+
+            <input id="confirmPassword"
+                   type="password"
+                   placeholder="Confirm password"
+                   autocomplete="new-password">
+
+            <p id="passwordError" class="error"></p>
+
+            <button onclick="nextToUsername()">Continue</button>
+            <button class="secondary-button"
+                    onclick="showRegisterPage('registerPhonePage')">
+                Back
+            </button>
+        </div>
+
+
+        <!-- REGISTRATION PAGE 3: USERNAME -->
+        <div id="registerUsernamePage" class="auth-page">
+            <h1>KCHAT</h1>
+            <p class="step-indicator">Registration - Step 3 of 4</p>
+            <h2>Choose Your Username</h2>
+
+            <p class="auth-description">
+                This is the name other people will see when they chat with you.
+            </p>
+
+            <input id="registerUsername"
+                   type="text"
+                   placeholder="Choose a username"
+                   maxlength="30"
+                   autocomplete="username">
+
+            <p id="usernameError" class="error"></p>
+
+            <button onclick="nextToPicture()">Continue</button>
+            <button class="secondary-button"
+                    onclick="showRegisterPage('registerPasswordPage')">
+                Back
+            </button>
+        </div>
+
+
+        <!-- REGISTRATION PAGE 4: PROFILE PICTURE -->
+        <div id="registerPicturePage" class="auth-page">
+            <h1>KCHAT</h1>
+            <p class="step-indicator">Registration - Step 4 of 4</p>
+            <h2>Profile Picture</h2>
+
+            <p class="auth-description">
+                Add a picture so your friends can recognise you.
+                You can also skip this and add one later.
+            </p>
+
+            <img id="registerPicturePreview"
+                 class="picture-preview"
+                 alt="Profile picture preview">
+
+            <input id="registerPictureFile"
+                   type="file"
+                   accept="image/png,image/jpeg,image/webp"
+                   onchange="previewRegistrationPicture()">
+
+            <p id="pictureError" class="error"></p>
+
+            <button id="finishRegistrationButton"
+                    onclick="finishRegistration()">
+                Create My Account
+            </button>
+
+            <button class="secondary-button"
+                    onclick="showRegisterPage('registerUsernamePage')">
+                Back
+            </button>
+        </div>
+
+
+        <!-- REGISTRATION SUCCESS PAGE -->
+        <div id="registrationSuccessPage" class="auth-page">
+            <div class="auth-logo">
+                <h1>KCHAT</h1>
+            </div>
+
+            <h2>Account Created!</h2>
+
+            <p class="auth-description">
+                Your KCHAT account has been created successfully.
+                You can now start connecting with people.
+            </p>
+
+            <button onclick="enterNewAccount()">
+                Continue to KCHAT
+            </button>
+        </div>
+
     </section>
 
+
+    <!-- MAIN CHAT APPLICATION -->
     <section id="chatScreen">
 
         <header>
@@ -309,7 +554,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
                 <p id="contactMessage"></p>
             </div>
 
-            <!-- NEW MANAGED GROUPS SECTION -->
             <div class="groups-controls">
                 <h3>My Groups</h3>
 
@@ -368,11 +612,11 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
 </main>
 
+
 <script>
 let token = localStorage.getItem("kchat_token") || "";
 let myUsername = localStorage.getItem("kchat_username") || "";
 
-let registerMode = false;
 let socket = null;
 let currentRoom = "general";
 let activeRecipient = null;
@@ -386,6 +630,14 @@ let groupMessages = [];
 let myGroups = [];
 let selectedGroup = null;
 
+let registrationProfilePicture = null;
+let registrationData = {
+    phone_number: "",
+    password: "",
+    username: "",
+    profile_picture: null
+};
+
 const messages = document.getElementById("messages");
 const recipientInput = document.getElementById("recipient");
 const messageInput = document.getElementById("message");
@@ -396,57 +648,203 @@ const onlineUsers = document.getElementById("onlineUsers");
 const privateMessages = {};
 
 
-function switchAuth() {
-    registerMode = !registerMode;
+// ---------------- AUTHENTICATION PAGES ----------------
 
-    document.getElementById("authTitle").textContent =
-        registerMode ? "Create Account" : "Login";
+function showAuthPage(pageId) {
+    document.querySelectorAll(".auth-page").forEach(function(page) {
+        page.classList.remove("active");
+    });
 
-    document.getElementById("authButton").textContent =
-        registerMode ? "Register" : "Login";
-
-    document.querySelector(".switch").textContent =
-        registerMode
-        ? "Already have an account? Login"
-        : "Don't have an account? Register";
-
-    document.getElementById("authError").textContent = "";
+    document.getElementById(pageId).classList.add("active");
 }
 
 
-async function submitAuth() {
-    const username =
-        document.getElementById("authUsername").value.trim();
+function showWelcomePage() {
+    showAuthPage("welcomePage");
+}
 
-    const password =
-        document.getElementById("authPassword").value;
 
-    const errorBox = document.getElementById("authError");
-    const button = document.getElementById("authButton");
+function showLoginPage() {
+    document.getElementById("loginError").textContent = "";
+    document.getElementById("loginPassword").value = "";
+    showAuthPage("loginPage");
+}
 
-    if (!username || !password) {
-        errorBox.textContent = "Enter your username and password.";
+
+function showRegisterPage(pageId) {
+    showAuthPage(pageId);
+}
+
+
+function startRegistration() {
+    registrationData = {
+        phone_number: "",
+        password: "",
+        username: "",
+        profile_picture: null
+    };
+
+    registrationProfilePicture = null;
+
+    document.getElementById("registerPhone").value = "";
+    document.getElementById("registerPassword").value = "";
+    document.getElementById("confirmPassword").value = "";
+    document.getElementById("registerUsername").value = "";
+    document.getElementById("registerPictureFile").value = "";
+
+    document.getElementById("registerPicturePreview").removeAttribute("src");
+
+    document.getElementById("phoneError").textContent = "";
+    document.getElementById("passwordError").textContent = "";
+    document.getElementById("usernameError").textContent = "";
+    document.getElementById("pictureError").textContent = "";
+
+    showRegisterPage("registerPhonePage");
+}
+
+
+function nextToPassword() {
+    const phone = document.getElementById("registerPhone").value.trim();
+    const error = document.getElementById("phoneError");
+
+    const digits = phone.replace(/\D/g, "");
+
+    if (!phone || digits.length < 7 || digits.length > 15) {
+        error.textContent = "Enter a valid phone number.";
         return;
     }
 
+    registrationData.phone_number = phone;
+
+    error.textContent = "";
+    showRegisterPage("registerPasswordPage");
+}
+
+
+function nextToUsername() {
+    const password =
+        document.getElementById("registerPassword").value;
+
+    const confirm =
+        document.getElementById("confirmPassword").value;
+
+    const error = document.getElementById("passwordError");
+
+    if (!password) {
+        error.textContent = "Enter a password.";
+        return;
+    }
+
+    if (password.length < 8) {
+        error.textContent = "Your password must be at least 8 characters.";
+        return;
+    }
+
+    if (password !== confirm) {
+        error.textContent = "The passwords do not match.";
+        return;
+    }
+
+    registrationData.password = password;
+
+    error.textContent = "";
+    showRegisterPage("registerUsernamePage");
+}
+
+
+function nextToPicture() {
+    const username =
+        document.getElementById("registerUsername").value.trim();
+
+    const error = document.getElementById("usernameError");
+
+    if (!username) {
+        error.textContent = "Choose a username.";
+        return;
+    }
+
+    if (username.length < 3) {
+        error.textContent = "Username must have at least 3 characters.";
+        return;
+    }
+
+    registrationData.username = username;
+
+    error.textContent = "";
+    showRegisterPage("registerPicturePage");
+}
+
+
+function previewRegistrationPicture() {
+    const fileInput = document.getElementById("registerPictureFile");
+    const file = fileInput.files[0];
+    const error = document.getElementById("pictureError");
+    const preview = document.getElementById("registerPicturePreview");
+
+    error.textContent = "";
+
+    if (!file) {
+        registrationProfilePicture = null;
+        preview.removeAttribute("src");
+        return;
+    }
+
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+        error.textContent = "Choose a PNG, JPG or WEBP picture.";
+        fileInput.value = "";
+        registrationProfilePicture = null;
+        preview.removeAttribute("src");
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+        preview.src = event.target.result;
+    };
+
+    reader.readAsDataURL(file);
+}
+
+
+async function finishRegistration() {
+    const button =
+        document.getElementById("finishRegistrationButton");
+
+    const error =
+        document.getElementById("pictureError");
+
     button.disabled = true;
-    errorBox.textContent = "Please wait...";
+    button.textContent = "Creating account...";
+    error.textContent = "Please wait...";
 
     try {
-        const endpoint = registerMode
-            ? "/api/register"
-            : "/api/login";
+        const fileInput =
+            document.getElementById("registerPictureFile");
 
-        const response = await fetch(endpoint, {
+        const file = fileInput.files[0];
+
+        if (file) {
+            registrationProfilePicture = await resizeImage(file);
+        } else {
+            registrationProfilePicture = null;
+        }
+
+        registrationData.profile_picture =
+            registrationProfilePicture;
+
+        const response = await fetch("/api/register", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password })
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(registrationData)
         });
 
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || "Something went wrong.");
+            throw new Error(data.error || "Registration failed.");
         }
 
         token = data.token;
@@ -455,6 +853,68 @@ async function submitAuth() {
         localStorage.setItem("kchat_token", token);
         localStorage.setItem("kchat_username", myUsername);
 
+        error.textContent = "";
+        showAuthPage("registrationSuccessPage");
+
+    } catch (error) {
+        error.textContent = error.message;
+    } finally {
+        button.disabled = false;
+        button.textContent = "Create My Account";
+    }
+}
+
+
+function enterNewAccount() {
+    showChatScreen();
+}
+
+
+// ---------------- LOGIN ----------------
+
+async function submitLogin() {
+    const phone =
+        document.getElementById("loginPhone").value.trim();
+
+    const password =
+        document.getElementById("loginPassword").value;
+
+    const errorBox = document.getElementById("loginError");
+    const button = document.getElementById("loginButton");
+
+    if (!phone || !password) {
+        errorBox.textContent = "Enter your phone number and password.";
+        return;
+    }
+
+    button.disabled = true;
+    errorBox.textContent = "Please wait...";
+
+    try {
+        const response = await fetch("/api/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                phone_number: phone,
+                password: password
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Login failed.");
+        }
+
+        token = data.token;
+        myUsername = data.username;
+
+        localStorage.setItem("kchat_token", token);
+        localStorage.setItem("kchat_username", myUsername);
+
+        errorBox.textContent = "";
         showChatScreen();
 
     } catch (error) {
@@ -464,6 +924,8 @@ async function submitAuth() {
     }
 }
 
+
+// ---------------- MAIN CHAT SCREEN ----------------
 
 function showChatScreen() {
     document.getElementById("authScreen").style.display = "none";
@@ -477,6 +939,8 @@ function showChatScreen() {
     loadGroups();
 }
 
+
+// ---------------- CONTACTS ----------------
 
 async function loadContacts() {
     try {
@@ -1041,10 +1505,13 @@ function logout() {
 
     document.getElementById("chatScreen").style.display = "none";
     document.getElementById("authScreen").style.display = "block";
-    document.getElementById("authPassword").value = "";
-    document.getElementById("authError").textContent = "";
+
+    document.getElementById("loginPassword").value = "";
+    document.getElementById("loginPhone").value = "";
+    document.getElementById("loginError").textContent = "";
 
     messages.innerHTML = "";
+    showWelcomePage();
 }
 
 
@@ -1528,8 +1995,12 @@ window.addEventListener("online", function() {
 });
 
 
+// ---------------- START APPLICATION ----------------
+
 if (token && myUsername) {
     showChatScreen();
+} else {
+    showWelcomePage();
 }
 
 </script>
