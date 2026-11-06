@@ -1,4 +1,3 @@
-
 import os
 import uuid
 import hashlib
@@ -23,7 +22,6 @@ connected_users = {}
 def get_db():
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL is not configured")
-
     return psycopg.connect(
         DATABASE_URL,
         row_factory=dict_row,
@@ -43,17 +41,12 @@ def init_db():
                 created_at TIMESTAMPTZ DEFAULT NOW()
             )
         """)
-
-        conn.execute("""
-            ALTER TABLE accounts
-            ADD COLUMN IF NOT EXISTS profile_picture TEXT
-        """)
+        conn.execute("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS profile_picture TEXT")
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
                 id BIGSERIAL PRIMARY KEY,
-                account_id BIGINT REFERENCES accounts(id)
-                    ON DELETE CASCADE,
+                account_id BIGINT REFERENCES accounts(id) ON DELETE CASCADE,
                 token_hash TEXT UNIQUE NOT NULL,
                 expires_at TIMESTAMPTZ NOT NULL
             )
@@ -62,10 +55,8 @@ def init_db():
         conn.execute("""
             CREATE TABLE IF NOT EXISTS contacts (
                 id BIGSERIAL PRIMARY KEY,
-                owner_id BIGINT REFERENCES accounts(id)
-                    ON DELETE CASCADE,
-                contact_id BIGINT REFERENCES accounts(id)
-                    ON DELETE CASCADE,
+                owner_id BIGINT REFERENCES accounts(id) ON DELETE CASCADE,
+                contact_id BIGINT REFERENCES accounts(id) ON DELETE CASCADE,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 UNIQUE(owner_id, contact_id),
                 CHECK(owner_id != contact_id)
@@ -89,15 +80,39 @@ def init_db():
             ALTER TABLE messages
             ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()
         """)
-
         conn.execute("""
             CREATE INDEX IF NOT EXISTS messages_room_idx
             ON messages(room, created_at)
         """)
-
         conn.execute("""
             CREATE INDEX IF NOT EXISTS messages_recipient_idx
             ON messages(room, recipient, status)
+        """)
+
+        # Managed KCHAT groups
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS chat_groups (
+                id BIGSERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                name_key TEXT UNIQUE NOT NULL,
+                creator_id BIGINT REFERENCES accounts(id) ON DELETE CASCADE,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS group_members (
+                group_id BIGINT REFERENCES chat_groups(id) ON DELETE CASCADE,
+                account_id BIGINT REFERENCES accounts(id) ON DELETE CASCADE,
+                role TEXT NOT NULL DEFAULT 'member',
+                joined_at TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (group_id, account_id)
+            )
+        """)
+
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS group_members_account_idx
+            ON group_members(account_id)
         """)
 
 
@@ -110,18 +125,13 @@ async def startup():
 
 def hash_password(password):
     salt = secrets.token_bytes(16)
-
     hashed = hashlib.pbkdf2_hmac(
         "sha256",
         password.encode("utf-8"),
         salt,
         310000
     )
-
-    return (
-        base64.b64encode(salt).decode() + "$" +
-        base64.b64encode(hashed).decode()
-    )
+    return base64.b64encode(salt).decode() + "$" + base64.b64encode(hashed).decode()
 
 
 def verify_password(password, stored):
@@ -129,16 +139,13 @@ def verify_password(password, stored):
         salt_text, hash_text = stored.split("$")
         salt = base64.b64decode(salt_text)
         expected = base64.b64decode(hash_text)
-
         actual = hashlib.pbkdf2_hmac(
             "sha256",
             password.encode("utf-8"),
             salt,
             310000
         )
-
         return secrets.compare_digest(actual, expected)
-
     except Exception:
         return False
 
@@ -149,13 +156,11 @@ def token_hash(token):
 
 def create_session(account_id):
     token = secrets.token_urlsafe(32)
-
     with get_db() as conn:
         conn.execute("""
             INSERT INTO sessions (account_id, token_hash, expires_at)
             VALUES (%s, %s, NOW() + INTERVAL '30 days')
         """, (account_id, token_hash(token)))
-
     return token
 
 
@@ -185,26 +190,22 @@ def get_account_from_request(request):
 async def register(request: Request):
     try:
         data = await request.json()
-
         username = str(data.get("username", "")).strip()
         password = str(data.get("password", ""))
 
         if not re.fullmatch(r"[A-Za-z0-9_]{3,30}", username):
-            return JSONResponse(
-                {"error": "Username must be 3-30 characters using letters, numbers or underscores."},
-                status_code=400
-            )
+            return JSONResponse({
+                "error": "Username must be 3-30 characters using letters, numbers or underscores."
+            }, status_code=400)
 
         if len(password) < 8:
-            return JSONResponse(
-                {"error": "Password must contain at least 8 characters."},
-                status_code=400
-            )
+            return JSONResponse({
+                "error": "Password must contain at least 8 characters."
+            }, status_code=400)
 
         with get_db() as conn:
             account = conn.execute("""
-                INSERT INTO accounts
-                    (username, username_key, password_hash)
+                INSERT INTO accounts (username, username_key, password_hash)
                 VALUES (%s, %s, %s)
                 RETURNING id, username
             """, (
@@ -214,31 +215,27 @@ async def register(request: Request):
             )).fetchone()
 
         token = create_session(account["id"])
-
         return {
             "token": token,
             "username": account["username"]
         }
 
     except psycopg.errors.UniqueViolation:
-        return JSONResponse(
-            {"error": "That username is already taken."},
-            status_code=409
-        )
+        return JSONResponse({
+            "error": "That username is already taken."
+        }, status_code=409)
 
     except Exception as error:
         print("Registration error:", error)
-        return JSONResponse(
-            {"error": "Registration failed. Please try again."},
-            status_code=500
-        )
+        return JSONResponse({
+            "error": "Registration failed. Please try again."
+        }, status_code=500)
 
 
 @app.post("/api/login")
 async def login(request: Request):
     try:
         data = await request.json()
-
         username = str(data.get("username", "")).strip()
         password = str(data.get("password", ""))
 
@@ -249,16 +246,12 @@ async def login(request: Request):
                 WHERE username_key = %s
             """, (username.lower(),)).fetchone()
 
-        if not account or not verify_password(
-            password, account["password_hash"]
-        ):
-            return JSONResponse(
-                {"error": "Incorrect username or password."},
-                status_code=401
-            )
+        if not account or not verify_password(password, account["password_hash"]):
+            return JSONResponse({
+                "error": "Incorrect username or password."
+            }, status_code=401)
 
         token = create_session(account["id"])
-
         return {
             "token": token,
             "username": account["username"]
@@ -266,10 +259,9 @@ async def login(request: Request):
 
     except Exception as error:
         print("Login error:", error)
-        return JSONResponse(
-            {"error": "Login failed. Please try again."},
-            status_code=500
-        )
+        return JSONResponse({
+            "error": "Login failed. Please try again."
+        }, status_code=500)
 
 
 # ---------------- CONTACT MANAGEMENT ----------------
@@ -277,19 +269,16 @@ async def login(request: Request):
 @app.get("/api/contacts")
 async def contacts(request: Request):
     account = get_account_from_request(request)
-
     if not account:
-        return JSONResponse(
-            {"error": "Please log in again."},
-            status_code=401
-        )
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
 
     with get_db() as conn:
         rows = conn.execute("""
             SELECT accounts.username
             FROM contacts
-            JOIN accounts
-                ON accounts.id = contacts.contact_id
+            JOIN accounts ON accounts.id = contacts.contact_id
             WHERE contacts.owner_id = %s
             ORDER BY accounts.username
         """, (account["id"],)).fetchall()
@@ -302,22 +291,19 @@ async def contacts(request: Request):
 @app.post("/api/contacts")
 async def add_contact(request: Request):
     account = get_account_from_request(request)
-
     if not account:
-        return JSONResponse(
-            {"error": "Please log in again."},
-            status_code=401
-        )
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
 
     try:
         data = await request.json()
         username = str(data.get("username", "")).strip()
 
         if not username:
-            return JSONResponse(
-                {"error": "Enter a username."},
-                status_code=400
-            )
+            return JSONResponse({
+                "error": "Enter a username."
+            }, status_code=400)
 
         with get_db() as conn:
             target = conn.execute("""
@@ -327,16 +313,14 @@ async def add_contact(request: Request):
             """, (username.lower(),)).fetchone()
 
             if not target:
-                return JSONResponse(
-                    {"error": "No KCHAT account found with that username."},
-                    status_code=404
-                )
+                return JSONResponse({
+                    "error": "No KCHAT account found with that username."
+                }, status_code=404)
 
             if target["id"] == account["id"]:
-                return JSONResponse(
-                    {"error": "You cannot add yourself."},
-                    status_code=400
-                )
+                return JSONResponse({
+                    "error": "You cannot add yourself."
+                }, status_code=400)
 
             conn.execute("""
                 INSERT INTO contacts (owner_id, contact_id)
@@ -352,33 +336,30 @@ async def add_contact(request: Request):
 
     except Exception as error:
         print("Add contact error:", error)
-        return JSONResponse(
-            {"error": "Could not add contact."},
-            status_code=500
-        )
+        return JSONResponse({
+            "error": "Could not add contact."
+        }, status_code=500)
 
 
 @app.delete("/api/contacts/{username}")
 async def remove_contact(username: str, request: Request):
     account = get_account_from_request(request)
-
     if not account:
-        return JSONResponse(
-            {"error": "Please log in again."},
-            status_code=401
-        )
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
 
     with get_db() as conn:
         target = conn.execute("""
-            SELECT id FROM accounts
+            SELECT id
+            FROM accounts
             WHERE username_key = %s
         """, (username.lower(),)).fetchone()
 
         if not target:
-            return JSONResponse(
-                {"error": "Contact not found."},
-                status_code=404
-            )
+            return JSONResponse({
+                "error": "Contact not found."
+            }, status_code=404)
 
         result = conn.execute("""
             DELETE FROM contacts
@@ -387,10 +368,9 @@ async def remove_contact(username: str, request: Request):
         """, (account["id"], target["id"])).fetchone()
 
     if not result:
-        return JSONResponse(
-            {"error": "That user is not in your contacts."},
-            status_code=404
-        )
+        return JSONResponse({
+            "error": "That user is not in your contacts."
+        }, status_code=404)
 
     return {
         "success": True,
@@ -403,12 +383,10 @@ async def remove_contact(username: str, request: Request):
 @app.get("/api/profile/{username}")
 async def get_profile(username: str, request: Request):
     account = get_account_from_request(request)
-
     if not account:
-        return JSONResponse(
-            {"error": "Please log in again."},
-            status_code=401
-        )
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
 
     with get_db() as conn:
         profile = conn.execute("""
@@ -418,10 +396,9 @@ async def get_profile(username: str, request: Request):
         """, (username.lower(),)).fetchone()
 
     if not profile:
-        return JSONResponse(
-            {"error": "User not found."},
-            status_code=404
-        )
+        return JSONResponse({
+            "error": "User not found."
+        }, status_code=404)
 
     return {
         "username": profile["username"],
@@ -432,12 +409,10 @@ async def get_profile(username: str, request: Request):
 @app.put("/api/profile")
 async def update_profile(request: Request):
     account = get_account_from_request(request)
-
     if not account:
-        return JSONResponse(
-            {"error": "Please log in again."},
-            status_code=401
-        )
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
 
     try:
         data = await request.json()
@@ -445,25 +420,22 @@ async def update_profile(request: Request):
 
         if picture is not None:
             if not isinstance(picture, str):
-                return JSONResponse(
-                    {"error": "Invalid picture."},
-                    status_code=400
-                )
+                return JSONResponse({
+                    "error": "Invalid picture."
+                }, status_code=400)
 
             if len(picture) > 2_500_000:
-                return JSONResponse(
-                    {"error": "Picture is too large. Choose a smaller image."},
-                    status_code=413
-                )
+                return JSONResponse({
+                    "error": "Picture is too large. Choose a smaller image."
+                }, status_code=413)
 
             if not re.fullmatch(
                 r"data:image/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+",
                 picture
             ):
-                return JSONResponse(
-                    {"error": "Use a PNG, JPG or WEBP image."},
-                    status_code=400
-                )
+                return JSONResponse({
+                    "error": "Use a PNG, JPG or WEBP image."
+                }, status_code=400)
 
         with get_db() as conn:
             conn.execute("""
@@ -479,10 +451,283 @@ async def update_profile(request: Request):
 
     except Exception as error:
         print("Profile update error:", error)
-        return JSONResponse(
-            {"error": "Could not update profile picture."},
-            status_code=500
-        )
+        return JSONResponse({
+            "error": "Could not update profile picture."
+        }, status_code=500)
+
+
+# ---------------- GROUP MANAGEMENT ----------------
+
+@app.get("/api/groups")
+async def get_groups(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
+
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT
+                chat_groups.id,
+                chat_groups.name,
+                chat_groups.creator_id,
+                chat_groups.created_at,
+                group_members.role,
+                (
+                    SELECT COUNT(*)
+                    FROM group_members AS members
+                    WHERE members.group_id = chat_groups.id
+                ) AS member_count
+            FROM chat_groups
+            JOIN group_members
+                ON group_members.group_id = chat_groups.id
+            WHERE group_members.account_id = %s
+            ORDER BY chat_groups.created_at DESC
+        """, (account["id"],)).fetchall()
+
+    groups = []
+    for row in rows:
+        groups.append({
+            "id": row["id"],
+            "name": row["name"],
+            "creator_id": row["creator_id"],
+            "role": row["role"],
+            "member_count": row["member_count"],
+            "created_at": row["created_at"].isoformat()
+        })
+
+    return {
+        "groups": groups
+    }
+
+
+@app.post("/api/groups")
+async def create_group(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
+
+    try:
+        data = await request.json()
+        name = str(data.get("name", "")).strip()
+
+        if len(name) < 2 or len(name) > 40:
+            return JSONResponse({
+                "error": "Group name must be between 2 and 40 characters."
+            }, status_code=400)
+
+        name_key = uuid.uuid4().hex
+
+        with get_db() as conn:
+            group = conn.execute("""
+                INSERT INTO chat_groups (name, name_key, creator_id)
+                VALUES (%s, %s, %s)
+                RETURNING id, name, creator_id, created_at
+            """, (
+                name,
+                name_key,
+                account["id"]
+            )).fetchone()
+
+            conn.execute("""
+                INSERT INTO group_members (group_id, account_id, role)
+                VALUES (%s, %s, 'admin')
+            """, (group["id"], account["id"]))
+
+        return {
+            "success": True,
+            "group": {
+                "id": group["id"],
+                "name": group["name"],
+                "creator_id": group["creator_id"],
+                "role": "admin",
+                "member_count": 1,
+                "room": "group_" + str(group["id"]),
+                "created_at": group["created_at"].isoformat()
+            },
+            "message": "Group created successfully."
+        }
+
+    except Exception as error:
+        print("Create group error:", error)
+        return JSONResponse({
+            "error": "Could not create the group."
+        }, status_code=500)
+
+
+@app.get("/api/groups/{group_id}/members")
+async def get_group_members(group_id: int, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
+
+    with get_db() as conn:
+        membership = conn.execute("""
+            SELECT role
+            FROM group_members
+            WHERE group_id = %s AND account_id = %s
+        """, (group_id, account["id"])).fetchone()
+
+        if not membership:
+            return JSONResponse({
+                "error": "You are not a member of this group."
+            }, status_code=403)
+
+        rows = conn.execute("""
+            SELECT accounts.username, group_members.role, group_members.joined_at
+            FROM group_members
+            JOIN accounts ON accounts.id = group_members.account_id
+            WHERE group_members.group_id = %s
+            ORDER BY group_members.joined_at ASC
+        """, (group_id,)).fetchall()
+
+    return {
+        "members": [
+            {
+                "username": row["username"],
+                "role": row["role"],
+                "joined_at": row["joined_at"].isoformat()
+            }
+            for row in rows
+        ]
+    }
+
+
+@app.post("/api/groups/{group_id}/members")
+async def add_group_member(group_id: int, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
+
+    try:
+        data = await request.json()
+        username = str(data.get("username", "")).strip()
+
+        if not username:
+            return JSONResponse({
+                "error": "Enter the username to add."
+            }, status_code=400)
+
+        with get_db() as conn:
+            group = conn.execute("""
+                SELECT id, creator_id
+                FROM chat_groups
+                WHERE id = %s
+            """, (group_id,)).fetchone()
+
+            if not group:
+                return JSONResponse({
+                    "error": "Group not found."
+                }, status_code=404)
+
+            if group["creator_id"] != account["id"]:
+                return JSONResponse({
+                    "error": "Only the group creator can add members."
+                }, status_code=403)
+
+            target = conn.execute("""
+                SELECT id, username
+                FROM accounts
+                WHERE username_key = %s
+            """, (username.lower(),)).fetchone()
+
+            if not target:
+                return JSONResponse({
+                    "error": "No KCHAT account found with that username."
+                }, status_code=404)
+
+            existing = conn.execute("""
+                SELECT account_id
+                FROM group_members
+                WHERE group_id = %s AND account_id = %s
+            """, (group_id, target["id"])).fetchone()
+
+            if existing:
+                return JSONResponse({
+                    "error": "That user is already a member of this group."
+                }, status_code=409)
+
+            conn.execute("""
+                INSERT INTO group_members (group_id, account_id, role)
+                VALUES (%s, %s, 'member')
+            """, (group_id, target["id"]))
+
+        return {
+            "success": True,
+            "username": target["username"],
+            "message": "Member added successfully."
+        }
+
+    except Exception as error:
+        print("Add group member error:", error)
+        return JSONResponse({
+            "error": "Could not add this member."
+        }, status_code=500)
+
+
+@app.delete("/api/groups/{group_id}/members/{username}")
+async def remove_group_member(group_id: int, username: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
+
+    with get_db() as conn:
+        group = conn.execute("""
+            SELECT id, creator_id
+            FROM chat_groups
+            WHERE id = %s
+        """, (group_id,)).fetchone()
+
+        if not group:
+            return JSONResponse({
+                "error": "Group not found."
+            }, status_code=404)
+
+        if group["creator_id"] != account["id"]:
+            return JSONResponse({
+                "error": "Only the group creator can remove members."
+            }, status_code=403)
+
+        target = conn.execute("""
+            SELECT id, username
+            FROM accounts
+            WHERE username_key = %s
+        """, (username.lower(),)).fetchone()
+
+        if not target:
+            return JSONResponse({
+                "error": "User not found."
+            }, status_code=404)
+
+        if target["id"] == group["creator_id"]:
+            return JSONResponse({
+                "error": "The group creator cannot be removed."
+            }, status_code=400)
+
+        result = conn.execute("""
+            DELETE FROM group_members
+            WHERE group_id = %s AND account_id = %s
+            RETURNING account_id
+        """, (group_id, target["id"])).fetchone()
+
+    if not result:
+        return JSONResponse({
+            "error": "That user is not a member of this group."
+        }, status_code=404)
+
+    return {
+        "success": True,
+        "message": target["username"] + " was removed from the group."
+    }
 
 
 # ---------------- CHAT HELPERS ----------------
@@ -493,7 +738,6 @@ async def broadcast(room, message):
     for user in list(connected_users.get(room, [])):
         try:
             await user["websocket"].send_json(message)
-
         except Exception as error:
             print("Broadcast error:", error)
             disconnected.append(user)
@@ -508,7 +752,6 @@ def find_users(room, username):
 
     for user in connected_users.get(room, []):
         websocket = user["websocket"]
-
         if websocket.client_state == WebSocketState.CONNECTED:
             active.append(user)
 
@@ -521,14 +764,18 @@ def find_users(room, username):
 
 
 def private_pair(user1, user2):
-    return sorted([user1.lower(), user2.lower()])
+    return sorted([
+        user1.lower(),
+        user2.lower()
+    ])
 
 
 def save_message(item, room):
     with get_db() as conn:
         row = conn.execute("""
-            INSERT INTO messages
-                (id, type, room, username, recipient, text, status)
+            INSERT INTO messages (
+                id, type, room, username, recipient, text, status
+            )
             VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING created_at
         """, (
@@ -562,12 +809,16 @@ def message_from_row(row):
 def load_group_history(room):
     with get_db() as conn:
         rows = conn.execute("""
-            SELECT * FROM messages
+            SELECT *
+            FROM messages
             WHERE room = %s AND type = 'chat'
             ORDER BY created_at ASC
         """, (room,)).fetchall()
 
-    return [message_from_row(row) for row in rows]
+    return [
+        message_from_row(row)
+        for row in rows
+    ]
 
 
 def load_private_history(room, user1, user2):
@@ -575,7 +826,8 @@ def load_private_history(room, user1, user2):
 
     with get_db() as conn:
         rows = conn.execute("""
-            SELECT * FROM messages
+            SELECT *
+            FROM messages
             WHERE room = %s
             AND type = 'private'
             AND (
@@ -584,9 +836,18 @@ def load_private_history(room, user1, user2):
                 (LOWER(username) = %s AND LOWER(recipient) = %s)
             )
             ORDER BY created_at ASC
-        """, (room, first, second, second, first)).fetchall()
+        """, (
+            room,
+            first,
+            second,
+            second,
+            first
+        )).fetchall()
 
-    return [message_from_row(row) for row in rows]
+    return [
+        message_from_row(row)
+        for row in rows
+    ]
 
 
 async def update_sender_status(room, item):
@@ -597,7 +858,6 @@ async def update_sender_status(room, item):
                 "id": item["id"],
                 "status": item["status"]
             })
-
         except Exception as error:
             print("Status update error:", error)
 
@@ -605,13 +865,17 @@ async def update_sender_status(room, item):
 async def deliver_pending_messages(room, username, websocket):
     with get_db() as conn:
         rows = conn.execute("""
-            SELECT * FROM messages
+            SELECT *
+            FROM messages
             WHERE room = %s
             AND type = 'private'
             AND LOWER(recipient) = %s
             AND status = 'sent'
             ORDER BY created_at ASC
-        """, (room, username.lower())).fetchall()
+        """, (
+            room,
+            username.lower()
+        )).fetchall()
 
         for row in rows:
             item = message_from_row(row)
@@ -664,8 +928,31 @@ async def chat(websocket: WebSocket, room: str):
     username = account["username"]
     room = room.strip()[:40] or "general"
 
-    connected_users.setdefault(room, [])
+    # Managed groups must have a valid ID and the user must be a member.
+    if room.startswith("group_"):
+        group_id_text = room[6:]
 
+        if not group_id_text.isdigit():
+            await websocket.close(code=4403)
+            return
+
+        group_id = int(group_id_text)
+
+        with get_db() as conn:
+            membership = conn.execute("""
+                SELECT account_id
+                FROM group_members
+                WHERE group_id = %s AND account_id = %s
+            """, (
+                group_id,
+                account["id"]
+            )).fetchone()
+
+        if not membership:
+            await websocket.close(code=4403)
+            return
+
+    connected_users.setdefault(room, [])
     connected_users[room].append({
         "username": username,
         "websocket": websocket
@@ -675,7 +962,8 @@ async def chat(websocket: WebSocket, room: str):
         "type": "welcome",
         "history": load_group_history(room),
         "users": list(dict.fromkeys(
-            user["username"] for user in connected_users[room]
+            user["username"]
+            for user in connected_users[room]
         ))
     })
 
@@ -729,11 +1017,15 @@ async def chat(websocket: WebSocket, room: str):
                         AND LOWER(recipient) = %s
                         AND status != 'read'
                     """, (
-                        room, recipient.lower(), username.lower()
+                        room,
+                        recipient.lower(),
+                        username.lower()
                     ))
 
                 conversation = load_private_history(
-                    room, username, recipient
+                    room,
+                    username,
+                    recipient
                 )
 
                 for item in conversation:
@@ -755,15 +1047,17 @@ async def chat(websocket: WebSocket, room: str):
                 recipient = str(data.get("to", "")).strip()[:30]
                 message = str(data.get("text", "")).strip()
 
-                if not recipient or not message:
-                    continue
-
-                if recipient.lower() == username.lower():
+                if (
+                    not recipient
+                    or not message
+                    or recipient.lower() == username.lower()
+                ):
                     continue
 
                 with get_db() as conn:
                     exists = conn.execute("""
-                        SELECT id FROM accounts
+                        SELECT id
+                        FROM accounts
                         WHERE username_key = %s
                     """, (recipient.lower(),)).fetchone()
 
@@ -796,7 +1090,6 @@ async def chat(websocket: WebSocket, room: str):
                     try:
                         await target["websocket"].send_json(delivery_item)
                         delivered = True
-
                     except Exception as error:
                         print("Private delivery error:", error)
 
