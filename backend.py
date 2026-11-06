@@ -1,3 +1,4 @@
+
 import os
 import uuid
 import hashlib
@@ -48,7 +49,6 @@ def init_db():
             ADD COLUMN IF NOT EXISTS profile_picture TEXT
         """)
 
-        # Phone numbers are added without deleting existing accounts.
         conn.execute("""
             ALTER TABLE accounts
             ADD COLUMN IF NOT EXISTS phone_number TEXT
@@ -287,9 +287,13 @@ async def register(request: Request):
                 "error": "Enter a valid phone number, including its country code if possible."
             }, status_code=400)
 
-        if not re.fullmatch(r"[A-Za-z0-9_]{3,30}", username):
+        # USERNAME RULE:
+        # Any characters are allowed, including symbols,
+        # letters, numbers and spaces.
+        # Only the length is restricted to 3-30 characters.
+        if len(username) < 3 or len(username) > 30:
             return JSONResponse({
-                "error": "Username must be 3-30 characters using letters, numbers or underscores."
+                "error": "Username must be between 3 and 30 characters."
             }, status_code=400)
 
         if len(password) < 8:
@@ -386,7 +390,6 @@ async def login(request: Request):
         with get_db() as conn:
             account = None
 
-            # New accounts log in with their phone number.
             if normalized_key:
                 account = conn.execute("""
                     SELECT id, username, phone_number, password_hash
@@ -394,8 +397,6 @@ async def login(request: Request):
                     WHERE phone_key = %s
                 """, (normalized_key,)).fetchone()
 
-            # Backward compatibility for accounts created
-            # before phone-number registration was introduced.
             if not account:
                 account = conn.execute("""
                     SELECT id, username, phone_number, password_hash
