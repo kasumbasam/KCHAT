@@ -2,661 +2,738 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KCHAT</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KCHAT</title>
 
-    <style>
-        * { box-sizing: border-box; }
+<style>
+* { box-sizing: border-box; }
 
-        body {
-            margin: 0;
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-            padding: 20px;
-            font-family: Arial, sans-serif;
-            background: #10131a;
-            color: #edf2f7;
-        }
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    background: #10131a;
+    color: #edf2f7;
+}
 
-        .chat-app {
-            width: min(760px, 100%);
-            height: min(760px, calc(100vh - 40px));
-            min-height: 520px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background: #1b2230;
-            border: 1px solid #303b50;
-            border-radius: 16px;
-        }
+.chat-app {
+    width: min(760px, 100%);
+    min-height: 520px;
+    height: min(760px, calc(100vh - 40px));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #1b2230;
+    border: 1px solid #303b50;
+    border-radius: 16px;
+}
 
-        header {
-            padding: 20px;
-            background: #202a3b;
-            border-bottom: 1px solid #303b50;
-        }
+header {
+    padding: 20px;
+    background: #202a3b;
+    border-bottom: 1px solid #303b50;
+}
 
-        h1 {
-            margin: 0 0 14px;
-            font-size: 24px;
-            color: #70d6ff;
-        }
+h1 {
+    margin: 0 0 15px;
+    font-size: 28px;
+    color: #70d6ff;
+}
 
-        .join-area, .private-area, .send-area {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
+h2 { color: #70d6ff; }
 
-        .private-area { margin-top: 10px; }
+input, select, button {
+    font: inherit;
+    border-radius: 8px;
+}
 
-        input, select, button {
-            font: inherit;
-            border-radius: 8px;
-        }
+input, select {
+    width: 100%;
+    padding: 12px;
+    margin: 7px 0;
+    border: 1px solid #43516b;
+    color: white;
+    background: #121925;
+}
 
-        input, select {
-            flex: 1 1 150px;
-            min-width: 0;
-            padding: 11px 12px;
-            border: 1px solid #43516b;
-            outline: none;
-            color: #fff;
-            background: #121925;
-        }
+button {
+    padding: 11px 16px;
+    margin: 5px 3px 5px 0;
+    border: 0;
+    cursor: pointer;
+    font-weight: bold;
+    color: #07131d;
+    background: #70d6ff;
+}
 
-        select { cursor: pointer; }
+button:hover { background: #9ae3ff; }
+button:disabled { opacity: .55; cursor: not-allowed; }
 
-        input:focus, select:focus {
-            border-color: #70d6ff;
-        }
+.auth-box {
+    width: min(420px, 92%);
+    margin: auto;
+    padding: 25px;
+}
 
-        button {
-            padding: 11px 16px;
-            border: 0;
-            cursor: pointer;
-            font-weight: bold;
-            color: #07131d;
-            background: #70d6ff;
-        }
+.auth-box button { width: 100%; }
 
-        button:hover { background: #9ae3ff; }
-        button:disabled { cursor: not-allowed; opacity: .55; }
+.switch {
+    color: #70d6ff;
+    cursor: pointer;
+    text-align: center;
+    margin-top: 15px;
+}
 
-        #status {
-            margin: 12px 0 0;
-            font-size: 14px;
-            color: #f6c453;
-        }
+.error {
+    color: #ff8585;
+    min-height: 20px;
+}
 
-        #chatMode {
-            margin: 10px 0 0;
-            font-size: 14px;
-            color: #70d6ff;
-        }
+#chatScreen {
+    display: none;
+    height: 100%;
+    flex-direction: column;
+    min-height: 0;
+}
 
-        #onlineUsers {
-            margin: 8px 0 0;
-            font-size: 14px;
-            color: #80ed99;
-        }
+.join-area, .private-area, .send-area {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
 
-        #messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 18px;
-            background: #151b27;
-        }
+.private-area { margin-top: 8px; }
 
-        .message {
-            max-width: 82%;
-            margin: 0 0 12px;
-            padding: 10px 12px;
-            border-radius: 10px;
-            overflow-wrap: anywhere;
-            background: #263249;
-        }
+.join-area input, .private-area select {
+    flex: 1;
+    min-width: 100px;
+}
 
-        .message strong { color: #70d6ff; }
+#status, #chatMode, #onlineUsers {
+    margin: 9px 0 0;
+    font-size: 14px;
+}
 
-        .status-dot {
-            display: inline-block;
-            margin-left: 6px;
-            font-size: 16px;
-            font-weight: 900;
-            letter-spacing: 1px;
-            color: #9ca3af;
-        }
+#status { color: #f6c453; }
+#chatMode { color: #70d6ff; }
+#onlineUsers { color: #80ed99; }
 
-        .status-dot.read {
-            color: #2196ff;
-        }
+#messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 18px;
+    background: #151b27;
+}
 
-        .system {
-            max-width: 100%;
-            text-align: center;
-            font-size: 13px;
-            color: #aebbd0;
-            background: transparent;
-        }
+.message {
+    max-width: 82%;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    overflow-wrap: anywhere;
+    background: #263249;
+}
 
-        .pending { opacity: .7; }
+.message strong { color: #70d6ff; }
 
-        .send-area {
-            padding: 14px;
-            border-top: 1px solid #303b50;
-            background: #202a3b;
-        }
+.system {
+    max-width: 100%;
+    text-align: center;
+    font-size: 13px;
+    color: #aebbd0;
+    background: transparent;
+}
 
-        #message { flex: 1; }
+.status-dot {
+    margin-left: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #9ca3af;
+}
 
-        @media (max-width: 520px) {
-            body { padding: 0; }
+.status-dot.read { color: #2196ff; }
 
-            .chat-app {
-                height: 100vh;
-                border: 0;
-                border-radius: 0;
-            }
-        }
-    </style>
+.send-area {
+    padding: 14px;
+    border-top: 1px solid #303b50;
+    background: #202a3b;
+}
+
+#message { flex: 1; min-width: 100px; }
+
+@media (max-width: 520px) {
+    body { padding: 0; }
+    .chat-app {
+        height: 100vh;
+        border: 0;
+        border-radius: 0;
+    }
+}
+</style>
 </head>
 
 <body>
+
 <main class="chat-app">
-    <header>
+
+    <section id="authScreen" class="auth-box">
         <h1>KCHAT</h1>
+        <h2 id="authTitle">Login</h2>
 
-        <div class="join-area">
-            <input id="username" type="text" placeholder="Your username" maxlength="30">
-            <input id="room" type="text" placeholder="Room name" value="general" maxlength="40">
-            <button id="joinButton" onclick="joinChat()">Join Chat</button>
+        <input id="authUsername" placeholder="Username" maxlength="30">
+        <input id="authPassword" type="password" placeholder="Password">
+
+        <button id="authButton" onclick="submitAuth()">Login</button>
+
+        <p id="authError" class="error"></p>
+
+        <p class="switch" onclick="switchAuth()">
+            Don't have an account? Register
+        </p>
+    </section>
+
+    <section id="chatScreen">
+
+        <header>
+            <h1>KCHAT</h1>
+
+            <p id="accountName"></p>
+
+            <div class="join-area">
+                <input id="room" value="general" placeholder="Room name">
+                <button id="joinButton" onclick="joinChat()">Join Chat</button>
+                <button onclick="logout()">Logout</button>
+            </div>
+
+            <div class="private-area">
+                <select id="recipient" disabled>
+                    <option value="">Select a contact</option>
+                </select>
+
+                <button id="privateButton" onclick="openPrivate()" disabled>
+                    Private Chat
+                </button>
+
+                <button id="groupButton" onclick="openGroup()" disabled>
+                    Group Chat
+                </button>
+            </div>
+
+            <p id="status">Not connected</p>
+            <p id="chatMode">Mode: Group Chat</p>
+            <p id="onlineUsers">Online: Nobody</p>
+        </header>
+
+        <section id="messages" aria-live="polite"></section>
+
+        <div class="send-area">
+            <input id="message" placeholder="Write a message..." disabled>
+            <button id="sendButton" onclick="sendMessage()" disabled>Send</button>
         </div>
 
-        <div class="private-area">
-            <select id="recipient" disabled>
-                <option value="">Select a contact</option>
-                <option value="John">John</option>
-                <option value="Mary">Mary</option>
-                <option value="Samuel">Samuel</option>
-                <option value="David">David</option>
-            </select>
+    </section>
 
-            <button id="privateButton" onclick="openPrivate()" disabled>
-                Open Private Chat
-            </button>
-
-            <button id="groupButton" onclick="openGroup()" disabled>
-                Group Chat
-            </button>
-        </div>
-
-        <p id="status">Not connected</p>
-        <p id="chatMode">Mode: Group Chat</p>
-        <p id="onlineUsers">Online: Nobody</p>
-    </header>
-
-    <section id="messages" aria-live="polite"></section>
-
-    <div class="send-area">
-        <input id="message" type="text" placeholder="Write a message..." disabled>
-        <button id="sendButton" onclick="sendMessage()" disabled>Send</button>
-    </div>
 </main>
 
 <script>
-    let socket = null;
-    let myUsername = "";
-    let currentRoom = "";
-    let activeRecipient = null;
+let token = localStorage.getItem("kchat_token") || "";
+let myUsername = localStorage.getItem("kchat_username") || "";
 
-    let hasJoined = false;
-    let reconnectAttempts = 0;
-    let reconnectTimer = null;
-    let manualClose = false;
+let registerMode = false;
+let socket = null;
+let currentRoom = "general";
+let activeRecipient = null;
+let hasJoined = false;
+let reconnectAttempts = 0;
+let reconnectTimer = null;
+let pendingMessages = [];
 
-    let pendingMessages = [];
+const messages = document.getElementById("messages");
+const recipientInput = document.getElementById("recipient");
+const messageInput = document.getElementById("message");
+const status = document.getElementById("status");
+const chatMode = document.getElementById("chatMode");
+const onlineUsers = document.getElementById("onlineUsers");
 
-    const messages = document.getElementById("messages");
-    const usernameInput = document.getElementById("username");
-    const roomInput = document.getElementById("room");
-    const recipientInput = document.getElementById("recipient");
-    const messageInput = document.getElementById("message");
+const privateMessages = {};
 
-    const joinButton = document.getElementById("joinButton");
-    const privateButton = document.getElementById("privateButton");
-    const groupButton = document.getElementById("groupButton");
-    const sendButton = document.getElementById("sendButton");
+function switchAuth() {
+    registerMode = !registerMode;
 
-    const status = document.getElementById("status");
-    const chatMode = document.getElementById("chatMode");
-    const onlineUsers = document.getElementById("onlineUsers");
+    document.getElementById("authTitle").textContent =
+        registerMode ? "Create Account" : "Login";
 
-    const privateMessages = {};
+    document.getElementById("authButton").textContent =
+        registerMode ? "Register" : "Login";
 
-    function addMessage(text, username = null, isSystem = false) {
-        const line = document.createElement("div");
-        line.className = isSystem ? "message system" : "message";
+    document.querySelector(".switch").textContent =
+        registerMode
+        ? "Already have an account? Login"
+        : "Don't have an account? Register";
 
-        if (username) {
-            const name = document.createElement("strong");
-            name.textContent = username + ": ";
-            line.appendChild(name);
+    document.getElementById("authError").textContent = "";
+}
+
+async function submitAuth() {
+    const username =
+        document.getElementById("authUsername").value.trim();
+
+    const password =
+        document.getElementById("authPassword").value;
+
+    const errorBox = document.getElementById("authError");
+    const button = document.getElementById("authButton");
+
+    if (!username || !password) {
+        errorBox.textContent = "Enter your username and password.";
+        return;
+    }
+
+    button.disabled = true;
+    errorBox.textContent = "Please wait...";
+
+    try {
+        const endpoint = registerMode
+            ? "/api/register"
+            : "/api/login";
+
+        const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Something went wrong.");
         }
 
-        line.appendChild(document.createTextNode(text));
-        messages.appendChild(line);
-        messages.scrollTop = messages.scrollHeight;
+        token = data.token;
+        myUsername = data.username;
+
+        localStorage.setItem("kchat_token", token);
+        localStorage.setItem("kchat_username", myUsername);
+
+        showChatScreen();
+
+    } catch (error) {
+        errorBox.textContent = error.message;
+    } finally {
+        button.disabled = false;
     }
+}
 
-    function setConnected(connected) {
-        usernameInput.disabled = hasJoined;
-        roomInput.disabled = hasJoined;
-        joinButton.disabled = hasJoined;
+function showChatScreen() {
+    document.getElementById("authScreen").style.display = "none";
+    document.getElementById("chatScreen").style.display = "flex";
 
-        recipientInput.disabled = !hasJoined;
-        privateButton.disabled = !hasJoined;
-        groupButton.disabled = !hasJoined;
+    document.getElementById("accountName").textContent =
+        "Logged in as: " + myUsername;
 
-        messageInput.disabled = !hasJoined;
-        sendButton.disabled = !hasJoined;
-    }
+    loadContacts();
+}
 
-    function sendPendingMessages() {
-        if (!socket || socket.readyState !== WebSocket.OPEN) {
+async function loadContacts() {
+    try {
+        const response = await fetch("/api/contacts", {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) logout();
             return;
+        }
+
+        const data = await response.json();
+
+        recipientInput.innerHTML =
+            '<option value="">Select a contact</option>';
+
+        data.contacts.forEach(function(name) {
+            const option = document.createElement("option");
+            option.value = name;
+            option.textContent = name;
+            recipientInput.appendChild(option);
+        });
+
+    } catch (error) {
+        console.error("Could not load contacts:", error);
+    }
+}
+
+function logout() {
+    if (socket) {
+        socket.close();
+        socket = null;
+    }
+
+    clearTimeout(reconnectTimer);
+
+    localStorage.removeItem("kchat_token");
+    localStorage.removeItem("kchat_username");
+
+    token = "";
+    myUsername = "";
+    hasJoined = false;
+
+    document.getElementById("chatScreen").style.display = "none";
+    document.getElementById("authScreen").style.display = "block";
+    document.getElementById("authPassword").value = "";
+    document.getElementById("authError").textContent = "";
+
+    messages.innerHTML = "";
+}
+
+function addMessage(text, username = null, isSystem = false) {
+    const line = document.createElement("div");
+    line.className = isSystem ? "message system" : "message";
+
+    if (username) {
+        const name = document.createElement("strong");
+        name.textContent = username + ": ";
+        line.appendChild(name);
+    }
+
+    line.appendChild(document.createTextNode(text));
+    messages.appendChild(line);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function setConnected() {
+    recipientInput.disabled = !hasJoined;
+    document.getElementById("privateButton").disabled = !hasJoined;
+    document.getElementById("groupButton").disabled = !hasJoined;
+    messageInput.disabled = !hasJoined;
+    document.getElementById("sendButton").disabled = !hasJoined;
+    document.getElementById("joinButton").disabled = hasJoined;
+    document.getElementById("room").disabled = hasJoined;
+}
+
+function savePrivateMessage(item) {
+    if (item.id) privateMessages[item.id] = item;
+}
+
+function renderPrivateConversation() {
+    if (!activeRecipient) return;
+
+    messages.innerHTML = "";
+
+    addMessage("Private conversation with " + activeRecipient, null, true);
+
+    const conversation = Object.values(privateMessages).filter(function(item) {
+        const sender = (item.username || "").toLowerCase();
+        const recipient = (item.to || "").toLowerCase();
+        const me = myUsername.toLowerCase();
+        const other = activeRecipient.toLowerCase();
+
+        return (
+            (sender === me && recipient === other) ||
+            (sender === other && recipient === me)
+        );
+    });
+
+    conversation.forEach(showPrivateMessage);
+}
+
+function showPrivateMessage(item) {
+    const mine =
+        item.username.toLowerCase() === myUsername.toLowerCase();
+
+    const line = document.createElement("div");
+    line.className = "message";
+
+    const name = document.createElement("strong");
+    name.textContent = mine ? "You: " : item.username + ": ";
+    line.appendChild(name);
+
+    line.appendChild(document.createTextNode(item.text));
+
+    if (mine) {
+        const dots = document.createElement("span");
+        dots.className = "status-dot";
+
+        if (item.status === "read") {
+            dots.classList.add("read");
+            dots.textContent = "••";
+        } else if (item.status === "delivered") {
+            dots.textContent = "••";
+        } else {
+            dots.textContent = "•";
+        }
+
+        line.appendChild(dots);
+    }
+
+    messages.appendChild(line);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function connectSocket() {
+    if (!hasJoined || !token) return;
+
+    clearTimeout(reconnectTimer);
+
+    status.textContent = "Connecting...";
+    status.style.color = "#f6c453";
+
+    const protocol =
+        window.location.protocol === "https:" ? "wss://" : "ws://";
+
+    const url =
+        protocol + window.location.host +
+        "/ws/" + encodeURIComponent(currentRoom) +
+        "?token=" + encodeURIComponent(token);
+
+    const newSocket = new WebSocket(url);
+    socket = newSocket;
+
+    newSocket.onopen = function() {
+        if (socket !== newSocket) return;
+
+        reconnectAttempts = 0;
+        status.textContent = "Connected to room: " + currentRoom;
+        status.style.color = "#80ed99";
+
+        setConnected();
+
+        if (activeRecipient) {
+            newSocket.send(JSON.stringify({
+                type: "open_private",
+                to: activeRecipient
+            }));
         }
 
         while (pendingMessages.length > 0) {
-            const item = pendingMessages.shift();
-
-            try {
-                socket.send(JSON.stringify(item));
-            } catch (error) {
-                pendingMessages.unshift(item);
-                break;
-            }
+            newSocket.send(JSON.stringify(pendingMessages.shift()));
         }
-    }
+    };
 
-    function savePrivateMessage(item) {
-        if (item.id) {
-            privateMessages[item.id] = item;
-        }
-    }
+    newSocket.onmessage = function(event) {
+        if (socket !== newSocket) return;
 
-    function renderPrivateConversation() {
-        if (!activeRecipient) {
-            return;
-        }
+        const data = JSON.parse(event.data);
 
-        messages.innerHTML = "";
+        if (data.type === "welcome") {
+            if (!activeRecipient) {
+                messages.innerHTML = "";
 
-        addMessage(
-            "Private conversation with " + activeRecipient,
-            null,
-            true
-        );
-
-        const conversation = Object.values(privateMessages).filter(function(item) {
-            const involvesMe =
-                item.username.toLowerCase() === myUsername.toLowerCase() ||
-                item.to.toLowerCase() === myUsername.toLowerCase();
-
-            const involvesRecipient =
-                item.username.toLowerCase() === activeRecipient.toLowerCase() ||
-                item.to.toLowerCase() === activeRecipient.toLowerCase();
-
-            return involvesMe && involvesRecipient;
-        });
-
-        conversation.sort(function(a, b) {
-            return (a.id || "").localeCompare(b.id || "");
-        });
-
-        conversation.forEach(showPrivateMessage);
-    }
-
-    function showPrivateMessage(item) {
-        const sender =
-            item.username.toLowerCase() === myUsername.toLowerCase()
-                ? "You"
-                : item.username;
-
-        const line = document.createElement("div");
-        line.className = "message";
-
-        const name = document.createElement("strong");
-        name.textContent = sender + ": ";
-        line.appendChild(name);
-
-        line.appendChild(document.createTextNode(item.text));
-
-        if (sender === "You") {
-            const dots = document.createElement("span");
-            dots.className = "status-dot";
-
-            if (item.status === "read") {
-                dots.classList.add("read");
-                dots.textContent = "••";
-            } else if (item.status === "delivered") {
-                dots.textContent = "••";
-            } else {
-                dots.textContent = "•";
+                (data.history || []).forEach(function(item) {
+                    addMessage(item.text || "", item.username || null);
+                });
             }
 
-            line.appendChild(dots);
+            onlineUsers.textContent =
+                "Online: " + (data.users || []).join(", ");
         }
 
-        messages.appendChild(line);
-        messages.scrollTop = messages.scrollHeight;
-    }
-
-    function connectSocket() {
-        if (!hasJoined) {
-            return;
+        if (data.type === "users") {
+            onlineUsers.textContent =
+                "Online: " + data.users.join(", ");
         }
 
-        clearTimeout(reconnectTimer);
+        if (data.type === "chat" && !activeRecipient) {
+            addMessage(data.text, data.username);
+        }
 
-        status.textContent = "Connecting...";
-        status.style.color = "#f6c453";
-        onlineUsers.textContent = "Online: Connecting...";
+        if (data.type === "system") {
+            addMessage(data.text, null, true);
+        }
 
-        const wsUrl =
-            (window.location.protocol === "https:" ? "wss://" : "ws://") +
-            window.location.host +
-            "/ws/" + encodeURIComponent(currentRoom) +
-            "?username=" + encodeURIComponent(myUsername);
+        if (data.type === "private_history") {
+            if (
+                activeRecipient &&
+                data.with.toLowerCase() === activeRecipient.toLowerCase()
+            ) {
+                data.history.forEach(savePrivateMessage);
+                renderPrivateConversation();
+            }
+        }
 
-        const newSocket = new WebSocket(wsUrl);
-        socket = newSocket;
+        if (data.type === "private") {
+            savePrivateMessage(data);
 
-        newSocket.onopen = function() {
-            if (socket !== newSocket) return;
+            const outgoing =
+                data.username.toLowerCase() === myUsername.toLowerCase() &&
+                activeRecipient &&
+                data.to.toLowerCase() === activeRecipient.toLowerCase();
 
-            reconnectAttempts = 0;
+            const incoming =
+                data.to.toLowerCase() === myUsername.toLowerCase() &&
+                activeRecipient &&
+                data.username.toLowerCase() === activeRecipient.toLowerCase();
 
-            status.textContent = "Connected to room: " + currentRoom;
-            status.style.color = "#80ed99";
+            if (outgoing || incoming) {
+                renderPrivateConversation();
+            } else if (data.to.toLowerCase() === myUsername.toLowerCase()) {
+                addMessage(
+                    "New private message from " + data.username +
+                    ". Open their private chat to read it.",
+                    null,
+                    true
+                );
+            }
 
-            setConnected(true);
-
-            if (activeRecipient) {
-                newSocket.send(JSON.stringify({
+            if (incoming && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
                     type: "open_private",
-                    to: activeRecipient
+                    to: data.username
                 }));
             }
-
-            sendPendingMessages();
-        };
-
-        newSocket.onmessage = function(event) {
-            if (socket !== newSocket) return;
-
-            const data = JSON.parse(event.data);
-
-            if (data.type === "welcome") {
-                if (activeRecipient === null) {
-                    messages.innerHTML = "";
-
-                    if (data.history) {
-                        data.history.forEach(function(item) {
-                            addMessage(item.text || "", item.username || null);
-                        });
-                    }
-                }
-
-                if (data.users) {
-                    onlineUsers.textContent =
-                        "Online: " + data.users.join(", ");
-                }
-            }
-
-            if (data.type === "users") {
-                onlineUsers.textContent =
-                    "Online: " + data.users.join(", ");
-            }
-
-            if (data.type === "chat") {
-                if (activeRecipient === null) {
-                    addMessage(data.text, data.username);
-                }
-            }
-
-            if (data.type === "system") {
-                addMessage(data.text, null, true);
-            }
-
-            if (data.type === "private_history") {
-                if (
-                    activeRecipient &&
-                    data.with.toLowerCase() === activeRecipient.toLowerCase()
-                ) {
-                    data.history.forEach(savePrivateMessage);
-                    renderPrivateConversation();
-                }
-            }
-
-            if (data.type === "private") {
-                savePrivateMessage(data);
-
-                const outgoing =
-                    data.username.toLowerCase() === myUsername.toLowerCase() &&
-                    activeRecipient &&
-                    data.to.toLowerCase() === activeRecipient.toLowerCase();
-
-                const incoming =
-                    data.to.toLowerCase() === myUsername.toLowerCase() &&
-                    activeRecipient &&
-                    data.username.toLowerCase() === activeRecipient.toLowerCase();
-
-                if (outgoing || incoming) {
-                    renderPrivateConversation();
-                } else if (
-                    data.to.toLowerCase() === myUsername.toLowerCase()
-                ) {
-                    addMessage(
-                        "New private message from " + data.username +
-                        ". Open a private chat with them to read it.",
-                        null,
-                        true
-                    );
-                }
-
-                // If the recipient is already viewing this conversation,
-                // tell the backend to mark the newly received message as read.
-                if (
-                    incoming &&
-                    socket &&
-                    socket.readyState === WebSocket.OPEN
-                ) {
-                    socket.send(JSON.stringify({
-                        type: "open_private",
-                        to: data.username
-                    }));
-                }
-            }
-
-            if (data.type === "private_status") {
-                const item = privateMessages[data.id];
-
-                if (item) {
-                    item.status = data.status;
-
-                    if (activeRecipient) {
-                        renderPrivateConversation();
-                    }
-                }
-            }
-        };
-
-        newSocket.onclose = function() {
-            if (socket !== newSocket) return;
-
-            socket = null;
-
-            if (!hasJoined || manualClose) {
-                return;
-            }
-
-            status.textContent = "Connection lost. Reconnecting...";
-            status.style.color = "#f6c453";
-            onlineUsers.textContent = "Online: Reconnecting...";
-
-            const delay = Math.min(
-                1000 * Math.pow(2, reconnectAttempts),
-                30000
-            );
-
-            reconnectAttempts++;
-
-            reconnectTimer = setTimeout(function() {
-                if (hasJoined && !manualClose) {
-                    connectSocket();
-                }
-            }, delay);
-        };
-
-        newSocket.onerror = function() {
-            if (socket !== newSocket) return;
-
-            status.textContent = "Connection problem. Trying again...";
-            status.style.color = "#f6c453";
-        };
-    }
-
-    function joinChat() {
-        const username = usernameInput.value.trim();
-        const room = roomInput.value.trim();
-
-        if (!username || !room) {
-            alert("Enter both a username and room name.");
-            return;
         }
 
-        if (hasJoined) {
-            return;
+        if (data.type === "private_status") {
+            const item = privateMessages[data.id];
+
+            if (item) {
+                item.status = data.status;
+                if (activeRecipient) renderPrivateConversation();
+            }
         }
+    };
 
-        myUsername = username;
-        currentRoom = room;
-        activeRecipient = null;
-        pendingMessages = [];
-        reconnectAttempts = 0;
-        manualClose = false;
-        hasJoined = true;
+    newSocket.onclose = function() {
+        if (socket !== newSocket) return;
 
-        messages.innerHTML = "";
-        chatMode.textContent = "Mode: Group Chat";
+        socket = null;
 
-        setConnected(true);
-        connectSocket();
-    }
-
-    function openPrivate() {
-        const recipient = recipientInput.value.trim();
-
-        if (!hasJoined) {
-            alert("Join a chat room first.");
-            return;
-        }
-
-        if (!recipient) {
-            alert("Select a contact first.");
-            return;
-        }
-
-        if (recipient.toLowerCase() === myUsername.toLowerCase()) {
-            alert("You cannot message yourself.");
-            return;
-        }
-
-        activeRecipient = recipient;
-        chatMode.textContent = "Mode: Private Chat with " + recipient;
-
-        messages.innerHTML = "";
-        addMessage("Opening private conversation...", null, true);
-
-        if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-                type: "open_private",
-                to: recipient
-            }));
-        } else {
-            addMessage(
-                "You are reconnecting. Your conversation will load when connected.",
-                null,
-                true
-            );
-        }
-
-        messageInput.focus();
-    }
-
-    function openGroup() {
         if (!hasJoined) return;
 
-        activeRecipient = null;
-        messages.innerHTML = "";
-        chatMode.textContent = "Mode: Group Chat";
+        status.textContent = "Connection lost. Reconnecting...";
+        status.style.color = "#f6c453";
 
-        addMessage("You are back in the group chat.", null, true);
+        const delay = Math.min(
+            1000 * Math.pow(2, reconnectAttempts),
+            30000
+        );
+
+        reconnectAttempts++;
+
+        reconnectTimer = setTimeout(function() {
+            if (hasJoined) connectSocket();
+        }, delay);
+    };
+
+    newSocket.onerror = function() {
+        status.textContent = "Connection problem. Trying again...";
+    };
+}
+
+function joinChat() {
+    const room = document.getElementById("room").value.trim();
+
+    if (!room) {
+        alert("Enter a room name.");
+        return;
     }
 
-    function sendMessage() {
-        const text = messageInput.value.trim();
+    if (hasJoined) return;
 
-        if (!hasJoined || !text) {
-            return;
-        }
+    currentRoom = room;
+    activeRecipient = null;
+    pendingMessages = [];
+    reconnectAttempts = 0;
+    hasJoined = true;
 
-        let outgoing;
+    messages.innerHTML = "";
+    chatMode.textContent = "Mode: Group Chat";
 
-        if (activeRecipient) {
-            outgoing = {
-                type: "private",
-                to: activeRecipient,
-                text: text
-            };
-        } else {
-            outgoing = {
-                type: "chat",
-                text: text
-            };
-        }
+    setConnected();
+    connectSocket();
+}
 
-        if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify(outgoing));
-        } else {
-            pendingMessages.push(outgoing);
+function openPrivate() {
+    const recipient = recipientInput.value.trim();
 
-            addMessage(
-                "Message saved temporarily. It will be sent when KCHAT reconnects.",
-                null,
-                true
-            );
-        }
-
-        messageInput.value = "";
-        messageInput.focus();
+    if (!hasJoined) {
+        alert("Join a chat room first.");
+        return;
     }
 
-    messageInput.addEventListener("keydown", function(event) {
-        if (event.key === "Enter") {
-            sendMessage();
-        }
-    });
+    if (!recipient) {
+        alert("Select a contact first.");
+        return;
+    }
 
-    window.addEventListener("online", function() {
-        if (hasJoined && (!socket || socket.readyState !== WebSocket.OPEN)) {
-            clearTimeout(reconnectTimer);
-            connectSocket();
-        }
-    });
+    activeRecipient = recipient;
+
+    chatMode.textContent = "Mode: Private Chat with " + recipient;
+    messages.innerHTML = "";
+    addMessage("Opening private conversation...", null, true);
+
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+            type: "open_private",
+            to: recipient
+        }));
+    }
+
+    messageInput.focus();
+}
+
+function openGroup() {
+    if (!hasJoined) return;
+
+    activeRecipient = null;
+    messages.innerHTML = "";
+    chatMode.textContent = "Mode: Group Chat";
+
+    addMessage("You are back in the group chat.", null, true);
+}
+
+function sendMessage() {
+    const text = messageInput.value.trim();
+
+    if (!hasJoined || !text) return;
+
+    let outgoing;
+
+    if (activeRecipient) {
+        outgoing = {
+            type: "private",
+            to: activeRecipient,
+            text: text
+        };
+    } else {
+        outgoing = {
+            type: "chat",
+            text: text
+        };
+    }
+
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(outgoing));
+    } else {
+        pendingMessages.push(outgoing);
+        addMessage("Message queued. It will send when reconnected.", null, true);
+    }
+
+    messageInput.value = "";
+    messageInput.focus();
+}
+
+messageInput.addEventListener("keydown", function(event) {
+    if (event.key === "Enter") sendMessage();
+});
+
+window.addEventListener("online", function() {
+    if (hasJoined && (!socket || socket.readyState !== WebSocket.OPEN)) {
+        clearTimeout(reconnectTimer);
+        connectSocket();
+    }
+});
+
+if (token && myUsername) {
+    showChatScreen();
+}
 </script>
+
 </body>
 </html>
