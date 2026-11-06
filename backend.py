@@ -114,6 +114,11 @@ def init_db():
         """)
 
         conn.execute("""
+            CREATE INDEX IF NOT EXISTS messages_private_sender_idx
+            ON messages(type, username, recipient, created_at)
+        """)
+
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_groups (
                 id BIGSERIAL PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -136,6 +141,30 @@ def init_db():
         conn.execute("""
             CREATE INDEX IF NOT EXISTS group_members_account_idx
             ON group_members(account_id)
+        """)
+
+        # Users blocked by an account.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS blocked_users (
+                owner_id BIGINT REFERENCES accounts(id) ON DELETE CASCADE,
+                blocked_id BIGINT REFERENCES accounts(id) ON DELETE CASCADE,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (owner_id, blocked_id),
+                CHECK(owner_id != blocked_id)
+            )
+        """)
+
+        # Per-conversation settings.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS chat_preferences (
+                owner_id BIGINT REFERENCES accounts(id) ON DELETE CASCADE,
+                peer_id BIGINT REFERENCES accounts(id) ON DELETE CASCADE,
+                pinned BOOLEAN NOT NULL DEFAULT FALSE,
+                hidden BOOLEAN NOT NULL DEFAULT FALSE,
+                updated_at TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (owner_id, peer_id),
+                CHECK(owner_id != peer_id)
+            )
         """)
 
 
@@ -287,10 +316,6 @@ async def register(request: Request):
                 "error": "Enter a valid phone number, including its country code if possible."
             }, status_code=400)
 
-        # USERNAME RULE:
-        # Any characters are allowed, including symbols,
-        # letters, numbers and spaces.
-        # Only the length is restricted to 3-30 characters.
         if len(username) < 3 or len(username) > 30:
             return JSONResponse({
                 "error": "Username must be between 3 and 30 characters."
@@ -894,6 +919,464 @@ async def remove_group_member(group_id: int, username: str, request: Request):
     }
 
 
+# ---------------- INBOX AND CHAT SETTINGS ----------------
+
+@app.get("/api/inbox")
+async def get_inbox(request: Request, include_hidden: bool = False):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
+
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT *
+            FROM messages
+            WHERE type = 'private'
+            AND (
+                LOWER(username) = %s
+                OR LOWER(recipient) = %s
+            )
+            ORDER BY created_at DESC
+        """, (
+            account["username"].lower(),
+            account["username"].lower()
+        )).fetchall()
+
+        preferences = conn.execute("""
+            SELECT
+                accounts.username,
+                chat_preferences.pinned,
+                chat_preferences.hidden
+            FROM chat_preferences
+            JOIN accounts ON accounts.id = chat_preferences.peer_id
+            WHERE chat_preferences.owner_id = %s
+        """, (account["id"],)).fetchall()
+
+        blocked_rows = conn.execute("""
+            SELECT accounts.username
+            FROM blocked_users
+            JOIN accounts ON accounts.id = blocked_users.blocked_id
+            WHERE blocked_users.owner_id = %s
+        """, (account["id"],)).fetchall()
+
+    preference_map = {
+        row["username"].lower(): {
+            "pinned": row["pinned"],
+            "hidden": row["hidden"]
+        }
+        for row in preferences
+    }
+
+    blocked_names = {
+        row["username"].lower()
+        for row in blocked_rows
+    }
+
+    conversations = {}
+
+    for row in rows:
+        sender = row["username"]
+        recipient = row["recipient"]
+
+        if sender.lower() == account["username"].lower():
+            peer = recipient
+        else:
+            peer = sender
+
+        if not peer:
+            continue
+
+        key = peer.lower()
+
+        if key not in conversations:
+            pref = preference_map.get(key, {})
+
+            conversations[key] = {
+                "username": peer,
+                "last_message": row["text"],
+                "last_message_id": row["id"],
+                "last_message_time": (
+                    row["created_at"].isoformat()
+                    if row["created_at"] else None
+                ),
+                "last_message_sender": sender,
+                "last_message_status": row["status"],
+                "unread_count": 0,
+                "pinned": pref.get("pinned", False),
+                "hidden": pref.get("hidden", False),
+                "blocked": key in blocked_names
+            }
+
+        if (
+            recipient
+            and recipient.lower() == account["username"].lower()
+            and sender.lower() != account["username"].lower()
+            and row["status"] != "read"
+        ):
+            conversations[key]["unread_count"] += 1
+
+    inbox = list(conversations.values())
+
+    if not include_hidden:
+        inbox = [
+            item for item in inbox
+            if not item["hidden"]
+        ]
+
+    inbox.sort(
+        key=lambda item: (
+            item["pinned"],
+            item["last_message_time"] or ""
+        ),
+        reverse=True
+    )
+
+    return {
+        "inbox": inbox,
+        "total": len(inbox)
+    }
+
+
+@app.put("/api/chats/{username}/settings")
+async def update_chat_settings(username: str, request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
+
+    try:
+        data = await request.json()
+
+        with get_db() as conn:
+            peer = conn.execute("""
+                SELECT id, username
+                FROM accounts
+                WHERE username_key = %s
+            """, (username.lower(),)).fetchone()
+
+            if not peer:
+                return JSONResponse({
+                    "error": "User not found."
+                }, status_code=404)
+
+            if peer["id"] == account["id"]:
+                return JSONResponse({
+                    "error": "You cannot change chat settings for yourself."
+                }, status_code=400)
+
+            current = conn.execute("""
+                SELECT pinned, hidden
+                FROM chat_preferences
+                WHERE owner_id = %s AND peer_id = %s
+            """, (account["id"], peer["id"])).fetchone()
+
+            pinned = current["pinned"] if current else False
+            hidden = current["hidden"] if current else False
+
+            if "pinned" in data:
+                if not isinstance(data["pinned"], bool):
+                    return JSONResponse({
+                        "error": "Pinned must be true or false."
+                    }, status_code=400)
+                pinned = data["pinned"]
+
+            if "hidden" in data:
+                if not isinstance(data["hidden"], bool):
+                    return JSONResponse({
+                        "error": "Hidden must be true or false."
+                    }, status_code=400)
+                hidden = data["hidden"]
+
+            conn.execute("""
+                INSERT INTO chat_preferences (
+                    owner_id, peer_id, pinned, hidden, updated_at
+                )
+                VALUES (%s, %s, %s, %s, NOW())
+                ON CONFLICT (owner_id, peer_id)
+                DO UPDATE SET
+                    pinned = EXCLUDED.pinned,
+                    hidden = EXCLUDED.hidden,
+                    updated_at = NOW()
+            """, (
+                account["id"],
+                peer["id"],
+                pinned,
+                hidden
+            ))
+
+        return {
+            "success": True,
+            "username": peer["username"],
+            "pinned": pinned,
+            "hidden": hidden
+        }
+
+    except Exception as error:
+        print("Chat settings error:", error)
+
+        return JSONResponse({
+            "error": "Could not update chat settings."
+        }, status_code=500)
+
+
+# ---------------- MESSAGE SEARCH ----------------
+
+@app.get("/api/messages/search")
+async def search_messages(
+    request: Request,
+    q: str = "",
+    with_user: str = ""
+):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
+
+    query = q.strip()
+
+    if len(query) < 2:
+        return JSONResponse({
+            "error": "Enter at least 2 characters to search.",
+            "results": []
+        }, status_code=400)
+
+    if len(query) > 200:
+        query = query[:200]
+
+    parameters = [
+        account["username"].lower(),
+        account["username"].lower(),
+        "%" + query + "%"
+    ]
+
+    sql = """
+        SELECT *
+        FROM messages
+        WHERE type = 'private'
+        AND (
+            LOWER(username) = %s
+            OR LOWER(recipient) = %s
+        )
+        AND text ILIKE %s
+    """
+
+    if with_user.strip():
+        sql += """
+            AND (
+                LOWER(username) = %s
+                OR LOWER(recipient) = %s
+            )
+        """
+        parameters.extend([
+            with_user.strip().lower(),
+            with_user.strip().lower()
+        ])
+
+    sql += " ORDER BY created_at DESC LIMIT 100"
+
+    with get_db() as conn:
+        rows = conn.execute(sql, tuple(parameters)).fetchall()
+
+    results = []
+
+    for row in rows:
+        peer = (
+            row["recipient"]
+            if row["username"].lower() == account["username"].lower()
+            else row["username"]
+        )
+
+        results.append({
+            "id": row["id"],
+            "username": row["username"],
+            "to": row["recipient"],
+            "with": peer,
+            "text": row["text"],
+            "status": row["status"],
+            "created_at": (
+                row["created_at"].isoformat()
+                if row["created_at"] else None
+            )
+        })
+
+    return {
+        "success": True,
+        "query": query,
+        "results": results,
+        "total": len(results)
+    }
+
+
+# ---------------- MARK ALL AS READ ----------------
+
+@app.post("/api/messages/read-all")
+async def mark_all_messages_read(request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
+
+    with get_db() as conn:
+        rows = conn.execute("""
+            UPDATE messages
+            SET status = 'read'
+            WHERE type = 'private'
+            AND LOWER(recipient) = %s
+            AND status != 'read'
+            RETURNING id, username, room
+        """, (account["username"].lower(),)).fetchall()
+
+    for row in rows:
+        item = {
+            "id": row["id"],
+            "username": row["username"],
+            "status": "read"
+        }
+        await update_sender_status(row["room"], item)
+
+    return {
+        "success": True,
+        "marked_read": len(rows),
+        "message": "All private messages marked as read."
+    }
+
+
+# ---------------- BLOCKED CONTACTS ----------------
+
+@app.get("/api/blocks")
+async def get_blocked_users(request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
+
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT accounts.username, blocked_users.created_at
+            FROM blocked_users
+            JOIN accounts ON accounts.id = blocked_users.blocked_id
+            WHERE blocked_users.owner_id = %s
+            ORDER BY blocked_users.created_at DESC
+        """, (account["id"],)).fetchall()
+
+    return {
+        "blocked": [
+            {
+                "username": row["username"],
+                "created_at": (
+                    row["created_at"].isoformat()
+                    if row["created_at"] else None
+                )
+            }
+            for row in rows
+        ]
+    }
+
+
+@app.post("/api/blocks")
+async def block_user(request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
+
+    try:
+        data = await request.json()
+        username = str(data.get("username", "")).strip()
+
+        if not username:
+            return JSONResponse({
+                "error": "Enter a username to block."
+            }, status_code=400)
+
+        with get_db() as conn:
+            target = conn.execute("""
+                SELECT id, username
+                FROM accounts
+                WHERE username_key = %s
+            """, (username.lower(),)).fetchone()
+
+            if not target:
+                return JSONResponse({
+                    "error": "User not found."
+                }, status_code=404)
+
+            if target["id"] == account["id"]:
+                return JSONResponse({
+                    "error": "You cannot block yourself."
+                }, status_code=400)
+
+            conn.execute("""
+                INSERT INTO blocked_users (owner_id, blocked_id)
+                VALUES (%s, %s)
+                ON CONFLICT (owner_id, blocked_id) DO NOTHING
+            """, (account["id"], target["id"]))
+
+        return {
+            "success": True,
+            "username": target["username"],
+            "message": "Contact blocked."
+        }
+
+    except Exception as error:
+        print("Block user error:", error)
+
+        return JSONResponse({
+            "error": "Could not block this user."
+        }, status_code=500)
+
+
+@app.delete("/api/blocks/{username}")
+async def unblock_user(username: str, request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse({
+            "error": "Please log in again."
+        }, status_code=401)
+
+    with get_db() as conn:
+        target = conn.execute("""
+            SELECT id, username
+            FROM accounts
+            WHERE username_key = %s
+        """, (username.lower(),)).fetchone()
+
+        if not target:
+            return JSONResponse({
+                "error": "User not found."
+            }, status_code=404)
+
+        result = conn.execute("""
+            DELETE FROM blocked_users
+            WHERE owner_id = %s AND blocked_id = %s
+            RETURNING blocked_id
+        """, (account["id"], target["id"])).fetchone()
+
+    if not result:
+        return JSONResponse({
+            "error": "That user is not blocked."
+        }, status_code=404)
+
+    return {
+        "success": True,
+        "message": target["username"] + " has been unblocked."
+    }
+
+
 # ---------------- CHAT HELPERS ----------------
 
 async def broadcast(room, message):
@@ -1073,6 +1556,24 @@ async def send_online_users(room):
     })
 
 
+def users_blocked(user_id, other_id):
+    with get_db() as conn:
+        result = conn.execute("""
+            SELECT 1
+            FROM blocked_users
+            WHERE (owner_id = %s AND blocked_id = %s)
+               OR (owner_id = %s AND blocked_id = %s)
+            LIMIT 1
+        """, (
+            user_id,
+            other_id,
+            other_id,
+            user_id
+        )).fetchone()
+
+    return bool(result)
+
+
 # ---------------- WEBSITE ----------------
 
 @app.get("/")
@@ -1179,6 +1680,29 @@ async def chat(websocket: WebSocket, room: str):
                     continue
 
                 with get_db() as conn:
+                    target = conn.execute("""
+                        SELECT id, username
+                        FROM accounts
+                        WHERE username_key = %s
+                    """, (recipient.lower(),)).fetchone()
+
+                if not target:
+                    await websocket.send_json({
+                        "type": "system",
+                        "text": "That user does not exist."
+                    })
+                    continue
+
+                if users_blocked(account["id"], target["id"]):
+                    await websocket.send_json({
+                        "type": "system",
+                        "text": "This conversation is unavailable because one of the users has blocked the other."
+                    })
+                    continue
+
+                recipient = target["username"]
+
+                with get_db() as conn:
                     conn.execute("""
                         UPDATE messages
                         SET status = 'read'
@@ -1226,18 +1750,27 @@ async def chat(websocket: WebSocket, room: str):
                     continue
 
                 with get_db() as conn:
-                    exists = conn.execute("""
-                        SELECT id
+                    target_account = conn.execute("""
+                        SELECT id, username
                         FROM accounts
                         WHERE username_key = %s
                     """, (recipient.lower(),)).fetchone()
 
-                if not exists:
+                if not target_account:
                     await websocket.send_json({
                         "type": "system",
                         "text": "That user does not exist."
                     })
                     continue
+
+                if users_blocked(account["id"], target_account["id"]):
+                    await websocket.send_json({
+                        "type": "system",
+                        "text": "Message not sent. This conversation is blocked."
+                    })
+                    continue
+
+                recipient = target_account["username"]
 
                 item = {
                     "id": uuid.uuid4().hex,
