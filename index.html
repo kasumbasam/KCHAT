@@ -33,13 +33,13 @@ body {
 }
 
 header {
-    padding: 20px;
+    padding: 16px 20px;
     background: #202a3b;
     border-bottom: 1px solid #303b50;
 }
 
 h1 {
-    margin: 0 0 15px;
+    margin: 0 0 12px;
     font-size: 28px;
     color: #70d6ff;
 }
@@ -61,7 +61,7 @@ input, select {
 }
 
 button {
-    padding: 11px 16px;
+    padding: 11px 14px;
     margin: 5px 3px 5px 0;
     border: 0;
     cursor: pointer;
@@ -98,6 +98,45 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     height: 100%;
     flex-direction: column;
     min-height: 0;
+}
+
+.account-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #43516b;
+    border: 2px solid #70d6ff;
+}
+
+#accountName {
+    margin: 0;
+    font-weight: bold;
+}
+
+.profile-controls, .contact-controls {
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #43516b;
+    border-radius: 10px;
+    background: #182232;
+}
+
+.profile-controls h3, .contact-controls h3 {
+    margin: 3px 0 8px;
+    color: #70d6ff;
+    font-size: 15px;
+}
+
+.profile-controls input[type="file"] {
+    padding: 7px;
 }
 
 .join-area, .private-area, .send-area {
@@ -166,8 +205,16 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
 #message { flex: 1; min-width: 100px; }
 
+#contactMessage, #profileMessage {
+    min-height: 18px;
+    margin: 5px 0;
+    font-size: 13px;
+    color: #80ed99;
+}
+
 @media (max-width: 520px) {
     body { padding: 0; }
+
     .chat-app {
         height: 100vh;
         border: 0;
@@ -202,7 +249,28 @@ button:disabled { opacity: .55; cursor: not-allowed; }
         <header>
             <h1>KCHAT</h1>
 
-            <p id="accountName"></p>
+            <div class="account-row">
+                <img id="myAvatar" class="avatar" alt="Profile picture">
+                <p id="accountName"></p>
+            </div>
+
+            <div class="profile-controls">
+                <h3>My Profile Picture</h3>
+                <input id="profileFile" type="file"
+                       accept="image/png,image/jpeg,image/webp">
+                <button onclick="uploadProfilePicture()">
+                    Upload Picture
+                </button>
+                <p id="profileMessage"></p>
+            </div>
+
+            <div class="contact-controls">
+                <h3>Manage Contacts</h3>
+                <input id="newContact" placeholder="Enter registered username">
+                <button onclick="addContact()">Add Contact</button>
+                <button onclick="removeContact()">Remove Selected Contact</button>
+                <p id="contactMessage"></p>
+            </div>
 
             <div class="join-area">
                 <input id="room" value="general" placeholder="Room name">
@@ -336,6 +404,7 @@ function showChatScreen() {
     document.getElementById("accountName").textContent =
         "Logged in as: " + myUsername;
 
+    loadMyProfile();
     loadContacts();
 }
 
@@ -357,27 +426,228 @@ async function loadContacts() {
         recipientInput.innerHTML =
             '<option value="">Select a contact</option>';
 
-        data.contacts.forEach(function(name) {
+        (data.contacts || []).forEach(function(name) {
             const option = document.createElement("option");
             option.value = name;
             option.textContent = name;
             recipientInput.appendChild(option);
         });
 
+        document.getElementById("contactMessage").textContent =
+            (data.contacts || []).length
+            ? "Your contacts are loaded."
+            : "No saved contacts yet. Add a contact above.";
+
     } catch (error) {
         console.error("Could not load contacts:", error);
     }
 }
 
-/* UPDATED LOGOUT FUNCTION */
+async function addContact() {
+    const username =
+        document.getElementById("newContact").value.trim();
+
+    const message = document.getElementById("contactMessage");
+
+    if (!username) {
+        message.textContent = "Enter a username first.";
+        return;
+    }
+
+    try {
+        const response = await fetch("/api/contacts", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({ username: username })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Could not add contact.");
+        }
+
+        document.getElementById("newContact").value = "";
+        message.textContent = "Contact added successfully.";
+
+        await loadContacts();
+
+    } catch (error) {
+        message.textContent = error.message;
+    }
+}
+
+async function removeContact() {
+    const username = recipientInput.value.trim();
+    const message = document.getElementById("contactMessage");
+
+    if (!username) {
+        message.textContent = "Select a contact to remove.";
+        return;
+    }
+
+    if (!confirm("Remove " + username + " from your contacts?")) {
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            "/api/contacts/" + encodeURIComponent(username),
+            {
+                method: "DELETE",
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Could not remove contact.");
+        }
+
+        if (
+            activeRecipient &&
+            activeRecipient.toLowerCase() === username.toLowerCase()
+        ) {
+            activeRecipient = null;
+            chatMode.textContent = "Mode: Group Chat";
+        }
+
+        message.textContent = "Contact removed.";
+        await loadContacts();
+
+    } catch (error) {
+        message.textContent = error.message;
+    }
+}
+
+async function loadMyProfile() {
+    try {
+        const response = await fetch(
+            "/api/profile/" + encodeURIComponent(myUsername),
+            {
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            }
+        );
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        if (data.profile_picture) {
+            document.getElementById("myAvatar").src =
+                data.profile_picture;
+        }
+
+    } catch (error) {
+        console.error("Could not load profile:", error);
+    }
+}
+
+async function uploadProfilePicture() {
+    const fileInput = document.getElementById("profileFile");
+    const message = document.getElementById("profileMessage");
+    const file = fileInput.files[0];
+
+    if (!file) {
+        message.textContent = "Choose a picture first.";
+        return;
+    }
+
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+        message.textContent = "Choose a PNG, JPG or WEBP image.";
+        return;
+    }
+
+    message.textContent = "Preparing picture...";
+
+    try {
+        const dataUrl = await resizeImage(file);
+
+        const response = await fetch("/api/profile", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({
+                profile_picture: dataUrl
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Picture upload failed.");
+        }
+
+        document.getElementById("myAvatar").src = dataUrl;
+        message.textContent = "Profile picture updated successfully.";
+        fileInput.value = "";
+
+    } catch (error) {
+        message.textContent = error.message;
+    }
+}
+
+function resizeImage(file) {
+    return new Promise(function(resolve, reject) {
+        const reader = new FileReader();
+
+        reader.onload = function(event) {
+            const image = new Image();
+
+            image.onload = function() {
+                const maxSize = 500;
+                let width = image.width;
+                let height = image.height;
+
+                if (width > height && width > maxSize) {
+                    height = Math.round(height * maxSize / width);
+                    width = maxSize;
+                } else if (height > maxSize) {
+                    width = Math.round(width * maxSize / height);
+                    height = maxSize;
+                }
+
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+
+                const context = canvas.getContext("2d");
+                context.drawImage(image, 0, 0, width, height);
+
+                resolve(canvas.toDataURL("image/jpeg", 0.8));
+            };
+
+            image.onerror = function() {
+                reject(new Error("Could not read that picture."));
+            };
+
+            image.src = event.target.result;
+        };
+
+        reader.onerror = function() {
+            reject(new Error("Could not load the selected file."));
+        };
+
+        reader.readAsDataURL(file);
+    });
+}
+
 function logout() {
-    // Stop automatic reconnection first
     hasJoined = false;
 
     clearTimeout(reconnectTimer);
 
     if (socket) {
-        // Tell the backend that this user is logging out
         if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({
                 type: "logout"
