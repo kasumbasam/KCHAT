@@ -7,7 +7,6 @@
 
 <style>
 * { box-sizing: border-box; }
-
 html { min-height: 100%; overflow-y: auto; }
 
 body {
@@ -78,9 +77,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 }
 
 .auth-box button { width: 100%; }
-
 .auth-page { display: none; }
-
 .auth-page.active { display: block; }
 
 .auth-logo {
@@ -93,13 +90,11 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     margin-bottom: 8px;
 }
 
-.auth-logo p {
+.auth-logo p, .auth-description {
     color: #aebbd0;
-    margin: 0;
 }
 
 .auth-description {
-    color: #aebbd0;
     line-height: 1.5;
     font-size: 14px;
 }
@@ -183,7 +178,8 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     font-weight: bold;
 }
 
-.profile-controls, .contact-controls, .groups-controls {
+.profile-controls, .contact-controls, .groups-controls,
+.inbox-controls, .search-controls, .blocked-controls {
     padding: 10px;
     margin: 10px 0;
     border: 1px solid #43516b;
@@ -191,7 +187,8 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     background: #182232;
 }
 
-.profile-controls h3, .contact-controls h3, .groups-controls h3 {
+.profile-controls h3, .contact-controls h3, .groups-controls h3,
+.inbox-controls h3, .search-controls h3, .blocked-controls h3 {
     margin: 3px 0 8px;
     color: #70d6ff;
     font-size: 15px;
@@ -206,7 +203,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 }
 
 .private-area { margin-top: 8px; }
-
 .join-area input, .private-area select {
     flex: 1;
     min-width: 100px;
@@ -298,20 +294,76 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     color: #80ed99;
 }
 
-.group-member {
+.group-member, .inbox-item, .search-result, .blocked-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 7px;
-    margin: 5px 0;
+    padding: 10px;
+    margin: 7px 0;
     background: #263249;
-    border-radius: 7px;
+    border-radius: 8px;
+    overflow-wrap: anywhere;
 }
 
-.group-member button {
-    padding: 6px 9px;
+.group-member button, .danger-button {
+    padding: 7px 10px;
     background: #ff8585;
+    color: #271010;
+}
+
+.small-button {
+    padding: 7px 9px;
+    font-size: 12px;
+    margin: 2px;
+}
+
+.inbox-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.inbox-name {
+    font-weight: bold;
+    color: #70d6ff;
+}
+
+.inbox-preview {
+    margin-top: 5px;
+    color: #aebbd0;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.inbox-unread {
+    color: #80ed99;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.inbox-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.empty-note {
+    color: #aebbd0;
+    font-size: 13px;
+    padding: 8px 2px;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+#inboxMessage, #searchMessage, #blockedMessage {
+    min-height: 18px;
+    color: #aebbd0;
+    font-size: 13px;
 }
 
 @media (max-width: 520px) {
@@ -325,6 +377,10 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     header { padding: 14px; }
     #messages { max-height: 450px; }
     .auth-box { margin: 20px auto; }
+
+    .inbox-item, .search-result, .blocked-item {
+        align-items: flex-start;
+    }
 }
 </style>
 </head>
@@ -333,250 +389,276 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
 <main class="chat-app">
 
-    <section id="authScreen" class="auth-box">
+<section id="authScreen" class="auth-box">
 
-        <div id="welcomePage" class="auth-page active">
-            <div class="auth-logo">
-                <h1>KCHAT</h1>
-                <p>Your conversations. Your people.</p>
-            </div>
-
-            <h2>Welcome to KCHAT</h2>
-
-            <p class="auth-description">
-                Connect with friends, send messages and stay in touch.
-            </p>
-
-            <div class="auth-actions">
-                <button onclick="showLoginPage()">Login</button>
-                <button class="secondary-button" onclick="startRegistration()">
-                    Create Account
-                </button>
-            </div>
+    <div id="welcomePage" class="auth-page active">
+        <div class="auth-logo">
+            <h1>KCHAT</h1>
+            <p>Your conversations. Your people.</p>
         </div>
 
-        <div id="loginPage" class="auth-page">
-            <h1>KCHAT</h1>
-            <h2>Login</h2>
+        <h2>Welcome to KCHAT</h2>
+        <p class="auth-description">
+            Connect with friends, send messages and stay in touch.
+        </p>
 
-            <p class="auth-description">
-                Enter your phone number and password to continue.
-            </p>
-
-            <input id="loginPhone" type="tel"
-                   placeholder="Phone number" autocomplete="tel">
-
-            <input id="loginPassword" type="password"
-                   placeholder="Password" autocomplete="current-password">
-
-            <button id="loginButton" onclick="submitLogin()">Login</button>
-
-            <p id="loginError" class="error"></p>
-
-            <button class="secondary-button" onclick="showWelcomePage()">
-                Back
+        <div class="auth-actions">
+            <button onclick="showLoginPage()">Login</button>
+            <button class="secondary-button" onclick="startRegistration()">
+                Create Account
             </button>
+        </div>
+    </div>
 
-            <p class="switch" onclick="startRegistration()">
-                Don't have an account? Create Account
-            </p>
+    <div id="loginPage" class="auth-page">
+        <h1>KCHAT</h1>
+        <h2>Login</h2>
+        <p class="auth-description">
+            Enter your phone number and password to continue.
+        </p>
+
+        <input id="loginPhone" type="tel"
+               placeholder="Phone number" autocomplete="tel">
+
+        <input id="loginPassword" type="password"
+               placeholder="Password" autocomplete="current-password">
+
+        <button id="loginButton" onclick="submitLogin()">Login</button>
+        <p id="loginError" class="error"></p>
+
+        <button class="secondary-button" onclick="showWelcomePage()">Back</button>
+
+        <p class="switch" onclick="startRegistration()">
+            Don't have an account? Create Account
+        </p>
+    </div>
+
+    <div id="registerPhonePage" class="auth-page">
+        <h1>KCHAT</h1>
+        <p class="step-indicator">Registration - Step 1 of 4</p>
+        <h2>Your Phone Number</h2>
+        <p class="auth-description">
+            Enter your phone number. You will use it to log in to KCHAT.
+        </p>
+
+        <input id="registerPhone" type="tel"
+               placeholder="Example: +2567XXXXXXXX" autocomplete="tel">
+
+        <p id="phoneError" class="error"></p>
+        <button onclick="nextToPassword()">Continue</button>
+        <button class="secondary-button" onclick="showWelcomePage()">Cancel</button>
+    </div>
+
+    <div id="registerPasswordPage" class="auth-page">
+        <h1>KCHAT</h1>
+        <p class="step-indicator">Registration - Step 2 of 4</p>
+        <h2>Create Password</h2>
+        <p class="auth-description">
+            Choose a password that you can remember and keep private.
+        </p>
+
+        <input id="registerPassword" type="password"
+               placeholder="Create password" autocomplete="new-password">
+
+        <input id="confirmPassword" type="password"
+               placeholder="Confirm password" autocomplete="new-password">
+
+        <p id="passwordError" class="error"></p>
+        <button onclick="nextToUsername()">Continue</button>
+        <button class="secondary-button"
+                onclick="showRegisterPage('registerPhonePage')">Back</button>
+    </div>
+
+    <div id="registerUsernamePage" class="auth-page">
+        <h1>KCHAT</h1>
+        <p class="step-indicator">Registration - Step 3 of 4</p>
+        <h2>Choose Your Username</h2>
+        <p class="auth-description">
+            This is the name other people will see when they chat with you.
+        </p>
+
+        <input id="registerUsername" type="text"
+               placeholder="Choose a username" maxlength="30"
+               autocomplete="username">
+
+        <p id="usernameError" class="error"></p>
+        <button onclick="nextToPicture()">Continue</button>
+        <button class="secondary-button"
+                onclick="showRegisterPage('registerPasswordPage')">Back</button>
+    </div>
+
+    <div id="registerPicturePage" class="auth-page">
+        <h1>KCHAT</h1>
+        <p class="step-indicator">Registration - Step 4 of 4</p>
+        <h2>Profile Picture</h2>
+        <p class="auth-description">
+            Add a picture so your friends can recognise you.
+            You can also skip this and add one later.
+        </p>
+
+        <img id="registerPicturePreview"
+             class="picture-preview" alt="Profile picture preview">
+
+        <input id="registerPictureFile" type="file"
+               accept="image/png,image/jpeg,image/webp"
+               onchange="previewRegistrationPicture()">
+
+        <p id="pictureError" class="error"></p>
+        <p id="registrationUploadStatus" class="upload-status">
+            No picture selected.
+        </p>
+
+        <button id="finishRegistrationButton" onclick="finishRegistration()">
+            Create My Account
+        </button>
+
+        <button class="secondary-button"
+                onclick="showRegisterPage('registerUsernamePage')">Back</button>
+    </div>
+
+    <div id="registrationSuccessPage" class="auth-page">
+        <div class="auth-logo"><h1>KCHAT</h1></div>
+        <h2>Account Created!</h2>
+        <p class="auth-description">
+            Your KCHAT account has been created successfully.
+            You can now start connecting with people.
+        </p>
+
+        <p id="registrationResultMessage" class="upload-status uploaded"></p>
+        <button onclick="enterNewAccount()">Continue to KCHAT</button>
+    </div>
+
+</section>
+
+
+<section id="chatScreen">
+
+<header>
+    <h1>KCHAT</h1>
+
+    <div class="account-row">
+        <img id="myAvatar" class="avatar" alt="Profile picture">
+        <p id="accountName"></p>
+    </div>
+
+    <div class="profile-controls">
+        <h3>My Profile Picture</h3>
+        <input id="profileFile" type="file"
+               accept="image/png,image/jpeg,image/webp">
+        <button id="profileUploadButton" onclick="uploadProfilePicture()">
+            Upload Picture
+        </button>
+        <p id="profileMessage" class="upload-status"></p>
+    </div>
+
+    <!-- INBOX -->
+    <div class="inbox-controls">
+        <div class="section-title">
+            <h3>Inbox</h3>
+            <button class="small-button" onclick="loadInbox()">Refresh</button>
         </div>
 
-        <div id="registerPhonePage" class="auth-page">
-            <h1>KCHAT</h1>
-            <p class="step-indicator">Registration - Step 1 of 4</p>
-            <h2>Your Phone Number</h2>
+        <button onclick="markAllRead()">Mark All as Read</button>
+        <button class="secondary-button" onclick="loadInbox(true)">
+            Show Hidden Chats
+        </button>
 
-            <p class="auth-description">
-                Enter your phone number. You will use it to log in to KCHAT.
-            </p>
-
-            <input id="registerPhone" type="tel"
-                   placeholder="Example: +2567XXXXXXXX" autocomplete="tel">
-
-            <p id="phoneError" class="error"></p>
-
-            <button onclick="nextToPassword()">Continue</button>
-            <button class="secondary-button"
-                    onclick="showWelcomePage()">Cancel</button>
+        <div id="inboxList">
+            <p class="empty-note">Your conversations will appear here.</p>
         </div>
+        <p id="inboxMessage"></p>
+    </div>
 
-        <div id="registerPasswordPage" class="auth-page">
-            <h1>KCHAT</h1>
-            <p class="step-indicator">Registration - Step 2 of 4</p>
-            <h2>Create Password</h2>
+    <!-- SEARCH MESSAGES -->
+    <div class="search-controls">
+        <h3>Search Messages</h3>
+        <input id="messageSearchQuery"
+               placeholder="Search for a message...">
 
-            <p class="auth-description">
-                Choose a password that you can remember and keep private.
-            </p>
+        <input id="messageSearchUser"
+               placeholder="Optional: search with a username">
 
-            <input id="registerPassword" type="password"
-                   placeholder="Create password" autocomplete="new-password">
+        <button onclick="searchMessages()">Search</button>
+        <button class="secondary-button" onclick="clearMessageSearch()">
+            Clear Search
+        </button>
 
-            <input id="confirmPassword" type="password"
-                   placeholder="Confirm password" autocomplete="new-password">
+        <p id="searchMessage"></p>
+        <div id="searchResults"></div>
+    </div>
 
-            <p id="passwordError" class="error"></p>
+    <!-- BLOCKED CONTACTS -->
+    <div class="blocked-controls">
+        <h3>Blocked Contacts</h3>
+        <button onclick="loadBlockedUsers()">View Blocked Contacts</button>
+        <div id="blockedList"></div>
+        <p id="blockedMessage"></p>
+    </div>
 
-            <button onclick="nextToUsername()">Continue</button>
-            <button class="secondary-button"
-                    onclick="showRegisterPage('registerPhonePage')">Back</button>
-        </div>
+    <div class="contact-controls">
+        <h3>Manage Contacts</h3>
+        <input id="newContact" placeholder="Enter registered username">
+        <button onclick="addContact()">Add Contact</button>
+        <button onclick="removeContact()">Remove Selected Contact</button>
+        <p id="contactMessage"></p>
+    </div>
 
-        <div id="registerUsernamePage" class="auth-page">
-            <h1>KCHAT</h1>
-            <p class="step-indicator">Registration - Step 3 of 4</p>
-            <h2>Choose Your Username</h2>
+    <div class="groups-controls">
+        <h3>My Groups</h3>
 
-            <p class="auth-description">
-                This is the name other people will see when they chat with you.
-            </p>
+        <input id="newGroupName" placeholder="Enter a new group name">
+        <button onclick="createGroup()">Create Group</button>
 
-            <input id="registerUsername" type="text"
-                   placeholder="Choose a username" maxlength="30"
-                   autocomplete="username">
+        <select id="myGroups" onchange="selectGroup()">
+            <option value="">Select one of your groups</option>
+        </select>
 
-            <p id="usernameError" class="error"></p>
+        <button onclick="openManagedGroup()">Open Group Chat</button>
+        <button onclick="loadGroupMembers()">View Members</button>
 
-            <button onclick="nextToPicture()">Continue</button>
-            <button class="secondary-button"
-                    onclick="showRegisterPage('registerPasswordPage')">Back</button>
-        </div>
+        <input id="groupMemberName"
+               placeholder="Username to add to selected group">
 
-        <div id="registerPicturePage" class="auth-page">
-            <h1>KCHAT</h1>
-            <p class="step-indicator">Registration - Step 4 of 4</p>
-            <h2>Profile Picture</h2>
+        <button onclick="addGroupMember()">Add Member</button>
+        <div id="groupMembers"></div>
+        <p id="groupMessage"></p>
+    </div>
 
-            <p class="auth-description">
-                Add a picture so your friends can recognise you.
-                You can also skip this and add one later.
-            </p>
+    <div class="join-area">
+        <input id="room" value="general" placeholder="Room name">
+        <button id="joinButton" onclick="joinChat()">Join Chat</button>
+        <button onclick="logout()">Logout</button>
+    </div>
 
-            <img id="registerPicturePreview"
-                 class="picture-preview" alt="Profile picture preview">
+    <div class="private-area">
+        <select id="recipient" disabled>
+            <option value="">Select a contact</option>
+        </select>
 
-            <input id="registerPictureFile" type="file"
-                   accept="image/png,image/jpeg,image/webp"
-                   onchange="previewRegistrationPicture()">
+        <button id="privateButton" onclick="openPrivate()" disabled>
+            Private Chat
+        </button>
 
-            <p id="pictureError" class="error"></p>
-            <p id="registrationUploadStatus" class="upload-status">
-                No picture selected.
-            </p>
+        <button id="groupButton" onclick="openGroup()" disabled>
+            Group Chat
+        </button>
+    </div>
 
-            <button id="finishRegistrationButton"
-                    onclick="finishRegistration()">
-                Create My Account
-            </button>
+    <p id="status">Not connected</p>
+    <p id="chatMode">Mode: Group Chat</p>
+    <p id="onlineUsers">Online: Nobody</p>
+</header>
 
-            <button class="secondary-button"
-                    onclick="showRegisterPage('registerUsernamePage')">Back</button>
-        </div>
+<section id="messages" aria-live="polite"></section>
 
-        <div id="registrationSuccessPage" class="auth-page">
-            <div class="auth-logo">
-                <h1>KCHAT</h1>
-            </div>
+<div class="send-area">
+    <input id="message" placeholder="Write a message..." disabled>
+    <button id="sendButton" onclick="sendMessage()" disabled>Send</button>
+</div>
 
-            <h2>Account Created!</h2>
-
-            <p class="auth-description">
-                Your KCHAT account has been created successfully.
-                You can now start connecting with people.
-            </p>
-
-            <p id="registrationResultMessage" class="upload-status uploaded"></p>
-
-            <button onclick="enterNewAccount()">Continue to KCHAT</button>
-        </div>
-
-    </section>
-
-    <section id="chatScreen">
-
-        <header>
-            <h1>KCHAT</h1>
-
-            <div class="account-row">
-                <img id="myAvatar" class="avatar" alt="Profile picture">
-                <p id="accountName"></p>
-            </div>
-
-            <div class="profile-controls">
-                <h3>My Profile Picture</h3>
-                <input id="profileFile" type="file"
-                       accept="image/png,image/jpeg,image/webp">
-                <button id="profileUploadButton"
-                        onclick="uploadProfilePicture()">Upload Picture</button>
-                <p id="profileMessage" class="upload-status"></p>
-            </div>
-
-            <div class="contact-controls">
-                <h3>Manage Contacts</h3>
-                <input id="newContact" placeholder="Enter registered username">
-                <button onclick="addContact()">Add Contact</button>
-                <button onclick="removeContact()">Remove Selected Contact</button>
-                <p id="contactMessage"></p>
-            </div>
-
-            <div class="groups-controls">
-                <h3>My Groups</h3>
-
-                <input id="newGroupName" placeholder="Enter a new group name">
-                <button onclick="createGroup()">Create Group</button>
-
-                <select id="myGroups" onchange="selectGroup()">
-                    <option value="">Select one of your groups</option>
-                </select>
-
-                <button onclick="openManagedGroup()">Open Group Chat</button>
-                <button onclick="loadGroupMembers()">View Members</button>
-
-                <input id="groupMemberName"
-                       placeholder="Username to add to selected group">
-
-                <button onclick="addGroupMember()">Add Member</button>
-
-                <div id="groupMembers"></div>
-                <p id="groupMessage"></p>
-            </div>
-
-            <div class="join-area">
-                <input id="room" value="general" placeholder="Room name">
-                <button id="joinButton" onclick="joinChat()">Join Chat</button>
-                <button onclick="logout()">Logout</button>
-            </div>
-
-            <div class="private-area">
-                <select id="recipient" disabled>
-                    <option value="">Select a contact</option>
-                </select>
-
-                <button id="privateButton" onclick="openPrivate()" disabled>
-                    Private Chat
-                </button>
-
-                <button id="groupButton" onclick="openGroup()" disabled>
-                    Group Chat
-                </button>
-            </div>
-
-            <p id="status">Not connected</p>
-            <p id="chatMode">Mode: Group Chat</p>
-            <p id="onlineUsers">Online: Nobody</p>
-        </header>
-
-        <section id="messages" aria-live="polite"></section>
-
-        <div class="send-area">
-            <input id="message" placeholder="Write a message..." disabled>
-            <button id="sendButton" onclick="sendMessage()" disabled>Send</button>
-        </div>
-
-    </section>
-
+</section>
 </main>
+
 
 <script>
 let token = localStorage.getItem("kchat_token") || "";
@@ -594,8 +676,8 @@ let groupMessages = [];
 
 let myGroups = [];
 let selectedGroup = null;
-
 let registrationProfilePicture = null;
+
 let registrationData = {
     phone_number: "",
     password: "",
@@ -613,20 +695,47 @@ const onlineUsers = document.getElementById("onlineUsers");
 const privateMessages = {};
 
 
+// ---------------- GENERAL API HELPER ----------------
+
+async function apiRequest(url, method = "GET", body = null) {
+    const options = {
+        method: method,
+        headers: {
+            "Authorization": "Bearer " + token
+        }
+    };
+
+    if (body !== null) {
+        options.headers["Content-Type"] = "application/json";
+        options.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(url, options);
+
+    let data = {};
+
+    try {
+        data = await response.json();
+    } catch (err) {
+        data = {};
+    }
+
+    if (!response.ok) {
+        throw new Error(data.error || data.message || "Request failed.");
+    }
+
+    return data;
+}
+
+
 // ---------------- UPLOAD STATUS HELPERS ----------------
 
 function setUploadStatus(element, text, type) {
     element.textContent = text;
     element.className = "upload-status";
 
-    if (type) {
-        element.classList.add(type);
-    }
+    if (type) element.classList.add(type);
 }
-
-
-// This sends JSON and reports real upload progress.
-// It also detects slow or failed connections.
 
 function sendJsonWithProgress(url, method, body, onProgress) {
     return new Promise(function(resolve, reject) {
@@ -645,7 +754,6 @@ function sendJsonWithProgress(url, method, body, onProgress) {
                 const percent = Math.round(
                     (event.loaded / event.total) * 100
                 );
-
                 onProgress(percent);
             }
         };
@@ -670,15 +778,11 @@ function sendJsonWithProgress(url, method, body, onProgress) {
         };
 
         xhr.onerror = function() {
-            reject(new Error(
-                "Network connection failed. Check your internet and try again."
-            ));
+            reject(new Error("Network connection failed. Check your internet."));
         };
 
         xhr.ontimeout = function() {
-            reject(new Error(
-                "Upload timed out. Your network may be slow. Please try again."
-            ));
+            reject(new Error("Upload timed out. Please try again."));
         };
 
         xhr.onabort = function() {
@@ -729,7 +833,6 @@ function startRegistration() {
     document.getElementById("confirmPassword").value = "";
     document.getElementById("registerUsername").value = "";
     document.getElementById("registerPictureFile").value = "";
-
     document.getElementById("registerPicturePreview").removeAttribute("src");
 
     document.getElementById("phoneError").textContent = "";
@@ -749,7 +852,6 @@ function startRegistration() {
 function nextToPassword() {
     const phone = document.getElementById("registerPhone").value.trim();
     const error = document.getElementById("phoneError");
-
     const digits = phone.replace(/\D/g, "");
 
     if (!phone || digits.length < 7 || digits.length > 15) {
@@ -758,18 +860,13 @@ function nextToPassword() {
     }
 
     registrationData.phone_number = phone;
-
     error.textContent = "";
     showRegisterPage("registerPasswordPage");
 }
 
 function nextToUsername() {
-    const password =
-        document.getElementById("registerPassword").value;
-
-    const confirm =
-        document.getElementById("confirmPassword").value;
-
+    const password = document.getElementById("registerPassword").value;
+    const confirm = document.getElementById("confirmPassword").value;
     const error = document.getElementById("passwordError");
 
     if (!password) {
@@ -788,15 +885,12 @@ function nextToUsername() {
     }
 
     registrationData.password = password;
-
     error.textContent = "";
     showRegisterPage("registerUsernamePage");
 }
 
 function nextToPicture() {
-    const username =
-        document.getElementById("registerUsername").value.trim();
-
+    const username = document.getElementById("registerUsername").value.trim();
     const error = document.getElementById("usernameError");
 
     if (!username) {
@@ -810,7 +904,6 @@ function nextToPicture() {
     }
 
     registrationData.username = username;
-
     error.textContent = "";
     showRegisterPage("registerPicturePage");
 }
@@ -820,20 +913,14 @@ function previewRegistrationPicture() {
     const file = fileInput.files[0];
     const errorBox = document.getElementById("pictureError");
     const preview = document.getElementById("registerPicturePreview");
-    const uploadStatus =
-        document.getElementById("registrationUploadStatus");
+    const uploadStatus = document.getElementById("registrationUploadStatus");
 
     errorBox.textContent = "";
     registrationProfilePicture = null;
 
     if (!file) {
         preview.removeAttribute("src");
-
-        setUploadStatus(
-            uploadStatus,
-            "No picture selected.",
-            ""
-        );
+        setUploadStatus(uploadStatus, "No picture selected.", "");
         return;
     }
 
@@ -841,7 +928,6 @@ function previewRegistrationPicture() {
         errorBox.textContent = "Choose a PNG, JPG or WEBP picture.";
         fileInput.value = "";
         preview.removeAttribute("src");
-
         setUploadStatus(uploadStatus, "Failed: unsupported picture type.", "failed");
         return;
     }
@@ -850,7 +936,6 @@ function previewRegistrationPicture() {
         errorBox.textContent = "Picture is too large. Choose one under 10 MB.";
         fileInput.value = "";
         preview.removeAttribute("src");
-
         setUploadStatus(uploadStatus, "Failed: picture is too large.", "failed");
         return;
     }
@@ -879,17 +964,11 @@ function previewRegistrationPicture() {
 // ---------------- FINISH REGISTRATION ----------------
 
 async function finishRegistration() {
-    const button =
-        document.getElementById("finishRegistrationButton");
-
-    const errorBox =
-        document.getElementById("pictureError");
-
-    const uploadStatus =
-        document.getElementById("registrationUploadStatus");
-
-    const resultMessage =
-        document.getElementById("registrationResultMessage");
+    const button = document.getElementById("finishRegistrationButton");
+    const errorBox = document.getElementById("pictureError");
+    const uploadStatus = document.getElementById("registrationUploadStatus");
+    const resultMessage = document.getElementById("registrationResultMessage");
+    const fileInput = document.getElementById("registerPictureFile");
 
     if (button.disabled) return;
 
@@ -897,21 +976,15 @@ async function finishRegistration() {
     button.textContent = "Preparing account...";
     errorBox.textContent = "";
 
-    const fileInput =
-        document.getElementById("registerPictureFile");
-
     const file = fileInput.files[0];
 
     try {
         if (file) {
             setUploadStatus(uploadStatus, "Preparing picture...", "uploading");
-
             registrationProfilePicture = await resizeImage(file);
-
             setUploadStatus(uploadStatus, "Uploading... 0%", "uploading");
         } else {
             registrationProfilePicture = null;
-
             setUploadStatus(
                 uploadStatus,
                 "No profile picture selected. Creating account...",
@@ -919,9 +992,7 @@ async function finishRegistration() {
             );
         }
 
-        registrationData.profile_picture =
-            registrationProfilePicture;
-
+        registrationData.profile_picture = registrationProfilePicture;
         button.textContent = "Uploading...";
 
         const data = await sendJsonWithProgress(
@@ -936,11 +1007,7 @@ async function finishRegistration() {
                         "uploading"
                     );
                 } else {
-                    setUploadStatus(
-                        uploadStatus,
-                        "Creating your account...",
-                        "uploading"
-                    );
+                    setUploadStatus(uploadStatus, "Creating your account...", "uploading");
                 }
             }
         );
@@ -961,20 +1028,14 @@ async function finishRegistration() {
         showAuthPage("registrationSuccessPage");
 
     } catch (err) {
-        const errorMessage =
-            err.message || "Registration failed. Please try again.";
+        errorBox.textContent = err.message || "Registration failed.";
 
-        errorBox.textContent = errorMessage;
-
-        if (file) {
-            setUploadStatus(
-                uploadStatus,
-                "Failed. Check your connection and try again.",
-                "failed"
-            );
-        } else {
-            setUploadStatus(uploadStatus, "Account creation failed.", "failed");
-        }
+        setUploadStatus(
+            uploadStatus,
+            file ? "Failed. Check your connection and try again." :
+                "Account creation failed.",
+            "failed"
+        );
 
     } finally {
         button.disabled = false;
@@ -990,12 +1051,8 @@ function enterNewAccount() {
 // ---------------- LOGIN ----------------
 
 async function submitLogin() {
-    const phone =
-        document.getElementById("loginPhone").value.trim();
-
-    const password =
-        document.getElementById("loginPassword").value;
-
+    const phone = document.getElementById("loginPhone").value.trim();
+    const password = document.getElementById("loginPassword").value;
     const errorBox = document.getElementById("loginError");
     const button = document.getElementById("loginButton");
 
@@ -1010,9 +1067,7 @@ async function submitLogin() {
     try {
         const response = await fetch("/api/login", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 phone_number: phone,
                 password: password
@@ -1035,8 +1090,7 @@ async function submitLogin() {
         showChatScreen();
 
     } catch (err) {
-        errorBox.textContent =
-            err.message || "Login failed. Please try again.";
+        errorBox.textContent = err.message || "Login failed.";
     } finally {
         button.disabled = false;
     }
@@ -1055,6 +1109,7 @@ function showChatScreen() {
     loadMyProfile();
     loadContacts();
     loadGroups();
+    loadInbox();
 }
 
 
@@ -1062,18 +1117,7 @@ function showChatScreen() {
 
 async function loadContacts() {
     try {
-        const response = await fetch("/api/contacts", {
-            headers: {
-                "Authorization": "Bearer " + token
-            }
-        });
-
-        if (!response.ok) {
-            if (response.status === 401) logout();
-            return;
-        }
-
-        const data = await response.json();
+        const data = await apiRequest("/api/contacts");
 
         recipientInput.innerHTML =
             '<option value="">Select a contact</option>';
@@ -1087,8 +1131,8 @@ async function loadContacts() {
 
         document.getElementById("contactMessage").textContent =
             (data.contacts || []).length
-            ? "Your contacts are loaded."
-            : "No saved contacts yet. Add a contact above.";
+                ? "Your contacts are loaded."
+                : "No saved contacts yet. Add a contact above.";
 
     } catch (err) {
         console.error("Could not load contacts:", err);
@@ -1096,9 +1140,7 @@ async function loadContacts() {
 }
 
 async function addContact() {
-    const username =
-        document.getElementById("newContact").value.trim();
-
+    const username = document.getElementById("newContact").value.trim();
     const message = document.getElementById("contactMessage");
 
     if (!username) {
@@ -1107,24 +1149,10 @@ async function addContact() {
     }
 
     try {
-        const response = await fetch("/api/contacts", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            },
-            body: JSON.stringify({ username: username })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || "Could not add contact.");
-        }
+        await apiRequest("/api/contacts", "POST", { username: username });
 
         document.getElementById("newContact").value = "";
         message.textContent = "Contact added successfully.";
-
         await loadContacts();
 
     } catch (err) {
@@ -1141,26 +1169,13 @@ async function removeContact() {
         return;
     }
 
-    if (!confirm("Remove " + username + " from your contacts?")) {
-        return;
-    }
+    if (!confirm("Remove " + username + " from your contacts?")) return;
 
     try {
-        const response = await fetch(
+        await apiRequest(
             "/api/contacts/" + encodeURIComponent(username),
-            {
-                method: "DELETE",
-                headers: {
-                    "Authorization": "Bearer " + token
-                }
-            }
+            "DELETE"
         );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || "Could not remove contact.");
-        }
 
         if (
             activeRecipient &&
@@ -1179,24 +1194,381 @@ async function removeContact() {
 }
 
 
+// ---------------- INBOX ----------------
+
+function getInboxItems(data) {
+    if (Array.isArray(data)) return data;
+    return data.chats || data.inbox || data.conversations || [];
+}
+
+function inboxUsername(item) {
+    return item.username || item.peer_username ||
+        item.contact || item.with || item.other_user || "";
+}
+
+function inboxPreview(item) {
+    const last = item.last_message || item.lastMessage || item.message || {};
+
+    if (typeof last === "string") return last;
+
+    return last.text || item.last_message_text || item.preview || "No message preview";
+}
+
+async function loadInbox(includeHidden = false) {
+    const list = document.getElementById("inboxList");
+    const message = document.getElementById("inboxMessage");
+
+    list.innerHTML = '<p class="empty-note">Loading inbox...</p>';
+
+    try {
+        const data = await apiRequest(
+            "/api/inbox?include_hidden=" + (includeHidden ? "true" : "false")
+        );
+
+        const items = getInboxItems(data);
+        list.innerHTML = "";
+
+        if (!items.length) {
+            list.innerHTML =
+                '<p class="empty-note">No private conversations found yet.</p>';
+            message.textContent = "";
+            return;
+        }
+
+        items.forEach(function(item) {
+            const username = inboxUsername(item);
+
+            if (!username) return;
+
+            const row = document.createElement("div");
+            row.className = "inbox-item";
+
+            const details = document.createElement("div");
+            details.className = "inbox-details";
+
+            const name = document.createElement("div");
+            name.className = "inbox-name";
+            name.textContent = username +
+                (item.pinned ? "  📌" : "") +
+                (item.hidden ? "  (Hidden)" : "");
+
+            const preview = document.createElement("div");
+            preview.className = "inbox-preview";
+            preview.textContent = inboxPreview(item);
+
+            const unread = document.createElement("div");
+            unread.className = "inbox-unread";
+
+            const unreadCount = Number(
+                item.unread_count || item.unread || 0
+            );
+
+            unread.textContent = unreadCount > 0
+                ? unreadCount + " unread message(s)"
+                : "No unread messages";
+
+            details.appendChild(name);
+            details.appendChild(preview);
+            details.appendChild(unread);
+
+            const actions = document.createElement("div");
+            actions.className = "inbox-actions";
+
+            const openButton = document.createElement("button");
+            openButton.className = "small-button";
+            openButton.textContent = "Open";
+            openButton.onclick = function() {
+                openInboxConversation(username);
+            };
+
+            const pinButton = document.createElement("button");
+            pinButton.className = "small-button secondary-button";
+            pinButton.textContent = item.pinned ? "Unpin" : "Pin";
+            pinButton.onclick = function() {
+                setChatSetting(username, { pinned: !item.pinned });
+            };
+
+            const hideButton = document.createElement("button");
+            hideButton.className = "small-button secondary-button";
+            hideButton.textContent = item.hidden ? "Unhide" : "Hide";
+            hideButton.onclick = function() {
+                setChatSetting(username, { hidden: !item.hidden });
+            };
+
+            const blockButton = document.createElement("button");
+            blockButton.className = "small-button danger-button";
+            blockButton.textContent = "Block";
+            blockButton.onclick = function() {
+                blockUser(username);
+            };
+
+            actions.appendChild(openButton);
+            actions.appendChild(pinButton);
+            actions.appendChild(hideButton);
+            actions.appendChild(blockButton);
+
+            row.appendChild(details);
+            row.appendChild(actions);
+            list.appendChild(row);
+        });
+
+        message.textContent = items.length + " conversation(s) loaded.";
+
+    } catch (err) {
+        list.innerHTML = '<p class="empty-note">Could not load inbox.</p>';
+        message.textContent = err.message;
+    }
+}
+
+async function setChatSetting(username, settings) {
+    try {
+        await apiRequest(
+            "/api/chats/" + encodeURIComponent(username) + "/settings",
+            "PUT",
+            settings
+        );
+
+        document.getElementById("inboxMessage").textContent =
+            "Chat settings updated.";
+
+        await loadInbox(true);
+
+    } catch (err) {
+        document.getElementById("inboxMessage").textContent = err.message;
+    }
+}
+
+async function markAllRead() {
+    try {
+        const data = await apiRequest("/api/messages/read-all", "POST", {});
+
+        document.getElementById("inboxMessage").textContent =
+            data.message || "Your messages have been marked as read.";
+
+        await loadInbox(true);
+
+    } catch (err) {
+        document.getElementById("inboxMessage").textContent = err.message;
+    }
+}
+
+function openInboxConversation(username) {
+    const existingOption = Array.from(recipientInput.options).find(function(option) {
+        return option.value.toLowerCase() === username.toLowerCase();
+    });
+
+    if (!existingOption) {
+        const option = document.createElement("option");
+        option.value = username;
+        option.textContent = username;
+        recipientInput.appendChild(option);
+    }
+
+    recipientInput.value = username;
+    activeRecipient = username;
+    currentView = "private";
+
+    chatMode.textContent = "Mode: Private Chat with " + username;
+    messages.innerHTML = "";
+    delete messages.dataset.lastDateKey;
+
+    addMessage("Opening private conversation with " + username, null, true);
+
+    if (!hasJoined) {
+        currentRoom = "general";
+        hasJoined = true;
+        pendingMessages = [];
+        reconnectAttempts = 0;
+        setConnected();
+        connectSocket();
+    } else if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+            type: "open_private",
+            to: username
+        }));
+    }
+
+    messageInput.focus();
+}
+
+
+// ---------------- SEARCH MESSAGES ----------------
+
+async function searchMessages() {
+    const query = document.getElementById("messageSearchQuery").value.trim();
+    const withUser = document.getElementById("messageSearchUser").value.trim();
+    const results = document.getElementById("searchResults");
+    const message = document.getElementById("searchMessage");
+
+    if (!query) {
+        message.textContent = "Enter a word or phrase to search.";
+        return;
+    }
+
+    results.innerHTML = "";
+    message.textContent = "Searching...";
+
+    try {
+        let url = "/api/messages/search?q=" + encodeURIComponent(query);
+
+        if (withUser) {
+            url += "&with_user=" + encodeURIComponent(withUser);
+        }
+
+        const data = await apiRequest(url);
+        const found = data.results || data.messages || [];
+
+        if (!found.length) {
+            message.textContent = "No matching messages found.";
+            return;
+        }
+
+        found.forEach(function(item) {
+            const row = document.createElement("div");
+            row.className = "search-result";
+
+            const details = document.createElement("div");
+            details.className = "inbox-details";
+
+            const sender = document.createElement("strong");
+            sender.textContent = (item.username || item.sender || "Unknown") + ": ";
+
+            const text = document.createElement("span");
+            text.textContent = item.text || "";
+
+            const date = document.createElement("div");
+            date.className = "inbox-preview";
+
+            if (item.created_at) {
+                const parsed = new Date(item.created_at);
+                date.textContent = Number.isNaN(parsed.getTime())
+                    ? ""
+                    : parsed.toLocaleString();
+            }
+
+            details.appendChild(sender);
+            details.appendChild(text);
+            details.appendChild(date);
+
+            row.appendChild(details);
+            results.appendChild(row);
+        });
+
+        message.textContent = found.length + " matching message(s).";
+
+    } catch (err) {
+        message.textContent = err.message;
+    }
+}
+
+function clearMessageSearch() {
+    document.getElementById("messageSearchQuery").value = "";
+    document.getElementById("messageSearchUser").value = "";
+    document.getElementById("searchResults").innerHTML = "";
+    document.getElementById("searchMessage").textContent = "";
+}
+
+
+// ---------------- BLOCKED CONTACTS ----------------
+
+async function loadBlockedUsers() {
+    const list = document.getElementById("blockedList");
+    const message = document.getElementById("blockedMessage");
+
+    list.innerHTML = '<p class="empty-note">Loading blocked contacts...</p>';
+
+    try {
+        const data = await apiRequest("/api/blocks");
+        const users = data.users || data.blocked_users || data.blocks || [];
+
+        list.innerHTML = "";
+
+        if (!users.length) {
+            list.innerHTML =
+                '<p class="empty-note">You have no blocked contacts.</p>';
+            message.textContent = "";
+            return;
+        }
+
+        users.forEach(function(item) {
+            const username = typeof item === "string"
+                ? item
+                : item.username || item.name || "";
+
+            if (!username) return;
+
+            const row = document.createElement("div");
+            row.className = "blocked-item";
+
+            const label = document.createElement("span");
+            label.textContent = username;
+
+            const unblock = document.createElement("button");
+            unblock.className = "small-button";
+            unblock.textContent = "Unblock";
+            unblock.onclick = function() {
+                unblockUser(username);
+            };
+
+            row.appendChild(label);
+            row.appendChild(unblock);
+            list.appendChild(row);
+        });
+
+        message.textContent = users.length + " blocked contact(s).";
+
+    } catch (err) {
+        list.innerHTML = "";
+        message.textContent = err.message;
+    }
+}
+
+async function blockUser(username) {
+    if (!confirm("Block " + username + "? They will not be able to message you.")) {
+        return;
+    }
+
+    try {
+        await apiRequest("/api/blocks", "POST", { username: username });
+
+        document.getElementById("inboxMessage").textContent =
+            username + " has been blocked.";
+
+        await loadBlockedUsers();
+        await loadInbox(true);
+
+    } catch (err) {
+        document.getElementById("inboxMessage").textContent = err.message;
+    }
+}
+
+async function unblockUser(username) {
+    if (!confirm("Unblock " + username + "?")) return;
+
+    try {
+        await apiRequest(
+            "/api/blocks/" + encodeURIComponent(username),
+            "DELETE"
+        );
+
+        document.getElementById("blockedMessage").textContent =
+            username + " has been unblocked.";
+
+        await loadBlockedUsers();
+
+    } catch (err) {
+        document.getElementById("blockedMessage").textContent = err.message;
+    }
+}
+
+
 // ---------------- MY GROUPS ----------------
 
 async function loadGroups() {
     const message = document.getElementById("groupMessage");
 
     try {
-        const response = await fetch("/api/groups", {
-            headers: {
-                "Authorization": "Bearer " + token
-            }
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || "Could not load groups.");
-        }
-
+        const data = await apiRequest("/api/groups");
         myGroups = data.groups || [];
 
         const select = document.getElementById("myGroups");
@@ -1221,11 +1593,9 @@ async function loadGroups() {
 
         selectGroup();
 
-        if (myGroups.length === 0) {
-            message.textContent = "You have not joined any groups yet.";
-        } else {
-            message.textContent = "Your groups are loaded.";
-        }
+        message.textContent = myGroups.length
+            ? "Your groups are loaded."
+            : "You have not joined any groups yet.";
 
     } catch (err) {
         message.textContent = err.message;
@@ -1252,20 +1622,7 @@ async function createGroup() {
     }
 
     try {
-        const response = await fetch("/api/groups", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            },
-            body: JSON.stringify({ name: name })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || "Could not create group.");
-        }
+        const data = await apiRequest("/api/groups", "POST", { name: name });
 
         document.getElementById("newGroupName").value = "";
         message.textContent = "Group created successfully.";
@@ -1273,8 +1630,7 @@ async function createGroup() {
         await loadGroups();
 
         if (data.group) {
-            document.getElementById("myGroups").value =
-                String(data.group.id);
+            document.getElementById("myGroups").value = String(data.group.id);
             selectGroup();
         }
 
@@ -1284,9 +1640,7 @@ async function createGroup() {
 }
 
 async function addGroupMember() {
-    const username =
-        document.getElementById("groupMemberName").value.trim();
-
+    const username = document.getElementById("groupMemberName").value.trim();
     const message = document.getElementById("groupMessage");
 
     if (!selectedGroup) {
@@ -1300,23 +1654,11 @@ async function addGroupMember() {
     }
 
     try {
-        const response = await fetch(
+        await apiRequest(
             "/api/groups/" + selectedGroup.id + "/members",
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + token
-                },
-                body: JSON.stringify({ username: username })
-            }
+            "POST",
+            { username: username }
         );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || "Could not add member.");
-        }
 
         document.getElementById("groupMemberName").value = "";
         message.textContent = username + " added to the group.";
@@ -1339,20 +1681,9 @@ async function loadGroupMembers() {
     }
 
     try {
-        const response = await fetch(
-            "/api/groups/" + selectedGroup.id + "/members",
-            {
-                headers: {
-                    "Authorization": "Bearer " + token
-                }
-            }
+        const data = await apiRequest(
+            "/api/groups/" + selectedGroup.id + "/members"
         );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || "Could not load members.");
-        }
 
         container.innerHTML = "";
 
@@ -1365,9 +1696,7 @@ async function loadGroupMembers() {
             row.className = "group-member";
 
             const label = document.createElement("span");
-            label.textContent =
-                member.username + " (" + member.role + ")";
-
+            label.textContent = member.username + " (" + member.role + ")";
             row.appendChild(label);
 
             if (
@@ -1396,29 +1725,16 @@ async function loadGroupMembers() {
 async function removeGroupMember(username) {
     if (!selectedGroup) return;
 
-    if (!confirm("Remove " + username + " from this group?")) {
-        return;
-    }
+    if (!confirm("Remove " + username + " from this group?")) return;
 
     const message = document.getElementById("groupMessage");
 
     try {
-        const response = await fetch(
+        const data = await apiRequest(
             "/api/groups/" + selectedGroup.id +
             "/members/" + encodeURIComponent(username),
-            {
-                method: "DELETE",
-                headers: {
-                    "Authorization": "Bearer " + token
-                }
-            }
+            "DELETE"
         );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || "Could not remove member.");
-        }
 
         message.textContent = data.message || "Member removed.";
 
@@ -1472,22 +1788,12 @@ function openManagedGroup() {
 
 async function loadMyProfile() {
     try {
-        const response = await fetch(
-            "/api/profile/" + encodeURIComponent(myUsername),
-            {
-                headers: {
-                    "Authorization": "Bearer " + token
-                }
-            }
+        const data = await apiRequest(
+            "/api/profile/" + encodeURIComponent(myUsername)
         );
 
-        if (!response.ok) return;
-
-        const data = await response.json();
-
         if (data.profile_picture) {
-            document.getElementById("myAvatar").src =
-                data.profile_picture;
+            document.getElementById("myAvatar").src = data.profile_picture;
         }
 
     } catch (err) {
@@ -1509,26 +1815,17 @@ async function uploadProfilePicture() {
     }
 
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-        setUploadStatus(
-            message,
-            "Failed: choose a PNG, JPG or WEBP image.",
-            "failed"
-        );
+        setUploadStatus(message, "Failed: choose a PNG, JPG or WEBP image.", "failed");
         return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-        setUploadStatus(
-            message,
-            "Failed: picture must be under 10 MB.",
-            "failed"
-        );
+        setUploadStatus(message, "Failed: picture must be under 10 MB.", "failed");
         return;
     }
 
     button.disabled = true;
     button.textContent = "Uploading...";
-
     setUploadStatus(message, "Preparing picture...", "uploading");
 
     try {
@@ -1550,17 +1847,11 @@ async function uploadProfilePicture() {
         );
 
         document.getElementById("myAvatar").src = dataUrl;
-
         setUploadStatus(message, "Uploaded", "uploaded");
-
         fileInput.value = "";
 
     } catch (err) {
-        setUploadStatus(
-            message,
-            "Failed: " + (err.message || "Picture upload failed."),
-            "failed"
-        );
+        setUploadStatus(message, "Failed: " + err.message, "failed");
     } finally {
         button.disabled = false;
         button.textContent = "Upload Picture";
@@ -1599,7 +1890,6 @@ function resizeImage(file) {
                 }
 
                 context.drawImage(image, 0, 0, width, height);
-
                 resolve(canvas.toDataURL("image/jpeg", 0.8));
             };
 
@@ -1623,7 +1913,6 @@ function resizeImage(file) {
 
 function logout() {
     hasJoined = false;
-
     clearTimeout(reconnectTimer);
 
     if (socket) {
@@ -1689,7 +1978,6 @@ function addDateSeparator(createdAt) {
     if (!createdAt) return;
 
     const key = dateKey(createdAt);
-
     if (messages.dataset.lastDateKey === key) return;
 
     const separator = document.createElement("div");
@@ -1704,9 +1992,7 @@ function addMessage(text, username = null, isSystem = false, createdAt = null) {
     const line = document.createElement("div");
     line.className = isSystem ? "message system" : "message";
 
-    if (createdAt && !isSystem) {
-        addDateSeparator(createdAt);
-    }
+    if (createdAt && !isSystem) addDateSeparator(createdAt);
 
     if (username) {
         const name = document.createElement("strong");
@@ -1759,7 +2045,7 @@ function renderPrivateConversation() {
 
     const conversation = Object.values(privateMessages).filter(function(item) {
         const sender = (item.username || "").toLowerCase();
-        const recipient = (item.to || "").toLowerCase();
+        const recipient = (item.to || item.recipient || "").toLowerCase();
         const me = myUsername.toLowerCase();
         const other = activeRecipient.toLowerCase();
 
@@ -1777,7 +2063,7 @@ function renderPrivateConversation() {
 
 function showPrivateMessage(item) {
     const mine =
-        item.username.toLowerCase() === myUsername.toLowerCase();
+        (item.username || "").toLowerCase() === myUsername.toLowerCase();
 
     if (item.created_at) addDateSeparator(item.created_at);
 
@@ -1788,7 +2074,7 @@ function showPrivateMessage(item) {
     name.textContent = mine ? "You: " : item.username + ": ";
     line.appendChild(name);
 
-    line.appendChild(document.createTextNode(item.text));
+    line.appendChild(document.createTextNode(item.text || ""));
 
     if (item.created_at) {
         const meta = document.createElement("small");
@@ -1871,7 +2157,14 @@ function connectSocket() {
     newSocket.onmessage = function(event) {
         if (socket !== newSocket) return;
 
-        const data = JSON.parse(event.data);
+        let data;
+
+        try {
+            data = JSON.parse(event.data);
+        } catch (err) {
+            console.error("Invalid WebSocket message:", err);
+            return;
+        }
 
         if (data.type === "welcome") {
             groupMessages = data.history || [];
@@ -1896,7 +2189,7 @@ function connectSocket() {
 
         if (data.type === "users") {
             onlineUsers.textContent =
-                "Online: " + data.users.join(", ");
+                "Online: " + (data.users || []).join(", ");
         }
 
         if (data.type === "chat") {
@@ -1921,23 +2214,27 @@ function connectSocket() {
                 activeRecipient &&
                 data.with.toLowerCase() === activeRecipient.toLowerCase()
             ) {
-                data.history.forEach(savePrivateMessage);
+                (data.history || []).forEach(savePrivateMessage);
                 renderPrivateConversation();
+                loadInbox();
             }
         }
 
         if (data.type === "private") {
             savePrivateMessage(data);
 
+            const messageRecipient = (data.to || data.recipient || "").toLowerCase();
+            const senderName = (data.username || "").toLowerCase();
+
             const outgoing =
-                data.username.toLowerCase() === myUsername.toLowerCase() &&
+                senderName === myUsername.toLowerCase() &&
                 activeRecipient &&
-                data.to.toLowerCase() === activeRecipient.toLowerCase();
+                messageRecipient === activeRecipient.toLowerCase();
 
             const incoming =
-                data.to.toLowerCase() === myUsername.toLowerCase() &&
+                messageRecipient === myUsername.toLowerCase() &&
                 activeRecipient &&
-                data.username.toLowerCase() === activeRecipient.toLowerCase();
+                senderName === activeRecipient.toLowerCase();
 
             if (outgoing || incoming) {
                 renderPrivateConversation();
@@ -1949,6 +2246,8 @@ function connectSocket() {
                     to: data.username
                 }));
             }
+
+            loadInbox();
         }
 
         if (data.type === "private_status") {
@@ -1957,9 +2256,7 @@ function connectSocket() {
             if (item) {
                 item.status = data.status;
 
-                if (activeRecipient) {
-                    renderPrivateConversation();
-                }
+                if (activeRecipient) renderPrivateConversation();
             }
         }
     };
@@ -2039,6 +2336,7 @@ function openPrivate() {
 
     chatMode.textContent = "Mode: Private Chat with " + recipient;
     messages.innerHTML = "";
+    delete messages.dataset.lastDateKey;
     addMessage("Opening private conversation...", null, true);
 
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -2115,6 +2413,13 @@ function sendMessage() {
 messageInput.addEventListener("keydown", function(event) {
     if (event.key === "Enter") sendMessage();
 });
+
+document.getElementById("messageSearchQuery").addEventListener(
+    "keydown",
+    function(event) {
+        if (event.key === "Enter") searchMessages();
+    }
+);
 
 window.addEventListener("online", function() {
     if (hasJoined && (!socket || socket.readyState !== WebSocket.OPEN)) {
