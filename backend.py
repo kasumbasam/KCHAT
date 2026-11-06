@@ -1,4 +1,3 @@
-
 import os
 import uuid
 import hashlib
@@ -60,6 +59,11 @@ def init_db():
         """)
 
         conn.execute("""
+            ALTER TABLE accounts
+            ADD COLUMN IF NOT EXISTS about TEXT NOT NULL DEFAULT ''
+        """)
+
+        conn.execute("""
             CREATE UNIQUE INDEX IF NOT EXISTS accounts_phone_key_idx
             ON accounts(phone_key)
             WHERE phone_key IS NOT NULL
@@ -104,6 +108,11 @@ def init_db():
         """)
 
         conn.execute("""
+            ALTER TABLE messages
+            ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ
+        """)
+
+        conn.execute("""
             CREATE INDEX IF NOT EXISTS messages_room_idx
             ON messages(room, created_at)
         """)
@@ -143,7 +152,6 @@ def init_db():
             ON group_members(account_id)
         """)
 
-        # Users blocked by an account.
         conn.execute("""
             CREATE TABLE IF NOT EXISTS blocked_users (
                 owner_id BIGINT REFERENCES accounts(id) ON DELETE CASCADE,
@@ -154,17 +162,40 @@ def init_db():
             )
         """)
 
-        # Per-conversation settings.
         conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_preferences (
                 owner_id BIGINT REFERENCES accounts(id) ON DELETE CASCADE,
                 peer_id BIGINT REFERENCES accounts(id) ON DELETE CASCADE,
                 pinned BOOLEAN NOT NULL DEFAULT FALSE,
                 hidden BOOLEAN NOT NULL DEFAULT FALSE,
+                muted BOOLEAN NOT NULL DEFAULT FALSE,
+                disappearing_seconds INTEGER NOT NULL DEFAULT 0,
+                theme TEXT NOT NULL DEFAULT 'default',
+                media_visibility BOOLEAN NOT NULL DEFAULT TRUE,
                 updated_at TIMESTAMPTZ DEFAULT NOW(),
                 PRIMARY KEY (owner_id, peer_id),
                 CHECK(owner_id != peer_id)
             )
+        """)
+
+        conn.execute("""
+            ALTER TABLE chat_preferences
+            ADD COLUMN IF NOT EXISTS muted BOOLEAN NOT NULL DEFAULT FALSE
+        """)
+
+        conn.execute("""
+            ALTER TABLE chat_preferences
+            ADD COLUMN IF NOT EXISTS disappearing_seconds INTEGER NOT NULL DEFAULT 0
+        """)
+
+        conn.execute("""
+            ALTER TABLE chat_preferences
+            ADD COLUMN IF NOT EXISTS theme TEXT NOT NULL DEFAULT 'default'
+        """)
+
+        conn.execute("""
+            ALTER TABLE chat_preferences
+            ADD COLUMN IF NOT EXISTS media_visibility BOOLEAN NOT NULL DEFAULT TRUE
         """)
 
 
@@ -173,7 +204,7 @@ async def startup():
     init_db()
 
 
-# ---------------- PHONE NUMBER HELPERS ----------------
+# ---------------- PHONE HELPERS ----------------
 
 def normalize_phone(phone):
     phone = str(phone or "").strip()
@@ -202,7 +233,7 @@ def phone_key(phone):
     return re.sub(r"\D", "", normalized)
 
 
-# ---------------- PROFILE PICTURE VALIDATION ----------------
+# ---------------- PROFILE PICTURE ----------------
 
 def validate_picture(picture):
     if picture in (None, ""):
@@ -281,7 +312,8 @@ def get_account_from_token(token):
     with get_db() as conn:
         return conn.execute("""
             SELECT accounts.id, accounts.username,
-                   accounts.phone_number, accounts.profile_picture
+                   accounts.phone_number, accounts.profile_picture,
+                   accounts.about
             FROM sessions
             JOIN accounts ON accounts.id = sessions.account_id
             WHERE sessions.token_hash = %s
@@ -296,7 +328,25 @@ def get_account_from_request(request):
     return get_account_from_token(token)
 
 
-# ---------------- REGISTRATION AND LOGIN ----------------
+def users_blocked(user_id, other_id):
+    with get_db() as conn:
+        result = conn.execute("""
+            SELECT 1
+            FROM blocked_users
+            WHERE (owner_id = %s AND blocked_id = %s)
+               OR (owner_id = %s AND blocked_id = %s)
+            LIMIT 1
+        """, (
+            user_id,
+            other_id,
+            other_id,
+            user_id
+        )).fetchone()
+
+    return bool(result)
+
+
+# ---------------- REGISTRATION ----------------
 
 @app.post("/api/register")
 async def register(request: Request):
@@ -333,8 +383,7 @@ async def register(request: Request):
 
         with get_db() as conn:
             existing_phone = conn.execute("""
-                SELECT id FROM accounts
-                WHERE phone_key = %s
+                SELECT id FROM accounts WHERE phone_key = %s
             """, (normalized_key,)).fetchone()
 
             if existing_phone:
@@ -343,8 +392,7 @@ async def register(request: Request):
                 }, status_code=409)
 
             existing_username = conn.execute("""
-                SELECT id FROM accounts
-                WHERE username_key = %s
+                SELECT id FROM accounts WHERE username_key = %s
             """, (username.lower(),)).fetchone()
 
             if existing_username:
@@ -354,12 +402,8 @@ async def register(request: Request):
 
             account = conn.execute("""
                 INSERT INTO accounts (
-                    username,
-                    username_key,
-                    password_hash,
-                    phone_number,
-                    phone_key,
-                    profile_picture
+                    username, username_key, password_hash,
+                    phone_number, phone_key, profile_picture
                 )
                 VALUES (%s, %s, %s, %s, %s, %s)
                 RETURNING id, username, phone_number
@@ -388,11 +432,12 @@ async def register(request: Request):
 
     except Exception as error:
         print("Registration error:", error)
-
         return JSONResponse({
             "error": "Registration failed. Please try again."
         }, status_code=500)
 
+
+# ---------------- LOGIN ----------------
 
 @app.post("/api/login")
 async def login(request: Request):
@@ -418,15 +463,13 @@ async def login(request: Request):
             if normalized_key:
                 account = conn.execute("""
                     SELECT id, username, phone_number, password_hash
-                    FROM accounts
-                    WHERE phone_key = %s
+                    FROM accounts WHERE phone_key = %s
                 """, (normalized_key,)).fetchone()
 
             if not account:
                 account = conn.execute("""
                     SELECT id, username, phone_number, password_hash
-                    FROM accounts
-                    WHERE username_key = %s
+                    FROM accounts WHERE username_key = %s
                 """, (login_value.lower(),)).fetchone()
 
         if not account or not verify_password(
@@ -448,7 +491,6 @@ async def login(request: Request):
 
     except Exception as error:
         print("Login error:", error)
-
         return JSONResponse({
             "error": "Login failed. Please try again."
         }, status_code=500)
@@ -461,9 +503,7 @@ async def contacts(request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     with get_db() as conn:
         rows = conn.execute("""
@@ -474,9 +514,7 @@ async def contacts(request: Request):
             ORDER BY accounts.username
         """, (account["id"],)).fetchall()
 
-    return {
-        "contacts": [row["username"] for row in rows]
-    }
+    return {"contacts": [row["username"] for row in rows]}
 
 
 @app.post("/api/contacts")
@@ -484,23 +522,18 @@ async def add_contact(request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     try:
         data = await request.json()
         username = str(data.get("username", "")).strip()
 
         if not username:
-            return JSONResponse({
-                "error": "Enter a username."
-            }, status_code=400)
+            return JSONResponse({"error": "Enter a username."}, status_code=400)
 
         with get_db() as conn:
             target = conn.execute("""
-                SELECT id, username
-                FROM accounts
+                SELECT id, username FROM accounts
                 WHERE username_key = %s
             """, (username.lower(),)).fetchone()
 
@@ -528,10 +561,7 @@ async def add_contact(request: Request):
 
     except Exception as error:
         print("Add contact error:", error)
-
-        return JSONResponse({
-            "error": "Could not add contact."
-        }, status_code=500)
+        return JSONResponse({"error": "Could not add contact."}, status_code=500)
 
 
 @app.delete("/api/contacts/{username}")
@@ -539,21 +569,15 @@ async def remove_contact(username: str, request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     with get_db() as conn:
         target = conn.execute("""
-            SELECT id
-            FROM accounts
-            WHERE username_key = %s
+            SELECT id FROM accounts WHERE username_key = %s
         """, (username.lower(),)).fetchone()
 
         if not target:
-            return JSONResponse({
-                "error": "Contact not found."
-            }, status_code=404)
+            return JSONResponse({"error": "Contact not found."}, status_code=404)
 
         result = conn.execute("""
             DELETE FROM contacts
@@ -566,38 +590,40 @@ async def remove_contact(username: str, request: Request):
             "error": "That user is not in your contacts."
         }, status_code=404)
 
-    return {
-        "success": True,
-        "message": "Contact removed."
-    }
+    return {"success": True, "message": "Contact removed."}
 
 
-# ---------------- PROFILE PICTURES ----------------
+# ---------------- PROFILE AND ABOUT ----------------
 
 @app.get("/api/profile/{username}")
 async def get_profile(username: str, request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     with get_db() as conn:
         profile = conn.execute("""
-            SELECT username, profile_picture
+            SELECT id, username, profile_picture, about
             FROM accounts
             WHERE username_key = %s
         """, (username.lower(),)).fetchone()
 
     if not profile:
-        return JSONResponse({
-            "error": "User not found."
-        }, status_code=404)
+        return JSONResponse({"error": "User not found."}, status_code=404)
+
+    # A user's own profile remains visible to them.
+    # Other users cannot view a profile if either person has blocked the other.
+    if profile["id"] != account["id"]:
+        if users_blocked(account["id"], profile["id"]):
+            return JSONResponse({
+                "error": "This profile is unavailable."
+            }, status_code=403)
 
     return {
         "username": profile["username"],
-        "profile_picture": profile["profile_picture"]
+        "profile_picture": profile["profile_picture"],
+        "about": profile["about"] or ""
     }
 
 
@@ -606,36 +632,70 @@ async def update_profile(request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     try:
         data = await request.json()
-        picture = data.get("profile_picture")
 
-        if not validate_picture(picture):
+        if not isinstance(data, dict):
+            return JSONResponse({"error": "Invalid profile information."}, status_code=400)
+
+        updates = []
+        values = []
+
+        if "profile_picture" in data:
+            picture = data.get("profile_picture")
+
+            if not validate_picture(picture):
+                return JSONResponse({
+                    "error": "Use a PNG, JPG or WEBP image under the size limit."
+                }, status_code=400)
+
+            updates.append("profile_picture = %s")
+            values.append(picture)
+
+        if "about" in data:
+            about = data.get("about")
+
+            if not isinstance(about, str):
+                return JSONResponse({
+                    "error": "About must be text."
+                }, status_code=400)
+
+            about = about.strip()
+
+            if len(about) > 500:
+                return JSONResponse({
+                    "error": "About cannot exceed 500 characters."
+                }, status_code=400)
+
+            updates.append("about = %s")
+            values.append(about)
+
+        if not updates:
             return JSONResponse({
-                "error": "Use a PNG, JPG or WEBP image under the size limit."
+                "error": "There is nothing to update."
             }, status_code=400)
 
+        values.append(account["id"])
+
         with get_db() as conn:
-            conn.execute("""
-                UPDATE accounts
-                SET profile_picture = %s
-                WHERE id = %s
-            """, (picture, account["id"]))
+            conn.execute(
+                "UPDATE accounts SET "
+                + ", ".join(updates)
+                + " WHERE id = %s",
+                tuple(values)
+            )
 
         return {
             "success": True,
-            "message": "Profile picture updated."
+            "message": "Profile updated successfully."
         }
 
     except Exception as error:
         print("Profile update error:", error)
-
         return JSONResponse({
-            "error": "Could not update profile picture."
+            "error": "Could not update profile."
         }, status_code=500)
 
 
@@ -646,9 +706,7 @@ async def get_groups(request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     with get_db() as conn:
         rows = conn.execute("""
@@ -659,30 +717,28 @@ async def get_groups(request: Request):
                 chat_groups.created_at,
                 group_members.role,
                 (
-                    SELECT COUNT(*)
-                    FROM group_members AS members
+                    SELECT COUNT(*) FROM group_members AS members
                     WHERE members.group_id = chat_groups.id
                 ) AS member_count
             FROM chat_groups
-            JOIN group_members
-                ON group_members.group_id = chat_groups.id
+            JOIN group_members ON group_members.group_id = chat_groups.id
             WHERE group_members.account_id = %s
             ORDER BY chat_groups.created_at DESC
         """, (account["id"],)).fetchall()
 
-    groups = []
-
-    for row in rows:
-        groups.append({
-            "id": row["id"],
-            "name": row["name"],
-            "creator_id": row["creator_id"],
-            "role": row["role"],
-            "member_count": row["member_count"],
-            "created_at": row["created_at"].isoformat()
-        })
-
-    return {"groups": groups}
+    return {
+        "groups": [
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "creator_id": row["creator_id"],
+                "role": row["role"],
+                "member_count": row["member_count"],
+                "created_at": row["created_at"].isoformat()
+            }
+            for row in rows
+        ]
+    }
 
 
 @app.post("/api/groups")
@@ -690,9 +746,7 @@ async def create_group(request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     try:
         data = await request.json()
@@ -703,18 +757,12 @@ async def create_group(request: Request):
                 "error": "Group name must be between 2 and 40 characters."
             }, status_code=400)
 
-        name_key = uuid.uuid4().hex
-
         with get_db() as conn:
             group = conn.execute("""
                 INSERT INTO chat_groups (name, name_key, creator_id)
                 VALUES (%s, %s, %s)
                 RETURNING id, name, creator_id, created_at
-            """, (
-                name,
-                name_key,
-                account["id"]
-            )).fetchone()
+            """, (name, uuid.uuid4().hex, account["id"])).fetchone()
 
             conn.execute("""
                 INSERT INTO group_members (group_id, account_id, role)
@@ -737,10 +785,7 @@ async def create_group(request: Request):
 
     except Exception as error:
         print("Create group error:", error)
-
-        return JSONResponse({
-            "error": "Could not create the group."
-        }, status_code=500)
+        return JSONResponse({"error": "Could not create the group."}, status_code=500)
 
 
 @app.get("/api/groups/{group_id}/members")
@@ -748,14 +793,11 @@ async def get_group_members(group_id: int, request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     with get_db() as conn:
         membership = conn.execute("""
-            SELECT role
-            FROM group_members
+            SELECT role FROM group_members
             WHERE group_id = %s AND account_id = %s
         """, (group_id, account["id"])).fetchone()
 
@@ -789,30 +831,22 @@ async def add_group_member(group_id: int, request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     try:
         data = await request.json()
         username = str(data.get("username", "")).strip()
 
         if not username:
-            return JSONResponse({
-                "error": "Enter the username to add."
-            }, status_code=400)
+            return JSONResponse({"error": "Enter the username to add."}, status_code=400)
 
         with get_db() as conn:
             group = conn.execute("""
-                SELECT id, creator_id
-                FROM chat_groups
-                WHERE id = %s
+                SELECT id, creator_id FROM chat_groups WHERE id = %s
             """, (group_id,)).fetchone()
 
             if not group:
-                return JSONResponse({
-                    "error": "Group not found."
-                }, status_code=404)
+                return JSONResponse({"error": "Group not found."}, status_code=404)
 
             if group["creator_id"] != account["id"]:
                 return JSONResponse({
@@ -820,9 +854,7 @@ async def add_group_member(group_id: int, request: Request):
                 }, status_code=403)
 
             target = conn.execute("""
-                SELECT id, username
-                FROM accounts
-                WHERE username_key = %s
+                SELECT id, username FROM accounts WHERE username_key = %s
             """, (username.lower(),)).fetchone()
 
             if not target:
@@ -831,8 +863,7 @@ async def add_group_member(group_id: int, request: Request):
                 }, status_code=404)
 
             existing = conn.execute("""
-                SELECT account_id
-                FROM group_members
+                SELECT account_id FROM group_members
                 WHERE group_id = %s AND account_id = %s
             """, (group_id, target["id"])).fetchone()
 
@@ -854,10 +885,7 @@ async def add_group_member(group_id: int, request: Request):
 
     except Exception as error:
         print("Add group member error:", error)
-
-        return JSONResponse({
-            "error": "Could not add this member."
-        }, status_code=500)
+        return JSONResponse({"error": "Could not add this member."}, status_code=500)
 
 
 @app.delete("/api/groups/{group_id}/members/{username}")
@@ -865,21 +893,15 @@ async def remove_group_member(group_id: int, username: str, request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     with get_db() as conn:
         group = conn.execute("""
-            SELECT id, creator_id
-            FROM chat_groups
-            WHERE id = %s
+            SELECT id, creator_id FROM chat_groups WHERE id = %s
         """, (group_id,)).fetchone()
 
         if not group:
-            return JSONResponse({
-                "error": "Group not found."
-            }, status_code=404)
+            return JSONResponse({"error": "Group not found."}, status_code=404)
 
         if group["creator_id"] != account["id"]:
             return JSONResponse({
@@ -887,15 +909,11 @@ async def remove_group_member(group_id: int, username: str, request: Request):
             }, status_code=403)
 
         target = conn.execute("""
-            SELECT id, username
-            FROM accounts
-            WHERE username_key = %s
+            SELECT id, username FROM accounts WHERE username_key = %s
         """, (username.lower(),)).fetchone()
 
         if not target:
-            return JSONResponse({
-                "error": "User not found."
-            }, status_code=404)
+            return JSONResponse({"error": "User not found."}, status_code=404)
 
         if target["id"] == group["creator_id"]:
             return JSONResponse({
@@ -919,26 +937,22 @@ async def remove_group_member(group_id: int, username: str, request: Request):
     }
 
 
-# ---------------- INBOX AND CHAT SETTINGS ----------------
+# ---------------- INBOX ----------------
 
 @app.get("/api/inbox")
 async def get_inbox(request: Request, include_hidden: bool = False):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     with get_db() as conn:
         rows = conn.execute("""
             SELECT *
             FROM messages
             WHERE type = 'private'
-            AND (
-                LOWER(username) = %s
-                OR LOWER(recipient) = %s
-            )
+            AND (LOWER(username) = %s OR LOWER(recipient) = %s)
+            AND (expires_at IS NULL OR expires_at > NOW())
             ORDER BY created_at DESC
         """, (
             account["username"].lower(),
@@ -949,7 +963,11 @@ async def get_inbox(request: Request, include_hidden: bool = False):
             SELECT
                 accounts.username,
                 chat_preferences.pinned,
-                chat_preferences.hidden
+                chat_preferences.hidden,
+                chat_preferences.muted,
+                chat_preferences.disappearing_seconds,
+                chat_preferences.theme,
+                chat_preferences.media_visibility
             FROM chat_preferences
             JOIN accounts ON accounts.id = chat_preferences.peer_id
             WHERE chat_preferences.owner_id = %s
@@ -962,11 +980,18 @@ async def get_inbox(request: Request, include_hidden: bool = False):
             WHERE blocked_users.owner_id = %s
         """, (account["id"],)).fetchall()
 
+        profiles = conn.execute("""
+            SELECT id, username, profile_picture, about
+            FROM accounts
+        """).fetchall()
+
+    profile_map = {
+        row["username"].lower(): row
+        for row in profiles
+    }
+
     preference_map = {
-        row["username"].lower(): {
-            "pinned": row["pinned"],
-            "hidden": row["hidden"]
-        }
+        row["username"].lower(): row
         for row in preferences
     }
 
@@ -993,9 +1018,21 @@ async def get_inbox(request: Request, include_hidden: bool = False):
 
         if key not in conversations:
             pref = preference_map.get(key, {})
+            peer_profile = profile_map.get(key, {})
+
+            restricted = False
+
+            if peer_profile:
+                restricted = users_blocked(account["id"], peer_profile["id"])
 
             conversations[key] = {
                 "username": peer,
+                "profile_picture": (
+                    None if restricted else peer_profile.get("profile_picture")
+                ),
+                "about": (
+                    "" if restricted else peer_profile.get("about", "")
+                ),
                 "last_message": row["text"],
                 "last_message_id": row["id"],
                 "last_message_time": (
@@ -1007,7 +1044,12 @@ async def get_inbox(request: Request, include_hidden: bool = False):
                 "unread_count": 0,
                 "pinned": pref.get("pinned", False),
                 "hidden": pref.get("hidden", False),
-                "blocked": key in blocked_names
+                "muted": pref.get("muted", False),
+                "disappearing_seconds": pref.get("disappearing_seconds", 0),
+                "theme": pref.get("theme", "default"),
+                "media_visibility": pref.get("media_visibility", True),
+                "blocked": key in blocked_names,
+                "restricted": restricted
             }
 
         if (
@@ -1021,10 +1063,7 @@ async def get_inbox(request: Request, include_hidden: bool = False):
     inbox = list(conversations.values())
 
     if not include_hidden:
-        inbox = [
-            item for item in inbox
-            if not item["hidden"]
-        ]
+        inbox = [item for item in inbox if not item["hidden"]]
 
     inbox.sort(
         key=lambda item: (
@@ -1034,91 +1073,148 @@ async def get_inbox(request: Request, include_hidden: bool = False):
         reverse=True
     )
 
-    return {
-        "inbox": inbox,
-        "total": len(inbox)
-    }
+    return {"inbox": inbox, "total": len(inbox)}
 
+
+# ---------------- CHAT SETTINGS ----------------
 
 @app.put("/api/chats/{username}/settings")
 async def update_chat_settings(username: str, request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     try:
         data = await request.json()
 
         with get_db() as conn:
             peer = conn.execute("""
-                SELECT id, username
-                FROM accounts
+                SELECT id, username FROM accounts
                 WHERE username_key = %s
             """, (username.lower(),)).fetchone()
 
             if not peer:
-                return JSONResponse({
-                    "error": "User not found."
-                }, status_code=404)
+                return JSONResponse({"error": "User not found."}, status_code=404)
 
             if peer["id"] == account["id"]:
                 return JSONResponse({
                     "error": "You cannot change chat settings for yourself."
                 }, status_code=400)
 
+            if users_blocked(account["id"], peer["id"]):
+                return JSONResponse({
+                    "error": "This conversation is unavailable."
+                }, status_code=403)
+
             current = conn.execute("""
-                SELECT pinned, hidden
+                SELECT *
                 FROM chat_preferences
                 WHERE owner_id = %s AND peer_id = %s
             """, (account["id"], peer["id"])).fetchone()
 
-            pinned = current["pinned"] if current else False
-            hidden = current["hidden"] if current else False
+            settings = {
+                "pinned": current["pinned"] if current else False,
+                "hidden": current["hidden"] if current else False,
+                "muted": current["muted"] if current else False,
+                "disappearing_seconds": (
+                    current["disappearing_seconds"] if current else 0
+                ),
+                "theme": current["theme"] if current else "default",
+                "media_visibility": (
+                    current["media_visibility"] if current else True
+                )
+            }
 
-            if "pinned" in data:
-                if not isinstance(data["pinned"], bool):
+            boolean_fields = [
+                "pinned", "hidden", "muted", "media_visibility"
+            ]
+
+            for field in boolean_fields:
+                if field in data:
+                    if not isinstance(data[field], bool):
+                        return JSONResponse({
+                            "error": field + " must be true or false."
+                        }, status_code=400)
+                    settings[field] = data[field]
+
+            if "disappearing_seconds" in data:
+                seconds = data["disappearing_seconds"]
+
+                if (
+                    not isinstance(seconds, int)
+                    or seconds not in (0, 86400, 604800, 7776000)
+                ):
                     return JSONResponse({
-                        "error": "Pinned must be true or false."
+                        "error": "Choose off, 24 hours, 7 days or 90 days."
                     }, status_code=400)
-                pinned = data["pinned"]
 
-            if "hidden" in data:
-                if not isinstance(data["hidden"], bool):
+                settings["disappearing_seconds"] = seconds
+
+            if "theme" in data:
+                theme = str(data["theme"]).lower()
+
+                if theme not in (
+                    "default", "dark", "light", "blue", "green"
+                ):
                     return JSONResponse({
-                        "error": "Hidden must be true or false."
+                        "error": "Invalid chat theme."
                     }, status_code=400)
-                hidden = data["hidden"]
 
+                settings["theme"] = theme
+
+            # Save the current user's settings.
             conn.execute("""
                 INSERT INTO chat_preferences (
-                    owner_id, peer_id, pinned, hidden, updated_at
+                    owner_id, peer_id, pinned, hidden, muted,
+                    disappearing_seconds, theme, media_visibility, updated_at
                 )
-                VALUES (%s, %s, %s, %s, NOW())
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
                 ON CONFLICT (owner_id, peer_id)
                 DO UPDATE SET
                     pinned = EXCLUDED.pinned,
                     hidden = EXCLUDED.hidden,
+                    muted = EXCLUDED.muted,
+                    disappearing_seconds = EXCLUDED.disappearing_seconds,
+                    theme = EXCLUDED.theme,
+                    media_visibility = EXCLUDED.media_visibility,
                     updated_at = NOW()
             """, (
                 account["id"],
                 peer["id"],
-                pinned,
-                hidden
+                settings["pinned"],
+                settings["hidden"],
+                settings["muted"],
+                settings["disappearing_seconds"],
+                settings["theme"],
+                settings["media_visibility"]
             ))
+
+            # Disappearing-message duration is shared by both people.
+            if "disappearing_seconds" in data:
+                conn.execute("""
+                    INSERT INTO chat_preferences (
+                        owner_id, peer_id, disappearing_seconds
+                    )
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (owner_id, peer_id)
+                    DO UPDATE SET
+                        disappearing_seconds = EXCLUDED.disappearing_seconds,
+                        updated_at = NOW()
+                """, (
+                    peer["id"],
+                    account["id"],
+                    settings["disappearing_seconds"]
+                ))
 
         return {
             "success": True,
             "username": peer["username"],
-            "pinned": pinned,
-            "hidden": hidden
+            **settings
         }
 
     except Exception as error:
         print("Chat settings error:", error)
-
         return JSONResponse({
             "error": "Could not update chat settings."
         }, status_code=500)
@@ -1135,9 +1231,7 @@ async def search_messages(
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     query = q.strip()
 
@@ -1147,8 +1241,7 @@ async def search_messages(
             "results": []
         }, status_code=400)
 
-    if len(query) > 200:
-        query = query[:200]
+    query = query[:200]
 
     parameters = [
         account["username"].lower(),
@@ -1160,19 +1253,14 @@ async def search_messages(
         SELECT *
         FROM messages
         WHERE type = 'private'
-        AND (
-            LOWER(username) = %s
-            OR LOWER(recipient) = %s
-        )
+        AND (LOWER(username) = %s OR LOWER(recipient) = %s)
         AND text ILIKE %s
+        AND (expires_at IS NULL OR expires_at > NOW())
     """
 
     if with_user.strip():
         sql += """
-            AND (
-                LOWER(username) = %s
-                OR LOWER(recipient) = %s
-            )
+            AND (LOWER(username) = %s OR LOWER(recipient) = %s)
         """
         parameters.extend([
             with_user.strip().lower(),
@@ -1221,9 +1309,7 @@ async def mark_all_messages_read(request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     with get_db() as conn:
         rows = conn.execute("""
@@ -1232,16 +1318,16 @@ async def mark_all_messages_read(request: Request):
             WHERE type = 'private'
             AND LOWER(recipient) = %s
             AND status != 'read'
+            AND (expires_at IS NULL OR expires_at > NOW())
             RETURNING id, username, room
         """, (account["username"].lower(),)).fetchall()
 
     for row in rows:
-        item = {
+        await update_sender_status(row["room"], {
             "id": row["id"],
             "username": row["username"],
             "status": "read"
-        }
-        await update_sender_status(row["room"], item)
+        })
 
     return {
         "success": True,
@@ -1257,9 +1343,7 @@ async def get_blocked_users(request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     with get_db() as conn:
         rows = conn.execute("""
@@ -1289,9 +1373,7 @@ async def block_user(request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     try:
         data = await request.json()
@@ -1304,15 +1386,12 @@ async def block_user(request: Request):
 
         with get_db() as conn:
             target = conn.execute("""
-                SELECT id, username
-                FROM accounts
+                SELECT id, username FROM accounts
                 WHERE username_key = %s
             """, (username.lower(),)).fetchone()
 
             if not target:
-                return JSONResponse({
-                    "error": "User not found."
-                }, status_code=404)
+                return JSONResponse({"error": "User not found."}, status_code=404)
 
             if target["id"] == account["id"]:
                 return JSONResponse({
@@ -1333,7 +1412,6 @@ async def block_user(request: Request):
 
     except Exception as error:
         print("Block user error:", error)
-
         return JSONResponse({
             "error": "Could not block this user."
         }, status_code=500)
@@ -1344,21 +1422,16 @@ async def unblock_user(username: str, request: Request):
     account = get_account_from_request(request)
 
     if not account:
-        return JSONResponse({
-            "error": "Please log in again."
-        }, status_code=401)
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     with get_db() as conn:
         target = conn.execute("""
-            SELECT id, username
-            FROM accounts
+            SELECT id, username FROM accounts
             WHERE username_key = %s
         """, (username.lower(),)).fetchone()
 
         if not target:
-            return JSONResponse({
-                "error": "User not found."
-            }, status_code=404)
+            return JSONResponse({"error": "User not found."}, status_code=404)
 
         result = conn.execute("""
             DELETE FROM blocked_users
@@ -1385,7 +1458,6 @@ async def broadcast(room, message):
     for user in list(connected_users.get(room, [])):
         try:
             await user["websocket"].send_json(message)
-
         except Exception as error:
             print("Broadcast error:", error)
             disconnected.append(user)
@@ -1413,38 +1485,81 @@ def find_users(room, username):
 
 
 def private_pair(user1, user2):
-    return sorted([
-        user1.lower(),
-        user2.lower()
-    ])
+    return sorted([user1.lower(), user2.lower()])
 
 
 def save_message(item, room):
+    expires_at = None
+
+    if item["type"] == "private" and item.get("to"):
+        with get_db() as conn:
+            setting = conn.execute("""
+                SELECT disappearing_seconds
+                FROM chat_preferences
+                WHERE owner_id = (
+                    SELECT id FROM accounts WHERE username_key = %s
+                )
+                AND peer_id = (
+                    SELECT id FROM accounts WHERE username_key = %s
+                )
+            """, (
+                item["username"].lower(),
+                item["to"].lower()
+            )).fetchone()
+
+            seconds = setting["disappearing_seconds"] if setting else 0
+
+            if seconds:
+                expires_at = seconds
+
     with get_db() as conn:
-        row = conn.execute("""
-            INSERT INTO messages (
-                id, type, room, username, recipient, text, status
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            RETURNING created_at
-        """, (
-            item["id"],
-            item["type"],
-            room,
-            item["username"],
-            item.get("to"),
-            item["text"],
-            item.get("status")
-        )).fetchone()
+        if expires_at:
+            row = conn.execute("""
+                INSERT INTO messages (
+                    id, type, room, username, recipient, text, status, expires_at
+                )
+                VALUES (
+                    %s, %s, %s, %s, %s, %s, %s,
+                    NOW() + (%s * INTERVAL '1 second')
+                )
+                RETURNING created_at, expires_at
+            """, (
+                item["id"],
+                item["type"],
+                room,
+                item["username"],
+                item.get("to"),
+                item["text"],
+                item.get("status"),
+                expires_at
+            )).fetchone()
+        else:
+            row = conn.execute("""
+                INSERT INTO messages (
+                    id, type, room, username, recipient, text, status
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING created_at, expires_at
+            """, (
+                item["id"],
+                item["type"],
+                room,
+                item["username"],
+                item.get("to"),
+                item["text"],
+                item.get("status")
+            )).fetchone()
 
     item["created_at"] = row["created_at"].isoformat()
+    item["expires_at"] = (
+        row["expires_at"].isoformat()
+        if row["expires_at"] else None
+    )
 
     return item
 
 
 def message_from_row(row):
-    created_at = row["created_at"]
-
     return {
         "id": row["id"],
         "type": row["type"],
@@ -1452,7 +1567,14 @@ def message_from_row(row):
         "to": row["recipient"],
         "text": row["text"],
         "status": row["status"],
-        "created_at": created_at.isoformat() if created_at else None
+        "created_at": (
+            row["created_at"].isoformat()
+            if row["created_at"] else None
+        ),
+        "expires_at": (
+            row["expires_at"].isoformat()
+            if row.get("expires_at") else None
+        )
     }
 
 
@@ -1462,13 +1584,11 @@ def load_group_history(room):
             SELECT *
             FROM messages
             WHERE room = %s AND type = 'chat'
+            AND (expires_at IS NULL OR expires_at > NOW())
             ORDER BY created_at ASC
         """, (room,)).fetchall()
 
-    return [
-        message_from_row(row)
-        for row in rows
-    ]
+    return [message_from_row(row) for row in rows]
 
 
 def load_private_history(room, user1, user2):
@@ -1485,6 +1605,7 @@ def load_private_history(room, user1, user2):
                 OR
                 (LOWER(username) = %s AND LOWER(recipient) = %s)
             )
+            AND (expires_at IS NULL OR expires_at > NOW())
             ORDER BY created_at ASC
         """, (
             room,
@@ -1494,10 +1615,7 @@ def load_private_history(room, user1, user2):
             first
         )).fetchall()
 
-    return [
-        message_from_row(row)
-        for row in rows
-    ]
+    return [message_from_row(row) for row in rows]
 
 
 async def update_sender_status(room, item):
@@ -1508,7 +1626,6 @@ async def update_sender_status(room, item):
                 "id": item["id"],
                 "status": item["status"]
             })
-
         except Exception as error:
             print("Status update error:", error)
 
@@ -1522,11 +1639,9 @@ async def deliver_pending_messages(room, username, websocket):
             AND type = 'private'
             AND LOWER(recipient) = %s
             AND status = 'sent'
+            AND (expires_at IS NULL OR expires_at > NOW())
             ORDER BY created_at ASC
-        """, (
-            room,
-            username.lower()
-        )).fetchall()
+        """, (room, username.lower())).fetchall()
 
         for row in rows:
             item = message_from_row(row)
@@ -1554,24 +1669,6 @@ async def send_online_users(room):
         "type": "users",
         "users": users
     })
-
-
-def users_blocked(user_id, other_id):
-    with get_db() as conn:
-        result = conn.execute("""
-            SELECT 1
-            FROM blocked_users
-            WHERE (owner_id = %s AND blocked_id = %s)
-               OR (owner_id = %s AND blocked_id = %s)
-            LIMIT 1
-        """, (
-            user_id,
-            other_id,
-            other_id,
-            user_id
-        )).fetchone()
-
-    return bool(result)
 
 
 # ---------------- WEBSITE ----------------
@@ -1611,10 +1708,7 @@ async def chat(websocket: WebSocket, room: str):
                 SELECT account_id
                 FROM group_members
                 WHERE group_id = %s AND account_id = %s
-            """, (
-                group_id,
-                account["id"]
-            )).fetchone()
+            """, (group_id, account["id"])).fetchone()
 
         if not membership:
             await websocket.close(code=4403)
@@ -1681,8 +1775,7 @@ async def chat(websocket: WebSocket, room: str):
 
                 with get_db() as conn:
                     target = conn.execute("""
-                        SELECT id, username
-                        FROM accounts
+                        SELECT id, username FROM accounts
                         WHERE username_key = %s
                     """, (recipient.lower(),)).fetchone()
 
@@ -1711,6 +1804,7 @@ async def chat(websocket: WebSocket, room: str):
                         AND LOWER(username) = %s
                         AND LOWER(recipient) = %s
                         AND status != 'read'
+                        AND (expires_at IS NULL OR expires_at > NOW())
                     """, (
                         room,
                         recipient.lower(),
@@ -1751,8 +1845,7 @@ async def chat(websocket: WebSocket, room: str):
 
                 with get_db() as conn:
                     target_account = conn.execute("""
-                        SELECT id, username
-                        FROM accounts
+                        SELECT id, username FROM accounts
                         WHERE username_key = %s
                     """, (recipient.lower(),)).fetchone()
 
@@ -1794,7 +1887,6 @@ async def chat(websocket: WebSocket, room: str):
                     try:
                         await target["websocket"].send_json(delivery_item)
                         delivered = True
-
                     except Exception as error:
                         print("Private delivery error:", error)
 
