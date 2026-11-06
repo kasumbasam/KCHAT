@@ -1,3 +1,4 @@
+
 import os
 import uuid
 import hashlib
@@ -10,11 +11,11 @@ from psycopg.rows import dict_row
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import FileResponse, JSONResponse
+from starlette.websockets import WebSocketState
 
 app = FastAPI()
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
-
 connected_users = {}
 
 
@@ -104,7 +105,6 @@ def hash_password(password):
 def verify_password(password, stored):
     try:
         salt_text, hash_text = stored.split("$")
-
         salt = base64.b64decode(salt_text)
         expected = base64.b64decode(hash_text)
 
@@ -285,8 +285,18 @@ async def broadcast(room, message):
 
 
 def find_users(room, username):
+    active = []
+
+    for user in connected_users.get(room, []):
+        websocket = user["websocket"]
+
+        if websocket.client_state == WebSocketState.CONNECTED:
+            active.append(user)
+
+    connected_users[room] = active
+
     return [
-        user for user in connected_users.get(room, [])
+        user for user in active
         if user["username"].lower() == username.lower()
     ]
 
@@ -405,6 +415,7 @@ async def send_online_users(room):
     users = list(dict.fromkeys(
         user["username"]
         for user in connected_users.get(room, [])
+        if user["websocket"].client_state == WebSocketState.CONNECTED
     ))
 
     await broadcast(room, {
