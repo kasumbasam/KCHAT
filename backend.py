@@ -22,6 +22,7 @@ connected_users = {}
 def get_db():
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL is not configured")
+
     return psycopg.connect(
         DATABASE_URL,
         row_factory=dict_row,
@@ -45,6 +46,23 @@ def init_db():
         conn.execute("""
             ALTER TABLE accounts
             ADD COLUMN IF NOT EXISTS profile_picture TEXT
+        """)
+
+        # Phone numbers are added without deleting existing accounts.
+        conn.execute("""
+            ALTER TABLE accounts
+            ADD COLUMN IF NOT EXISTS phone_number TEXT
+        """)
+
+        conn.execute("""
+            ALTER TABLE accounts
+            ADD COLUMN IF NOT EXISTS phone_key TEXT
+        """)
+
+        conn.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS accounts_phone_key_idx
+            ON accounts(phone_key)
+            WHERE phone_key IS NOT NULL
         """)
 
         conn.execute("""
@@ -95,7 +113,6 @@ def init_db():
             ON messages(room, recipient, status)
         """)
 
-        # Managed KCHAT groups
         conn.execute("""
             CREATE TABLE IF NOT EXISTS chat_groups (
                 id BIGSERIAL PRIMARY KEY,
@@ -125,6 +142,53 @@ def init_db():
 @app.on_event("startup")
 async def startup():
     init_db()
+
+
+# ---------------- PHONE NUMBER HELPERS ----------------
+
+def normalize_phone(phone):
+    phone = str(phone or "").strip()
+
+    if not phone:
+        return None
+
+    if not re.fullmatch(r"[+0-9()\-\s]+", phone):
+        return None
+
+    has_plus = phone.startswith("+")
+    digits = re.sub(r"\D", "", phone)
+
+    if not 7 <= len(digits) <= 15:
+        return None
+
+    return ("+" if has_plus else "") + digits
+
+
+def phone_key(phone):
+    normalized = normalize_phone(phone)
+
+    if not normalized:
+        return None
+
+    return re.sub(r"\D", "", normalized)
+
+
+# ---------------- PROFILE PICTURE VALIDATION ----------------
+
+def validate_picture(picture):
+    if picture in (None, ""):
+        return True
+
+    if not isinstance(picture, str):
+        return False
+
+    if len(picture) > 2_500_000:
+        return False
+
+    return bool(re.fullmatch(
+        r"data:image/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+",
+        picture
+    ))
 
 
 # ---------------- PASSWORD SECURITY ----------------
@@ -187,7 +251,8 @@ def get_account_from_token(token):
 
     with get_db() as conn:
         return conn.execute("""
-            SELECT accounts.id, accounts.username
+            SELECT accounts.id, accounts.username,
+                   accounts.phone_number, accounts.profile_picture
             FROM sessions
             JOIN accounts ON accounts.id = sessions.account_id
             WHERE sessions.token_hash = %s
@@ -209,8 +274,18 @@ async def register(request: Request):
     try:
         data = await request.json()
 
-        username = str(data.get("username", "")).strip()
+        phone = str(data.get("phone_number", "")).strip()
         password = str(data.get("password", ""))
+        username = str(data.get("username", "")).strip()
+        picture = data.get("profile_picture")
+
+        normalized_phone = normalize_phone(phone)
+        normalized_key = phone_key(phone)
+
+        if not normalized_phone or not normalized_key:
+            return JSONResponse({
+                "error": "Enter a valid phone number, including its country code if possible."
+            }, status_code=400)
 
         if not re.fullmatch(r"[A-Za-z0-9_]{3,30}", username):
             return JSONResponse({
@@ -222,27 +297,64 @@ async def register(request: Request):
                 "error": "Password must contain at least 8 characters."
             }, status_code=400)
 
+        if not validate_picture(picture):
+            return JSONResponse({
+                "error": "Choose a valid PNG, JPG or WEBP profile picture."
+            }, status_code=400)
+
         with get_db() as conn:
+            existing_phone = conn.execute("""
+                SELECT id FROM accounts
+                WHERE phone_key = %s
+            """, (normalized_key,)).fetchone()
+
+            if existing_phone:
+                return JSONResponse({
+                    "error": "That phone number is already registered."
+                }, status_code=409)
+
+            existing_username = conn.execute("""
+                SELECT id FROM accounts
+                WHERE username_key = %s
+            """, (username.lower(),)).fetchone()
+
+            if existing_username:
+                return JSONResponse({
+                    "error": "That username is already taken."
+                }, status_code=409)
+
             account = conn.execute("""
-                INSERT INTO accounts (username, username_key, password_hash)
-                VALUES (%s, %s, %s)
-                RETURNING id, username
+                INSERT INTO accounts (
+                    username,
+                    username_key,
+                    password_hash,
+                    phone_number,
+                    phone_key,
+                    profile_picture
+                )
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id, username, phone_number
             """, (
                 username,
                 username.lower(),
-                hash_password(password)
+                hash_password(password),
+                normalized_phone,
+                normalized_key,
+                picture
             )).fetchone()
 
         token = create_session(account["id"])
 
         return {
+            "success": True,
             "token": token,
-            "username": account["username"]
+            "username": account["username"],
+            "phone_number": account["phone_number"]
         }
 
     except psycopg.errors.UniqueViolation:
         return JSONResponse({
-            "error": "That username is already taken."
+            "error": "That phone number or username is already registered."
         }, status_code=409)
 
     except Exception as error:
@@ -258,29 +370,54 @@ async def login(request: Request):
     try:
         data = await request.json()
 
-        username = str(data.get("username", "")).strip()
+        login_value = str(
+            data.get("phone_number", data.get("username", ""))
+        ).strip()
+
         password = str(data.get("password", ""))
 
+        if not login_value or not password:
+            return JSONResponse({
+                "error": "Enter your phone number and password."
+            }, status_code=400)
+
+        normalized_key = phone_key(login_value)
+
         with get_db() as conn:
-            account = conn.execute("""
-                SELECT id, username, password_hash
-                FROM accounts
-                WHERE username_key = %s
-            """, (username.lower(),)).fetchone()
+            account = None
+
+            # New accounts log in with their phone number.
+            if normalized_key:
+                account = conn.execute("""
+                    SELECT id, username, phone_number, password_hash
+                    FROM accounts
+                    WHERE phone_key = %s
+                """, (normalized_key,)).fetchone()
+
+            # Backward compatibility for accounts created
+            # before phone-number registration was introduced.
+            if not account:
+                account = conn.execute("""
+                    SELECT id, username, phone_number, password_hash
+                    FROM accounts
+                    WHERE username_key = %s
+                """, (login_value.lower(),)).fetchone()
 
         if not account or not verify_password(
             password,
             account["password_hash"]
         ):
             return JSONResponse({
-                "error": "Incorrect username or password."
+                "error": "Incorrect phone number or password."
             }, status_code=401)
 
         token = create_session(account["id"])
 
         return {
+            "success": True,
             "token": token,
-            "username": account["username"]
+            "username": account["username"],
+            "phone_number": account["phone_number"]
         }
 
     except Exception as error:
@@ -451,24 +588,10 @@ async def update_profile(request: Request):
         data = await request.json()
         picture = data.get("profile_picture")
 
-        if picture is not None:
-            if not isinstance(picture, str):
-                return JSONResponse({
-                    "error": "Invalid picture."
-                }, status_code=400)
-
-            if len(picture) > 2_500_000:
-                return JSONResponse({
-                    "error": "Picture is too large. Choose a smaller image."
-                }, status_code=413)
-
-            if not re.fullmatch(
-                r"data:image/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+",
-                picture
-            ):
-                return JSONResponse({
-                    "error": "Use a PNG, JPG or WEBP image."
-                }, status_code=400)
+        if not validate_picture(picture):
+            return JSONResponse({
+                "error": "Use a PNG, JPG or WEBP image under the size limit."
+            }, status_code=400)
 
         with get_db() as conn:
             conn.execute("""
@@ -533,9 +656,7 @@ async def get_groups(request: Request):
             "created_at": row["created_at"].isoformat()
         })
 
-    return {
-        "groups": groups
-    }
+    return {"groups": groups}
 
 
 @app.post("/api/groups")
@@ -974,8 +1095,6 @@ async def chat(websocket: WebSocket, room: str):
     username = account["username"]
     room = room.strip()[:40] or "general"
 
-    # Managed groups must have a valid ID
-    # and the user must be a member.
     if room.startswith("group_"):
         group_id_text = room[6:]
 
@@ -1001,8 +1120,6 @@ async def chat(websocket: WebSocket, room: str):
 
     connected_users.setdefault(room, [])
 
-    # Check whether this user already has
-    # another active connection in this room.
     was_online = bool(find_users(room, username))
 
     connected_users[room].append({
@@ -1019,8 +1136,6 @@ async def chat(websocket: WebSocket, room: str):
         ))
     })
 
-    # Announce online only when the user
-    # was previously offline in this room.
     if not was_online:
         await broadcast(room, {
             "type": "system",
@@ -1174,14 +1289,11 @@ async def chat(websocket: WebSocket, room: str):
         print("WebSocket error for", username, ":", error)
 
     finally:
-        # Remove only the connection that has closed.
         connected_users[room] = [
             user for user in connected_users.get(room, [])
             if user["websocket"] != websocket
         ]
 
-        # Announce offline only if no other
-        # active connection for this user remains.
         if not find_users(room, username):
             await broadcast(room, {
                 "type": "system",
