@@ -14,7 +14,6 @@ from fastapi.responses import FileResponse, JSONResponse
 from starlette.websockets import WebSocketState
 
 app = FastAPI()
-
 DATABASE_URL = os.environ.get("DATABASE_URL")
 connected_users = {}
 
@@ -84,6 +83,11 @@ def init_db():
                 status TEXT,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             )
+        """)
+
+        conn.execute("""
+            ALTER TABLE messages
+            ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()
         """)
 
         conn.execute("""
@@ -522,10 +526,11 @@ def private_pair(user1, user2):
 
 def save_message(item, room):
     with get_db() as conn:
-        conn.execute("""
+        row = conn.execute("""
             INSERT INTO messages
                 (id, type, room, username, recipient, text, status)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING created_at
         """, (
             item["id"],
             item["type"],
@@ -534,17 +539,23 @@ def save_message(item, room):
             item.get("to"),
             item["text"],
             item.get("status")
-        ))
+        )).fetchone()
+
+    item["created_at"] = row["created_at"].isoformat()
+    return item
 
 
 def message_from_row(row):
+    created_at = row["created_at"]
+
     return {
         "id": row["id"],
         "type": row["type"],
         "username": row["username"],
         "to": row["recipient"],
         "text": row["text"],
-        "status": row["status"]
+        "status": row["status"],
+        "created_at": created_at.isoformat() if created_at else None
     }
 
 
@@ -554,17 +565,9 @@ def load_group_history(room):
             SELECT * FROM messages
             WHERE room = %s AND type = 'chat'
             ORDER BY created_at ASC
-            LIMIT 200
         """, (room,)).fetchall()
 
-    return [
-        {
-            "type": "chat",
-            "username": row["username"],
-            "text": row["text"]
-        }
-        for row in rows
-    ]
+    return [message_from_row(row) for row in rows]
 
 
 def load_private_history(room, user1, user2):
@@ -581,7 +584,6 @@ def load_private_history(room, user1, user2):
                 (LOWER(username) = %s AND LOWER(recipient) = %s)
             )
             ORDER BY created_at ASC
-            LIMIT 200
         """, (room, first, second, second, first)).fetchall()
 
     return [message_from_row(row) for row in rows]
@@ -737,6 +739,7 @@ async def chat(websocket: WebSocket, room: str):
                 for item in conversation:
                     if (
                         item["username"].lower() == recipient.lower()
+                        and item["to"]
                         and item["to"].lower() == username.lower()
                         and item["status"] == "read"
                     ):
