@@ -41,7 +41,11 @@ def init_db():
                 created_at TIMESTAMPTZ DEFAULT NOW()
             )
         """)
-        conn.execute("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS profile_picture TEXT")
+
+        conn.execute("""
+            ALTER TABLE accounts
+            ADD COLUMN IF NOT EXISTS profile_picture TEXT
+        """)
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
@@ -80,10 +84,12 @@ def init_db():
             ALTER TABLE messages
             ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()
         """)
+
         conn.execute("""
             CREATE INDEX IF NOT EXISTS messages_room_idx
             ON messages(room, created_at)
         """)
+
         conn.execute("""
             CREATE INDEX IF NOT EXISTS messages_recipient_idx
             ON messages(room, recipient, status)
@@ -125,13 +131,19 @@ async def startup():
 
 def hash_password(password):
     salt = secrets.token_bytes(16)
+
     hashed = hashlib.pbkdf2_hmac(
         "sha256",
         password.encode("utf-8"),
         salt,
         310000
     )
-    return base64.b64encode(salt).decode() + "$" + base64.b64encode(hashed).decode()
+
+    return (
+        base64.b64encode(salt).decode()
+        + "$"
+        + base64.b64encode(hashed).decode()
+    )
 
 
 def verify_password(password, stored):
@@ -139,13 +151,16 @@ def verify_password(password, stored):
         salt_text, hash_text = stored.split("$")
         salt = base64.b64decode(salt_text)
         expected = base64.b64decode(hash_text)
+
         actual = hashlib.pbkdf2_hmac(
             "sha256",
             password.encode("utf-8"),
             salt,
             310000
         )
+
         return secrets.compare_digest(actual, expected)
+
     except Exception:
         return False
 
@@ -156,11 +171,13 @@ def token_hash(token):
 
 def create_session(account_id):
     token = secrets.token_urlsafe(32)
+
     with get_db() as conn:
         conn.execute("""
             INSERT INTO sessions (account_id, token_hash, expires_at)
             VALUES (%s, %s, NOW() + INTERVAL '30 days')
         """, (account_id, token_hash(token)))
+
     return token
 
 
@@ -181,6 +198,7 @@ def get_account_from_token(token):
 def get_account_from_request(request):
     authorization = request.headers.get("Authorization", "")
     token = authorization.replace("Bearer ", "", 1)
+
     return get_account_from_token(token)
 
 
@@ -190,6 +208,7 @@ def get_account_from_request(request):
 async def register(request: Request):
     try:
         data = await request.json()
+
         username = str(data.get("username", "")).strip()
         password = str(data.get("password", ""))
 
@@ -215,6 +234,7 @@ async def register(request: Request):
             )).fetchone()
 
         token = create_session(account["id"])
+
         return {
             "token": token,
             "username": account["username"]
@@ -227,6 +247,7 @@ async def register(request: Request):
 
     except Exception as error:
         print("Registration error:", error)
+
         return JSONResponse({
             "error": "Registration failed. Please try again."
         }, status_code=500)
@@ -236,6 +257,7 @@ async def register(request: Request):
 async def login(request: Request):
     try:
         data = await request.json()
+
         username = str(data.get("username", "")).strip()
         password = str(data.get("password", ""))
 
@@ -246,12 +268,16 @@ async def login(request: Request):
                 WHERE username_key = %s
             """, (username.lower(),)).fetchone()
 
-        if not account or not verify_password(password, account["password_hash"]):
+        if not account or not verify_password(
+            password,
+            account["password_hash"]
+        ):
             return JSONResponse({
                 "error": "Incorrect username or password."
             }, status_code=401)
 
         token = create_session(account["id"])
+
         return {
             "token": token,
             "username": account["username"]
@@ -259,6 +285,7 @@ async def login(request: Request):
 
     except Exception as error:
         print("Login error:", error)
+
         return JSONResponse({
             "error": "Login failed. Please try again."
         }, status_code=500)
@@ -269,6 +296,7 @@ async def login(request: Request):
 @app.get("/api/contacts")
 async def contacts(request: Request):
     account = get_account_from_request(request)
+
     if not account:
         return JSONResponse({
             "error": "Please log in again."
@@ -291,6 +319,7 @@ async def contacts(request: Request):
 @app.post("/api/contacts")
 async def add_contact(request: Request):
     account = get_account_from_request(request)
+
     if not account:
         return JSONResponse({
             "error": "Please log in again."
@@ -336,6 +365,7 @@ async def add_contact(request: Request):
 
     except Exception as error:
         print("Add contact error:", error)
+
         return JSONResponse({
             "error": "Could not add contact."
         }, status_code=500)
@@ -344,6 +374,7 @@ async def add_contact(request: Request):
 @app.delete("/api/contacts/{username}")
 async def remove_contact(username: str, request: Request):
     account = get_account_from_request(request)
+
     if not account:
         return JSONResponse({
             "error": "Please log in again."
@@ -383,6 +414,7 @@ async def remove_contact(username: str, request: Request):
 @app.get("/api/profile/{username}")
 async def get_profile(username: str, request: Request):
     account = get_account_from_request(request)
+
     if not account:
         return JSONResponse({
             "error": "Please log in again."
@@ -409,6 +441,7 @@ async def get_profile(username: str, request: Request):
 @app.put("/api/profile")
 async def update_profile(request: Request):
     account = get_account_from_request(request)
+
     if not account:
         return JSONResponse({
             "error": "Please log in again."
@@ -451,6 +484,7 @@ async def update_profile(request: Request):
 
     except Exception as error:
         print("Profile update error:", error)
+
         return JSONResponse({
             "error": "Could not update profile picture."
         }, status_code=500)
@@ -461,6 +495,7 @@ async def update_profile(request: Request):
 @app.get("/api/groups")
 async def get_groups(request: Request):
     account = get_account_from_request(request)
+
     if not account:
         return JSONResponse({
             "error": "Please log in again."
@@ -487,6 +522,7 @@ async def get_groups(request: Request):
         """, (account["id"],)).fetchall()
 
     groups = []
+
     for row in rows:
         groups.append({
             "id": row["id"],
@@ -505,6 +541,7 @@ async def get_groups(request: Request):
 @app.post("/api/groups")
 async def create_group(request: Request):
     account = get_account_from_request(request)
+
     if not account:
         return JSONResponse({
             "error": "Please log in again."
@@ -553,6 +590,7 @@ async def create_group(request: Request):
 
     except Exception as error:
         print("Create group error:", error)
+
         return JSONResponse({
             "error": "Could not create the group."
         }, status_code=500)
@@ -561,6 +599,7 @@ async def create_group(request: Request):
 @app.get("/api/groups/{group_id}/members")
 async def get_group_members(group_id: int, request: Request):
     account = get_account_from_request(request)
+
     if not account:
         return JSONResponse({
             "error": "Please log in again."
@@ -601,6 +640,7 @@ async def get_group_members(group_id: int, request: Request):
 @app.post("/api/groups/{group_id}/members")
 async def add_group_member(group_id: int, request: Request):
     account = get_account_from_request(request)
+
     if not account:
         return JSONResponse({
             "error": "Please log in again."
@@ -667,6 +707,7 @@ async def add_group_member(group_id: int, request: Request):
 
     except Exception as error:
         print("Add group member error:", error)
+
         return JSONResponse({
             "error": "Could not add this member."
         }, status_code=500)
@@ -675,6 +716,7 @@ async def add_group_member(group_id: int, request: Request):
 @app.delete("/api/groups/{group_id}/members/{username}")
 async def remove_group_member(group_id: int, username: str, request: Request):
     account = get_account_from_request(request)
+
     if not account:
         return JSONResponse({
             "error": "Please log in again."
@@ -738,6 +780,7 @@ async def broadcast(room, message):
     for user in list(connected_users.get(room, [])):
         try:
             await user["websocket"].send_json(message)
+
         except Exception as error:
             print("Broadcast error:", error)
             disconnected.append(user)
@@ -752,6 +795,7 @@ def find_users(room, username):
 
     for user in connected_users.get(room, []):
         websocket = user["websocket"]
+
         if websocket.client_state == WebSocketState.CONNECTED:
             active.append(user)
 
@@ -789,6 +833,7 @@ def save_message(item, room):
         )).fetchone()
 
     item["created_at"] = row["created_at"].isoformat()
+
     return item
 
 
@@ -858,6 +903,7 @@ async def update_sender_status(room, item):
                 "id": item["id"],
                 "status": item["status"]
             })
+
         except Exception as error:
             print("Status update error:", error)
 
@@ -928,7 +974,8 @@ async def chat(websocket: WebSocket, room: str):
     username = account["username"]
     room = room.strip()[:40] or "general"
 
-    # Managed groups must have a valid ID and the user must be a member.
+    # Managed groups must have a valid ID
+    # and the user must be a member.
     if room.startswith("group_"):
         group_id_text = room[6:]
 
@@ -953,6 +1000,11 @@ async def chat(websocket: WebSocket, room: str):
             return
 
     connected_users.setdefault(room, [])
+
+    # Check whether this user already has
+    # another active connection in this room.
+    was_online = bool(find_users(room, username))
+
     connected_users[room].append({
         "username": username,
         "websocket": websocket
@@ -967,10 +1019,13 @@ async def chat(websocket: WebSocket, room: str):
         ))
     })
 
-    await broadcast(room, {
-        "type": "system",
-        "text": username + " joined the room."
-    })
+    # Announce online only when the user
+    # was previously offline in this room.
+    if not was_online:
+        await broadcast(room, {
+            "type": "system",
+            "text": username + " is online."
+        })
 
     await send_online_users(room)
 
@@ -1090,6 +1145,7 @@ async def chat(websocket: WebSocket, room: str):
                     try:
                         await target["websocket"].send_json(delivery_item)
                         delivered = True
+
                     except Exception as error:
                         print("Private delivery error:", error)
 
@@ -1118,14 +1174,18 @@ async def chat(websocket: WebSocket, room: str):
         print("WebSocket error for", username, ":", error)
 
     finally:
+        # Remove only the connection that has closed.
         connected_users[room] = [
             user for user in connected_users.get(room, [])
             if user["websocket"] != websocket
         ]
 
-        await broadcast(room, {
-            "type": "system",
-            "text": username + " left the room."
-        })
+        # Announce offline only if no other
+        # active connection for this user remains.
+        if not find_users(room, username):
+            await broadcast(room, {
+                "type": "system",
+                "text": username + " is offline."
+            })
 
         await send_online_users(room)
