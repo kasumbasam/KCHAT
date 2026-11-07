@@ -7,6 +7,7 @@
 
 <style>
 * { box-sizing: border-box; }
+
 html { min-height: 100%; overflow-y: auto; }
 
 body {
@@ -41,20 +42,25 @@ h1 {
     color: #70d6ff;
 }
 
-h2 { color: #70d6ff; }
+h2, h3 { color: #70d6ff; }
 
-input, select, button {
+input, select, button, textarea {
     font: inherit;
     border-radius: 8px;
 }
 
-input, select {
+input, select, textarea {
     width: 100%;
     padding: 12px;
     margin: 7px 0;
     border: 1px solid #43516b;
     color: white;
     background: #121925;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 90px;
 }
 
 button {
@@ -90,9 +96,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     margin-bottom: 8px;
 }
 
-.auth-logo p, .auth-description {
-    color: #aebbd0;
-}
+.auth-logo p, .auth-description { color: #aebbd0; }
 
 .auth-description {
     line-height: 1.5;
@@ -107,6 +111,11 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 }
 
 .secondary-button:hover { background: #465773; }
+
+.danger-button {
+    background: #ff8585;
+    color: #271010;
+}
 
 .switch {
     color: #70d6ff;
@@ -179,7 +188,8 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 }
 
 .profile-controls, .contact-controls, .groups-controls,
-.inbox-controls, .search-controls, .blocked-controls {
+.inbox-controls, .search-controls, .blocked-controls,
+.settings-controls {
     padding: 10px;
     margin: 10px 0;
     border: 1px solid #43516b;
@@ -188,7 +198,8 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 }
 
 .profile-controls h3, .contact-controls h3, .groups-controls h3,
-.inbox-controls h3, .search-controls h3, .blocked-controls h3 {
+.inbox-controls h3, .search-controls h3, .blocked-controls h3,
+.settings-controls h3 {
     margin: 3px 0 8px;
     color: #70d6ff;
     font-size: 15px;
@@ -203,6 +214,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 }
 
 .private-area { margin-top: 8px; }
+
 .join-area input, .private-area select {
     flex: 1;
     min-width: 100px;
@@ -308,8 +320,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
 .group-member button, .danger-button {
     padding: 7px 10px;
-    background: #ff8585;
-    color: #271010;
 }
 
 .small-button {
@@ -347,6 +357,15 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     align-items: flex-end;
 }
 
+.inbox-avatar {
+    width: 43px;
+    height: 43px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #43516b;
+}
+
 .empty-note {
     color: #aebbd0;
     font-size: 13px;
@@ -366,6 +385,156 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     font-size: 13px;
 }
 
+/* ACTIVE CHAT HEADER */
+
+.active-chat-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: #202a3b;
+    border-bottom: 1px solid #43516b;
+}
+
+.active-chat-bar.visible { display: flex; }
+
+.chat-person {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.chat-person img {
+    width: 43px;
+    height: 43px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #43516b;
+}
+
+.chat-person-name {
+    color: #70d6ff;
+    font-weight: bold;
+    overflow-wrap: anywhere;
+}
+
+.chat-person-about {
+    color: #aebbd0;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.chat-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.chat-header-actions button {
+    padding: 9px;
+    margin: 0;
+    min-width: 38px;
+}
+
+.chat-menu {
+    display: none;
+    padding: 12px;
+    background: #182232;
+    border-bottom: 1px solid #43516b;
+}
+
+.chat-menu.visible { display: block; }
+
+.chat-menu button {
+    width: 100%;
+    text-align: left;
+    margin: 4px 0;
+}
+
+.chat-menu label {
+    display: block;
+    color: #aebbd0;
+    font-size: 13px;
+    margin-top: 10px;
+}
+
+.chat-menu select { margin-top: 3px; }
+
+.call-note {
+    color: #f6c453;
+    font-size: 12px;
+    margin: 5px 0;
+}
+
+/* PROFILE VIEW */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    padding: 20px;
+    background: rgba(0,0,0,.78);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.visible { display: flex; }
+
+.profile-modal {
+    width: min(420px, 100%);
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 22px;
+    border: 1px solid #43516b;
+    border-radius: 14px;
+    background: #202a3b;
+    text-align: center;
+}
+
+.profile-modal img {
+    width: 135px;
+    height: 135px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #43516b;
+    border: 3px solid #70d6ff;
+}
+
+.profile-modal h2 {
+    margin-bottom: 5px;
+    overflow-wrap: anywhere;
+}
+
+.profile-about {
+    padding: 12px;
+    margin: 12px 0;
+    background: #151b27;
+    border-radius: 8px;
+    color: #d5deeb;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.profile-modal button { min-width: 100px; }
+
+.theme-dark #messages { background: #080b10; }
+.theme-dark .message { background: #202631; }
+
+.theme-light #messages { background: #e8edf3; color: #17202b; }
+.theme-light .message { background: #ffffff; color: #17202b; }
+.theme-light .message strong { color: #087da8; }
+.theme-light .date-separator { background: #cbd5e1; color: #17202b; }
+
+.theme-blue #messages { background: #0d253d; }
+.theme-blue .message { background: #17466c; }
+
+.theme-green #messages { background: #102c26; }
+.theme-green .message { background: #1d493b; }
+
 @media (max-width: 520px) {
     .chat-app {
         width: 100%;
@@ -380,6 +549,11 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 
     .inbox-item, .search-result, .blocked-item {
         align-items: flex-start;
+    }
+
+    .chat-header-actions button {
+        min-width: 33px;
+        padding: 8px 6px;
     }
 }
 </style>
@@ -541,14 +715,39 @@ button:disabled { opacity: .55; cursor: not-allowed; }
         <p id="accountName"></p>
     </div>
 
+    <!-- MY PROFILE SETTINGS -->
     <div class="profile-controls">
-        <h3>My Profile Picture</h3>
+        <h3>My Profile</h3>
+
+        <button class="secondary-button" onclick="openMyProfile()">
+            View My Profile
+        </button>
+
+        <h3>Change Profile Picture</h3>
         <input id="profileFile" type="file"
                accept="image/png,image/jpeg,image/webp">
+
         <button id="profileUploadButton" onclick="uploadProfilePicture()">
             Upload Picture
         </button>
+
         <p id="profileMessage" class="upload-status"></p>
+    </div>
+
+    <!-- ABOUT SETTINGS -->
+    <div class="settings-controls">
+        <h3>My About</h3>
+        <p class="empty-note">
+            This is the information other KCHAT users can see on your profile,
+            unless you or they have restricted each other.
+        </p>
+
+        <textarea id="myAbout"
+                  maxlength="500"
+                  placeholder="Write something about yourself..."></textarea>
+
+        <button onclick="saveAbout()">Save About</button>
+        <p id="aboutMessage" class="upload-status"></p>
     </div>
 
     <!-- INBOX -->
@@ -566,12 +765,14 @@ button:disabled { opacity: .55; cursor: not-allowed; }
         <div id="inboxList">
             <p class="empty-note">Your conversations will appear here.</p>
         </div>
+
         <p id="inboxMessage"></p>
     </div>
 
     <!-- SEARCH MESSAGES -->
-    <div class="search-controls">
+    <div class="search-controls" id="searchPanel">
         <h3>Search Messages</h3>
+
         <input id="messageSearchQuery"
                placeholder="Search for a message...">
 
@@ -579,6 +780,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
                placeholder="Optional: search with a username">
 
         <button onclick="searchMessages()">Search</button>
+
         <button class="secondary-button" onclick="clearMessageSearch()">
             Clear Search
         </button>
@@ -595,6 +797,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
         <p id="blockedMessage"></p>
     </div>
 
+    <!-- CONTACTS -->
     <div class="contact-controls">
         <h3>Manage Contacts</h3>
         <input id="newContact" placeholder="Enter registered username">
@@ -603,7 +806,8 @@ button:disabled { opacity: .55; cursor: not-allowed; }
         <p id="contactMessage"></p>
     </div>
 
-    <div class="groups-controls">
+    <!-- GROUPS -->
+    <div class="groups-controls" id="groupsPanel">
         <h3>My Groups</h3>
 
         <input id="newGroupName" placeholder="Enter a new group name">
@@ -649,6 +853,86 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     <p id="onlineUsers">Online: Nobody</p>
 </header>
 
+
+<!-- ACTIVE CHAT HEADER -->
+<div id="activeChatBar" class="active-chat-bar">
+
+    <div class="chat-person" onclick="openActiveProfile()">
+        <img id="activeChatAvatar" alt="Contact profile picture">
+
+        <div>
+            <div id="activeChatName" class="chat-person-name">Chat</div>
+            <div id="activeChatAbout" class="chat-person-about">
+                View profile
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-header-actions">
+        <button class="secondary-button"
+                title="Camera"
+                disabled>📷</button>
+
+        <button class="secondary-button"
+                title="Voice call coming soon"
+                disabled>📞</button>
+
+        <button class="secondary-button"
+                title="Video call coming soon"
+                disabled>🎥</button>
+
+        <button onclick="toggleChatMenu()" title="Chat settings">⋮</button>
+    </div>
+</div>
+
+
+<!-- CHAT THREE-DOT MENU -->
+<div id="chatMenu" class="chat-menu">
+
+    <button onclick="openActiveProfile()">View Contact Profile</button>
+
+    <button onclick="searchThisChat()">Search Messages in This Chat</button>
+
+    <button onclick="toggleMuteActiveChat()" id="muteChatButton">
+        Mute Notifications
+    </button>
+
+    <label for="disappearingSelect">Disappearing Messages</label>
+    <select id="disappearingSelect" onchange="changeDisappearingTime()">
+        <option value="0">Off</option>
+        <option value="86400">24 hours</option>
+        <option value="604800">7 days</option>
+        <option value="7776000">90 days</option>
+    </select>
+
+    <label for="themeSelect">Chat Theme</label>
+    <select id="themeSelect" onchange="changeChatTheme()">
+        <option value="default">Default</option>
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+        <option value="blue">Blue</option>
+        <option value="green">Green</option>
+    </select>
+
+    <label for="mediaVisibilitySelect">Media Visibility</label>
+    <select id="mediaVisibilitySelect" onchange="changeMediaVisibility()">
+        <option value="default">Default</option>
+        <option value="show">Show media</option>
+        <option value="hide">Hide media</option>
+    </select>
+
+    <button onclick="createGroupFromChat()">Create New Group</button>
+
+    <button class="danger-button" onclick="blockActiveChat()">
+        Block This Contact
+    </button>
+
+    <p class="call-note">
+        Voice calls, video calls and photo sending are not connected yet.
+    </p>
+</div>
+
+
 <section id="messages" aria-live="polite"></section>
 
 <div class="send-area">
@@ -657,6 +941,30 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 </div>
 
 </section>
+
+
+<!-- PROFILE MODAL -->
+<div id="profileModal" class="modal-overlay"
+     onclick="closeProfileModalOutside(event)">
+
+    <div class="profile-modal">
+
+        <img id="viewProfilePicture" alt="Profile picture">
+
+        <h2 id="viewProfileUsername">Username</h2>
+
+        <p class="empty-note">About</p>
+        <div id="viewProfileAbout" class="profile-about">
+            No About information added.
+        </div>
+
+        <p id="viewProfileMessage" class="empty-note"></p>
+
+        <button class="secondary-button"
+                onclick="closeProfileModal()">Close</button>
+    </div>
+</div>
+
 </main>
 
 
@@ -678,6 +986,17 @@ let myGroups = [];
 let selectedGroup = null;
 let registrationProfilePicture = null;
 
+let activeChatSettings = {
+    pinned: false,
+    hidden: false,
+    muted: false,
+    disappearing_seconds: 0,
+    theme: "default",
+    media_visibility: "default"
+};
+
+let profileCache = {};
+
 let registrationData = {
     phone_number: "",
     password: "",
@@ -693,6 +1012,16 @@ const chatMode = document.getElementById("chatMode");
 const onlineUsers = document.getElementById("onlineUsers");
 
 const privateMessages = {};
+
+const DEFAULT_AVATAR =
+    "data:image/svg+xml;charset=UTF-8," +
+    encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">' +
+        '<rect width="100" height="100" fill="#354258"/>' +
+        '<circle cx="50" cy="37" r="19" fill="#aebbd0"/>' +
+        '<path d="M15 100c2-27 17-40 35-40s33 13 35 40" fill="#aebbd0"/>' +
+        '</svg>'
+    );
 
 
 // ---------------- GENERAL API HELPER ----------------
@@ -987,7 +1316,7 @@ async function finishRegistration() {
             registrationProfilePicture = null;
             setUploadStatus(
                 uploadStatus,
-                "No profile picture selected. Creating account...",
+                "No picture selected. Creating account...",
                 "uploading"
             );
         }
@@ -1183,6 +1512,7 @@ async function removeContact() {
         ) {
             activeRecipient = null;
             chatMode.textContent = "Mode: Group Chat";
+            hideActiveChatBar();
         }
 
         message.textContent = "Contact removed.";
@@ -1211,7 +1541,8 @@ function inboxPreview(item) {
 
     if (typeof last === "string") return last;
 
-    return last.text || item.last_message_text || item.preview || "No message preview";
+    return last.text || item.last_message_text || item.preview ||
+        "No message preview";
 }
 
 async function loadInbox(includeHidden = false) {
@@ -1237,11 +1568,15 @@ async function loadInbox(includeHidden = false) {
 
         items.forEach(function(item) {
             const username = inboxUsername(item);
-
             if (!username) return;
 
             const row = document.createElement("div");
             row.className = "inbox-item";
+
+            const avatar = document.createElement("img");
+            avatar.className = "inbox-avatar";
+            avatar.src = item.profile_picture || DEFAULT_AVATAR;
+            avatar.alt = username + " profile picture";
 
             const details = document.createElement("div");
             details.className = "inbox-details";
@@ -1278,7 +1613,7 @@ async function loadInbox(includeHidden = false) {
             openButton.className = "small-button";
             openButton.textContent = "Open";
             openButton.onclick = function() {
-                openInboxConversation(username);
+                openInboxConversation(username, item);
             };
 
             const pinButton = document.createElement("button");
@@ -1302,12 +1637,14 @@ async function loadInbox(includeHidden = false) {
                 blockUser(username);
             };
 
+            row.appendChild(avatar);
+            row.appendChild(details);
+
             actions.appendChild(openButton);
             actions.appendChild(pinButton);
             actions.appendChild(hideButton);
             actions.appendChild(blockButton);
 
-            row.appendChild(details);
             row.appendChild(actions);
             list.appendChild(row);
         });
@@ -1327,6 +1664,15 @@ async function setChatSetting(username, settings) {
             "PUT",
             settings
         );
+
+        if (
+            activeRecipient &&
+            activeRecipient.toLowerCase() === username.toLowerCase()
+        ) {
+            Object.assign(activeChatSettings, settings);
+            updateChatMenuValues();
+            applyChatTheme();
+        }
 
         document.getElementById("inboxMessage").textContent =
             "Chat settings updated.";
@@ -1352,7 +1698,7 @@ async function markAllRead() {
     }
 }
 
-function openInboxConversation(username) {
+function openInboxConversation(username, item = {}) {
     const existingOption = Array.from(recipientInput.options).find(function(option) {
         return option.value.toLowerCase() === username.toLowerCase();
     });
@@ -1368,11 +1714,23 @@ function openInboxConversation(username) {
     activeRecipient = username;
     currentView = "private";
 
+    activeChatSettings = {
+        pinned: !!item.pinned,
+        hidden: !!item.hidden,
+        muted: !!item.muted,
+        disappearing_seconds: Number(item.disappearing_seconds || 0),
+        theme: item.theme || "default",
+        media_visibility: item.media_visibility || "default"
+    };
+
     chatMode.textContent = "Mode: Private Chat with " + username;
     messages.innerHTML = "";
     delete messages.dataset.lastDateKey;
 
     addMessage("Opening private conversation with " + username, null, true);
+
+    showActiveChatBar(username, item.profile_picture, item.about);
+    updateChatMenuValues();
 
     if (!hasJoined) {
         currentRoom = "general";
@@ -1388,7 +1746,171 @@ function openInboxConversation(username) {
         }));
     }
 
+    loadProfile(username);
     messageInput.focus();
+}
+
+
+// ---------------- ACTIVE CHAT HEADER ----------------
+
+function showActiveChatBar(username, picture = null, about = "") {
+    const bar = document.getElementById("activeChatBar");
+
+    bar.classList.add("visible");
+
+    document.getElementById("activeChatName").textContent = username;
+    document.getElementById("activeChatAvatar").src =
+        picture || DEFAULT_AVATAR;
+
+    document.getElementById("activeChatAbout").textContent =
+        about || "Tap to view profile";
+
+    document.getElementById("chatMenu").classList.remove("visible");
+}
+
+function hideActiveChatBar() {
+    document.getElementById("activeChatBar").classList.remove("visible");
+    document.getElementById("chatMenu").classList.remove("visible");
+}
+
+function toggleChatMenu() {
+    if (!activeRecipient) return;
+
+    document.getElementById("chatMenu").classList.toggle("visible");
+}
+
+function updateChatMenuValues() {
+    document.getElementById("disappearingSelect").value =
+        String(activeChatSettings.disappearing_seconds || 0);
+
+    document.getElementById("themeSelect").value =
+        activeChatSettings.theme || "default";
+
+    document.getElementById("mediaVisibilitySelect").value =
+        activeChatSettings.media_visibility || "default";
+
+    document.getElementById("muteChatButton").textContent =
+        activeChatSettings.muted
+            ? "Unmute Notifications"
+            : "Mute Notifications";
+}
+
+function applyChatTheme() {
+    messages.classList.remove(
+        "theme-dark",
+        "theme-light",
+        "theme-blue",
+        "theme-green"
+    );
+
+    const theme = activeChatSettings.theme || "default";
+
+    if (theme !== "default") {
+        messages.classList.add("theme-" + theme);
+    }
+}
+
+async function toggleMuteActiveChat() {
+    if (!activeRecipient) return;
+
+    const nextValue = !activeChatSettings.muted;
+
+    await setChatSetting(activeRecipient, { muted: nextValue });
+
+    activeChatSettings.muted = nextValue;
+    updateChatMenuValues();
+}
+
+async function changeDisappearingTime() {
+    if (!activeRecipient) return;
+
+    const seconds = Number(
+        document.getElementById("disappearingSelect").value
+    );
+
+    try {
+        await setChatSetting(activeRecipient, {
+            disappearing_seconds: seconds
+        });
+
+        activeChatSettings.disappearing_seconds = seconds;
+        updateChatMenuValues();
+
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+async function changeChatTheme() {
+    if (!activeRecipient) return;
+
+    const theme = document.getElementById("themeSelect").value;
+
+    try {
+        await setChatSetting(activeRecipient, { theme: theme });
+
+        activeChatSettings.theme = theme;
+        applyChatTheme();
+
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+async function changeMediaVisibility() {
+    if (!activeRecipient) return;
+
+    const visibility =
+        document.getElementById("mediaVisibilitySelect").value;
+
+    try {
+        await setChatSetting(activeRecipient, {
+            media_visibility: visibility
+        });
+
+        activeChatSettings.media_visibility = visibility;
+
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+function searchThisChat() {
+    if (!activeRecipient) return;
+
+    document.getElementById("messageSearchUser").value = activeRecipient;
+    document.getElementById("messageSearchQuery").focus();
+
+    document.getElementById("searchPanel").scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+    });
+
+    document.getElementById("chatMenu").classList.remove("visible");
+}
+
+function createGroupFromChat() {
+    document.getElementById("chatMenu").classList.remove("visible");
+
+    document.getElementById("groupsPanel").scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+    });
+
+    document.getElementById("newGroupName").focus();
+}
+
+async function blockActiveChat() {
+    if (!activeRecipient) return;
+
+    const username = activeRecipient;
+
+    await blockUser(username);
+
+    activeRecipient = null;
+    currentView = "none";
+    hideActiveChatBar();
+    messages.innerHTML = "";
 }
 
 
@@ -1431,7 +1953,8 @@ async function searchMessages() {
             details.className = "inbox-details";
 
             const sender = document.createElement("strong");
-            sender.textContent = (item.username || item.sender || "Unknown") + ": ";
+            sender.textContent =
+                (item.username || item.sender || "Unknown") + ": ";
 
             const text = document.createElement("span");
             text.textContent = item.text || "";
@@ -1466,6 +1989,134 @@ function clearMessageSearch() {
     document.getElementById("messageSearchUser").value = "";
     document.getElementById("searchResults").innerHTML = "";
     document.getElementById("searchMessage").textContent = "";
+}
+
+
+// ---------------- PROFILE VIEW AND ABOUT ----------------
+
+async function loadMyProfile() {
+    try {
+        const data = await apiRequest(
+            "/api/profile/" + encodeURIComponent(myUsername)
+        );
+
+        profileCache[myUsername.toLowerCase()] = data;
+
+        if (data.profile_picture) {
+            document.getElementById("myAvatar").src = data.profile_picture;
+        } else {
+            document.getElementById("myAvatar").src = DEFAULT_AVATAR;
+        }
+
+        document.getElementById("myAbout").value = data.about || "";
+
+    } catch (err) {
+        console.error("Could not load profile:", err);
+    }
+}
+
+async function loadProfile(username) {
+    try {
+        const data = await apiRequest(
+            "/api/profile/" + encodeURIComponent(username)
+        );
+
+        profileCache[username.toLowerCase()] = data;
+
+        if (
+            activeRecipient &&
+            activeRecipient.toLowerCase() === username.toLowerCase()
+        ) {
+            document.getElementById("activeChatAvatar").src =
+                data.profile_picture || DEFAULT_AVATAR;
+
+            document.getElementById("activeChatAbout").textContent =
+                data.about || "Tap to view profile";
+        }
+
+        return data;
+
+    } catch (err) {
+        console.error("Could not load profile:", err);
+        return null;
+    }
+}
+
+async function openMyProfile() {
+    const data = await loadProfile(myUsername);
+
+    if (data) {
+        showProfileModal(data);
+    } else {
+        alert("Could not load your profile.");
+    }
+}
+
+async function openActiveProfile() {
+    if (!activeRecipient) return;
+
+    document.getElementById("chatMenu").classList.remove("visible");
+
+    const data = await loadProfile(activeRecipient);
+
+    if (!data) {
+        alert("This profile cannot be viewed. The user may have restricted you.");
+        return;
+    }
+
+    showProfileModal(data);
+}
+
+function showProfileModal(data) {
+    document.getElementById("viewProfilePicture").src =
+        data.profile_picture || DEFAULT_AVATAR;
+
+    document.getElementById("viewProfileUsername").textContent =
+        data.username || "KCHAT User";
+
+    document.getElementById("viewProfileAbout").textContent =
+        data.about || "No About information added.";
+
+    document.getElementById("viewProfileMessage").textContent = "";
+
+    document.getElementById("profileModal").classList.add("visible");
+}
+
+function closeProfileModal() {
+    document.getElementById("profileModal").classList.remove("visible");
+}
+
+function closeProfileModalOutside(event) {
+    if (event.target.id === "profileModal") {
+        closeProfileModal();
+    }
+}
+
+async function saveAbout() {
+    const about = document.getElementById("myAbout").value.trim();
+    const message = document.getElementById("aboutMessage");
+
+    if (about.length > 500) {
+        setUploadStatus(message, "About must be 500 characters or less.", "failed");
+        return;
+    }
+
+    try {
+        await apiRequest("/api/profile", "PUT", { about: about });
+
+        setUploadStatus(message, "About updated successfully.", "uploaded");
+
+        await loadMyProfile();
+
+        if (activeRecipient) {
+            await loadProfile(activeRecipient);
+        }
+
+        await loadInbox(true);
+
+    } catch (err) {
+        setUploadStatus(message, "Failed: " + err.message, "failed");
+    }
 }
 
 
@@ -1773,6 +2424,7 @@ function openManagedGroup() {
     reconnectAttempts = 0;
     hasJoined = true;
 
+    hideActiveChatBar();
     messages.innerHTML = "";
     delete messages.dataset.lastDateKey;
 
@@ -1784,22 +2436,7 @@ function openManagedGroup() {
 }
 
 
-// ---------------- PROFILE PICTURES ----------------
-
-async function loadMyProfile() {
-    try {
-        const data = await apiRequest(
-            "/api/profile/" + encodeURIComponent(myUsername)
-        );
-
-        if (data.profile_picture) {
-            document.getElementById("myAvatar").src = data.profile_picture;
-        }
-
-    } catch (err) {
-        console.error("Could not load profile:", err);
-    }
-}
+// ---------------- PROFILE PICTURE UPLOAD ----------------
 
 async function uploadProfilePicture() {
     const fileInput = document.getElementById("profileFile");
@@ -1849,6 +2486,8 @@ async function uploadProfilePicture() {
         document.getElementById("myAvatar").src = dataUrl;
         setUploadStatus(message, "Uploaded", "uploaded");
         fileInput.value = "";
+
+        await loadMyProfile();
 
     } catch (err) {
         setUploadStatus(message, "Failed: " + err.message, "failed");
@@ -1940,6 +2579,7 @@ function logout() {
     document.getElementById("loginError").textContent = "";
 
     messages.innerHTML = "";
+    hideActiveChatBar();
     showWelcomePage();
 }
 
@@ -2062,6 +2702,13 @@ function renderPrivateConversation() {
 }
 
 function showPrivateMessage(item) {
+    if (
+        item.expires_at &&
+        new Date(item.expires_at).getTime() <= Date.now()
+    ) {
+        return;
+    }
+
     const mine =
         (item.username || "").toLowerCase() === myUsername.toLowerCase();
 
@@ -2223,7 +2870,9 @@ function connectSocket() {
         if (data.type === "private") {
             savePrivateMessage(data);
 
-            const messageRecipient = (data.to || data.recipient || "").toLowerCase();
+            const messageRecipient =
+                (data.to || data.recipient || "").toLowerCase();
+
             const senderName = (data.username || "").toLowerCase();
 
             const outgoing =
@@ -2309,6 +2958,8 @@ function joinChat() {
     reconnectAttempts = 0;
     hasJoined = true;
 
+    hideActiveChatBar();
+
     messages.innerHTML = "";
     delete messages.dataset.lastDateKey;
 
@@ -2337,7 +2988,13 @@ function openPrivate() {
     chatMode.textContent = "Mode: Private Chat with " + recipient;
     messages.innerHTML = "";
     delete messages.dataset.lastDateKey;
+
     addMessage("Opening private conversation...", null, true);
+
+    showActiveChatBar(recipient);
+    updateChatMenuValues();
+    applyChatTheme();
+    loadProfile(recipient);
 
     if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
@@ -2354,6 +3011,8 @@ function openGroup() {
 
     activeRecipient = null;
     currentView = "group";
+
+    hideActiveChatBar();
 
     messages.innerHTML = "";
     delete messages.dataset.lastDateKey;
