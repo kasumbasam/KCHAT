@@ -746,8 +746,6 @@ hr {
                 <div class="topbar">
                     <div class="brand">KCHAT</div>
                     <div style="display:flex;gap:7px;align-items:center;">
-                        <!-- NEW FLOATING CHAT / CONTACT SELECTOR BUTTON -->
-                        <button class="icon-btn" id="sidebarSelectContactBtn" title="Select Contact / User" style="background:var(--accent);color:#000;font-weight:bold;">💬</button>
                         <button class="icon-btn" id="newChatButton"
                             title="New chat">＋</button>
                         <button class="icon-btn" id="mainMenuButton"
@@ -764,6 +762,9 @@ hr {
             <div class="filter-row">
                 <button class="filter-btn active" data-filter="all">All</button>
                 <button class="filter-btn" data-filter="unread">Unread</button>
+                <button class="filter-btn" data-filter="status">Status</button>
+                <button class="filter-btn" data-filter="call">Call</button>
+                <button class="filter-btn" data-filter="communities">Communities</button>
                 <button class="filter-btn" data-filter="favorites">Favorites</button>
                 <button class="filter-btn" data-filter="groups">Groups</button>
                 <button class="filter-btn" data-filter="archived">Archived</button>
@@ -773,6 +774,11 @@ hr {
                 <div style="padding:25px;text-align:center;color:var(--muted);">
                     Your conversations will appear here.
                 </div>
+            </div>
+
+            <!-- SELECT CONTEXT/USER BUTTON PLACED JUST ABOVE THE SETTINGS DRAWER ROW -->
+            <div style="padding:0 12px 6px 12px;">
+                <button class="primary-btn" id="sidebarSelectContactBtn" style="padding:10px;font-size:18px;">💬 Select Contact / User</button>
             </div>
 
             <!-- SETTINGS ACCESS ROW IN SIDEBAR -->
@@ -816,9 +822,6 @@ hr {
                     </div>
 
                     <div class="chat-header-actions">
-                        <!-- DIGITAL ICONS FOR CAMERA & CALL ADDED -->
-                        <button class="icon-btn" id="chatCameraIconButton" title="Digital Camera">📷</button>
-                        <button class="icon-btn" id="chatCallIconButton" title="Digital Call">📞</button>
                         <button class="icon-btn" id="chatAudioCallButton"
                             title="Audio call">☎</button>
                         <button class="icon-btn" id="chatVideoCallButton"
@@ -1758,11 +1761,14 @@ function renderContacts() {
         if (activeFilter === "favorites") return contact.favorite === true || contact.is_favorite === true;
         if (activeFilter === "unread") return Number(contact.unread_count || 0) > 0;
         if (activeFilter === "archived") return contact.archived === true;
+        if (activeFilter === "status") return contact.has_status === true;
+        if (activeFilter === "call") return contact.is_call === true;
+        if (activeFilter === "communities") return contact.is_community === true;
         return !contact.hidden || activeFilter === "all";
     });
 
     if (!filtered.length) {
-        list.innerHTML = '<p class="muted" style="padding:25px;text-align:center;">No conversations found.</p>';
+        list.innerHTML = `<p class="muted" style="padding:25px;text-align:center;">No items found for filter: ${activeFilter}.</p>`;
         return;
     }
 
@@ -2102,23 +2108,6 @@ $("voiceMessageButton").addEventListener("click", async () => {
     }
     messages.push({ username: currentUser, text: "🎤 [Voice Message Clip]", created_at: new Date().toISOString() });
     renderMessages();
-});
-
-// Digital Camera and Call Icons functionality
-$("chatCameraIconButton").addEventListener("click", () => {
-    $("cameraInput").click();
-});
-
-$("cameraInput").addEventListener("change", event => {
-    const file = event.target.files[0];
-    if (file && currentChat) {
-        messages.push({ username: currentUser, text: `[Digital Camera Capture: ${file.name}]`, created_at: new Date().toISOString() });
-        renderMessages();
-    }
-});
-
-$("chatCallIconButton").addEventListener("click", () => {
-    alert("Connecting digital voice/video call session...");
 });
 
 $("chatAudioCallButton").addEventListener("click", () => {
