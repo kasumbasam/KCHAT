@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KCHAT</title>
+<title>KCHAT - WhatsApp Layout</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap" rel="stylesheet">
@@ -186,6 +186,7 @@ hr {
     border-right:1px solid var(--border);
     display:flex;
     flex-direction:column;
+    position:relative;
 }
 
 .sidebar-header {
@@ -229,21 +230,50 @@ hr {
     border-radius:22px;
 }
 
+/* WhatsApp Classic Top Navigation Tabs & Secondary Filters */
+.whatsapp-tabs {
+    display:flex;
+    justify-content:space-around;
+    background:var(--panel);
+    border-bottom:1px solid var(--border);
+    padding:0 5px;
+}
+
+.whatsapp-tab-btn {
+    flex:1;
+    background:none;
+    border:0;
+    color:var(--muted);
+    font-weight:bold;
+    padding:12px 0;
+    text-align:center;
+    font-size:18px;
+    cursor:pointer;
+    border-bottom:3px solid transparent;
+}
+
+.whatsapp-tab-btn.active {
+    color:var(--accent);
+    border-bottom-color:var(--accent);
+}
+
 .filter-row {
     display:flex;
     gap:7px;
     overflow-x:auto;
-    padding:12px 15px;
+    padding:10px 15px;
+    background:var(--panel2);
+    border-bottom:1px solid var(--border);
 }
 
 .filter-btn {
     flex-shrink:0;
     border:1px solid var(--border);
-    background:var(--panel2);
+    background:var(--panel);
     color:var(--muted);
     border-radius:20px;
-    padding:8px 13px;
-    font-size:16px;
+    padding:6px 12px;
+    font-size:15px;
 }
 
 .filter-btn.active {
@@ -312,6 +342,26 @@ hr {
 .chat-item-time {
     color:var(--muted);
     font-size:14px;
+}
+
+/* Floating Circular User Button in bottom-right of Sidebar */
+.floating-user-btn {
+    position:absolute;
+    right:20px;
+    bottom:80px;
+    width:56px;
+    height:56px;
+    border-radius:50%;
+    background:var(--accent);
+    color:#000000;
+    border:0;
+    font-size:24px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 4px 12px #0008;
+    z-index:10;
+    cursor:pointer;
 }
 
 .main-area {
@@ -420,17 +470,6 @@ hr {
     color:#b7c4cc;
     font-size:12px;
     margin-top:6px;
-}
-
-.delivery-dots {
-    letter-spacing:-2px;
-}
-
-.date-divider {
-    text-align:center;
-    color:var(--muted);
-    font-size:14px;
-    margin:12px 0;
 }
 
 .message-composer {
@@ -759,12 +798,16 @@ hr {
                 </div>
             </div>
 
+            <!-- WHATSAPP CLASSIC TOP TABS (CHATS, CALLS, STATUS) -->
+            <div class="whatsapp-tabs">
+                <button class="whatsapp-tab-btn active" data-tab="chat">CHATS</button>
+                <button class="whatsapp-tab-btn" data-tab="call">CALLS</button>
+                <button class="whatsapp-tab-btn" data-tab="status">STATUS</button>
+            </div>
+
             <div class="filter-row">
                 <button class="filter-btn active" data-filter="all">All</button>
                 <button class="filter-btn" data-filter="unread">Unread</button>
-                <button class="filter-btn" data-filter="status">Status</button>
-                <button class="filter-btn" data-filter="call">Call</button>
-                <button class="filter-btn" data-filter="communities">Communities</button>
                 <button class="filter-btn" data-filter="favorites">Favorites</button>
                 <button class="filter-btn" data-filter="groups">Groups</button>
                 <button class="filter-btn" data-filter="archived">Archived</button>
@@ -776,10 +819,8 @@ hr {
                 </div>
             </div>
 
-            <!-- SELECT CONTEXT/USER BUTTON PLACED JUST ABOVE THE SETTINGS DRAWER ROW -->
-            <div style="padding:0 12px 6px 12px;">
-                <button class="primary-btn" id="sidebarSelectContactBtn" style="padding:10px;font-size:18px;">💬 Select Contact / User</button>
-            </div>
+            <!-- FLOATING CIRCULAR SELECT CONTACT / USER BUTTON AT BOTTOM RIGHT -->
+            <button class="floating-user-btn" id="sidebarSelectContactBtn" title="Select Contact / User">💬</button>
 
             <!-- SETTINGS ACCESS ROW IN SIDEBAR -->
             <div style="padding:12px;border-top:1px solid var(--border);">
@@ -1299,8 +1340,6 @@ hr {
     </div>
 </div>
 
-<input id="cameraInput" type="file" accept="image/*" capture="environment" class="hidden">
-
 <script>
 "use strict";
 
@@ -1312,6 +1351,7 @@ let currentChat = "";
 let contacts = [];
 let messages = [];
 let activeFilter = "all";
+let activeTab = "chat";
 let socket = null;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
@@ -1757,29 +1797,29 @@ function renderContacts() {
     let filtered = contacts.filter(contact => {
         const name = contactName(contact).toLowerCase();
         if (search && !name.includes(search)) return false;
+        if (activeTab === "call" && !(contact.is_call === true)) return false;
+        if (activeTab === "status" && !(contact.has_status === true)) return false;
         if (activeFilter === "groups") return contact.type === "group" || contact.is_group === true;
         if (activeFilter === "favorites") return contact.favorite === true || contact.is_favorite === true;
         if (activeFilter === "unread") return Number(contact.unread_count || 0) > 0;
         if (activeFilter === "archived") return contact.archived === true;
-        if (activeFilter === "status") return contact.has_status === true;
-        if (activeFilter === "call") return contact.is_call === true;
-        if (activeFilter === "communities") return contact.is_community === true;
         return !contact.hidden || activeFilter === "all";
     });
 
     if (!filtered.length) {
-        list.innerHTML = `<p class="muted" style="padding:25px;text-align:center;">No items found for filter: ${activeFilter}.</p>`;
+        list.innerHTML = `<p class="muted" style="padding:25px;text-align:center;">No items found in ${activeTab.toUpperCase()}.</p>`;
         return;
     }
 
     list.innerHTML = filtered.map(contact => {
         const name = contactName(contact);
-        const initial = escapeHTML(name.charAt(0).toUpperCase());
+        const pic = contact.profile_picture;
+        const avatarContent = pic ? `<img src="${escapeHTML(pic)}" alt="Avatar">` : escapeHTML(name.charAt(0).toUpperCase());
         const unread = Number(contact.unread_count || 0);
 
         return `
             <div class="chat-item" data-username="${escapeHTML(name)}">
-                <div class="avatar">${initial}</div>
+                <div class="avatar">${avatarContent}</div>
                 <div class="chat-item-info">
                     <div class="chat-item-name">${escapeHTML(name)}</div>
                     <div class="chat-item-preview">${escapeHTML(contact.last_message || "Start a conversation")}</div>
@@ -1797,6 +1837,16 @@ function renderContacts() {
 }
 
 $("chatSearch").addEventListener("input", renderContacts);
+
+// WhatsApp Tabs (CHAT, CALLS, STATUS) Switching Logic
+document.querySelectorAll(".whatsapp-tab-btn").forEach(button => {
+    button.addEventListener("click", () => {
+        document.querySelectorAll(".whatsapp-tab-btn").forEach(item => item.classList.remove("active"));
+        button.classList.add("active");
+        activeTab = button.dataset.tab;
+        renderContacts();
+    });
+});
 
 document.querySelectorAll(".filter-btn").forEach(button => {
     button.addEventListener("click", () => {
