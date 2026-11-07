@@ -8,12 +8,25 @@
 <style>
 * { box-sizing: border-box; }
 
+:root {
+    --green: #00a884;
+    --green-dark: #008f70;
+    --background: #10131a;
+    --panel: #1b2230;
+    --panel-light: #263249;
+    --border: #354258;
+    --text: #edf2f7;
+    --muted: #aebbd0;
+    --incoming: #263249;
+    --outgoing: #174d59;
+}
+
 body {
     margin: 0;
     min-height: 100vh;
     font-family: Arial, sans-serif;
-    background: #10131a;
-    color: #edf2f7;
+    background: var(--background);
+    color: var(--text);
 }
 
 button, input, textarea, select { font: inherit; }
@@ -25,18 +38,18 @@ button {
     margin: 4px 2px;
     cursor: pointer;
     font-weight: bold;
-    color: #07131d;
-    background: #70d6ff;
+    color: white;
+    background: var(--green);
 }
 
-button:hover { background: #9ae3ff; }
+button:hover { background: var(--green-dark); }
 button:disabled { opacity: .5; cursor: not-allowed; }
 
 input, textarea, select {
     width: 100%;
     padding: 12px;
     margin: 7px 0;
-    border: 1px solid #43516b;
+    border: 1px solid var(--border);
     border-radius: 8px;
     color: white;
     background: #121925;
@@ -44,28 +57,26 @@ input, textarea, select {
 
 textarea { resize: vertical; min-height: 65px; }
 
-h1, h2, h3 { color: #70d6ff; }
-
+h1, h2, h3 { color: var(--green); }
 h1 { margin: 0 0 12px; font-size: 28px; }
-
 h3 { font-size: 16px; }
 
 .hidden { display: none !important; }
 
 .chat-app {
-    width: min(900px, 100%);
+    width: min(1100px, 100%);
     min-height: 100vh;
     margin: auto;
     display: flex;
     flex-direction: column;
-    background: #1b2230;
-    border: 1px solid #303b50;
+    background: var(--panel);
+    border: 1px solid var(--border);
 }
 
 header {
     padding: 15px;
     background: #202a3b;
-    border-bottom: 1px solid #303b50;
+    border-bottom: 1px solid var(--border);
 }
 
 .account-row {
@@ -80,19 +91,11 @@ header {
     border-radius: 50%;
     object-fit: cover;
     background: #43516b;
-    border: 2px solid #70d6ff;
+    border: 2px solid var(--green);
 }
 
 #accountName { font-weight: bold; }
-
-#status, #onlineUsers, #chatMode {
-    margin-top: 7px;
-    font-size: 12px;
-}
-
-#status { color: #f6c453; }
-#onlineUsers { color: #80ed99; }
-#chatMode { color: #70d6ff; }
+#status { margin-top: 5px; font-size: 12px; color: var(--green); }
 
 .auth-box {
     width: min(420px, 92%);
@@ -102,31 +105,24 @@ header {
 
 .auth-logo { text-align: center; margin-bottom: 25px; }
 .auth-logo h1 { font-size: 42px; }
-
-.auth-logo p, .auth-description { color: #aebbd0; }
-
+.auth-logo p, .auth-description { color: var(--muted); }
 .auth-description { font-size: 14px; line-height: 1.5; }
-
 .auth-box button { width: 100%; }
-
 .auth-page { display: none; }
 .auth-page.active { display: block; }
 
 .switch {
-    color: #70d6ff;
+    color: var(--green);
     text-align: center;
     cursor: pointer;
     margin-top: 15px;
 }
 
 .error { color: #ff8585; min-height: 20px; font-size: 13px; }
-
 .success { color: #80ed99; font-size: 13px; }
 
-.secondary-button { background: #354258; color: white; }
-
-.danger-button { background: #ff8585; color: #271010; }
-
+.secondary-button { background: #354258; }
+.danger-button { background: #c94d58; color: white; }
 .small-button { padding: 7px 9px; font-size: 12px; }
 
 .picture-preview {
@@ -136,14 +132,14 @@ header {
     border-radius: 50%;
     object-fit: cover;
     margin: 15px auto;
-    border: 3px solid #70d6ff;
+    border: 3px solid var(--green);
 }
 
 .upload-status {
     text-align: center;
     min-height: 20px;
     font-size: 13px;
-    color: #aebbd0;
+    color: var(--muted);
 }
 
 #chatScreen {
@@ -157,7 +153,7 @@ header {
 .panel {
     padding: 12px;
     margin-bottom: 12px;
-    border: 1px solid #43516b;
+    border: 1px solid var(--border);
     border-radius: 10px;
     background: #182232;
 }
@@ -171,6 +167,15 @@ header {
     gap: 8px;
 }
 
+.top-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.top-header h1 { margin: 0; }
+
 .inbox-item, .group-member, .search-result, .blocked-item {
     display: flex;
     align-items: center;
@@ -178,11 +183,10 @@ header {
     padding: 10px;
     margin: 7px 0;
     border-radius: 9px;
-    background: #263249;
+    background: var(--panel-light);
 }
 
 .inbox-item { cursor: pointer; }
-
 .inbox-item:hover { background: #354258; }
 
 .inbox-avatar {
@@ -195,19 +199,61 @@ header {
 }
 
 .inbox-details { flex: 1; min-width: 0; }
-
-.inbox-name { font-weight: bold; color: #70d6ff; }
+.inbox-name { font-weight: bold; color: var(--green); }
 
 .inbox-preview {
     font-size: 12px;
-    color: #aebbd0;
+    color: var(--muted);
     margin-top: 5px;
     overflow-wrap: anywhere;
 }
 
 .inbox-unread { color: #80ed99; font-size: 12px; margin-top: 4px; }
+.empty-note { color: var(--muted); font-size: 13px; padding: 8px; }
 
-.empty-note { color: #aebbd0; font-size: 13px; padding: 8px; }
+/* NEW CHAT */
+
+.new-chat-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    margin: 8px 0 12px;
+    padding: 15px;
+    background: var(--green);
+    color: white;
+    font-size: 17px;
+    border-radius: 10px;
+}
+
+.new-chat-button span { font-size: 25px; }
+
+/* CHAT FILTERS */
+
+.chat-filters {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    padding: 5px 0 12px;
+    scrollbar-width: none;
+}
+
+.chat-filters button {
+    flex-shrink: 0;
+    border-radius: 20px;
+    padding: 8px 13px;
+    background: #354258;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.chat-filters button.active {
+    background: #075e50;
+    color: white;
+}
+
+/* ACTIVE CHAT */
 
 #activeChat {
     display: none;
@@ -219,15 +265,16 @@ header {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 12px;
+    padding: 10px;
     background: #202a3b;
-    border-bottom: 1px solid #43516b;
+    border-bottom: 1px solid var(--border);
 }
 
 .chat-person {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 4px;
     flex: 1;
     min-width: 0;
     cursor: pointer;
@@ -241,23 +288,38 @@ header {
     background: #43516b;
 }
 
-.chat-person-name { color: #70d6ff; font-weight: bold; }
+.chat-person-name {
+    color: var(--green);
+    font-weight: bold;
+    text-align: center;
+}
 
-.chat-person-about { color: #aebbd0; font-size: 12px; margin-top: 4px; }
+.chat-person-status {
+    color: var(--muted);
+    font-size: 11px;
+}
 
-.chat-header-actions { display: flex; gap: 3px; }
+.chat-person-status.online { color: #80ed99; }
 
-.chat-header-actions button { padding: 9px; margin: 0; }
+.chat-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.chat-header-actions button {
+    padding: 9px;
+    margin: 0;
+}
 
 .chat-menu {
     display: none;
     padding: 12px;
     background: #182232;
-    border-bottom: 1px solid #43516b;
+    border-bottom: 1px solid var(--border);
 }
 
 .chat-menu.visible { display: block; }
-
 .chat-menu button { width: 100%; text-align: left; margin: 4px 0; }
 
 .call-note { color: #f6c453; font-size: 12px; }
@@ -277,12 +339,12 @@ header {
     padding: 10px 12px;
     border-radius: 10px;
     overflow-wrap: anywhere;
-    background: #263249;
+    background: var(--incoming);
 }
 
 .message.mine {
     margin-left: auto;
-    background: #174d59;
+    background: var(--outgoing);
 }
 
 .message strong { color: #70d6ff; }
@@ -291,18 +353,20 @@ header {
     display: block;
     margin-top: 6px;
     text-align: right;
-    color: #aebbd0;
+    color: var(--muted);
     font-size: 10px;
 }
 
-.status-dot { color: #9ca3af; margin-left: 5px; }
-
-.status-dot.read { color: #2196ff; }
+.status-dot {
+    color: #b5c5c0;
+    margin-left: 5px;
+    letter-spacing: -2px;
+}
 
 .system {
     text-align: center;
     font-size: 12px;
-    color: #aebbd0;
+    color: var(--muted);
     margin: 10px;
 }
 
@@ -322,22 +386,49 @@ header {
     background: #202a3b;
 }
 
-.send-area textarea { flex: 1; min-height: 45px; max-height: 120px; }
+.send-area textarea {
+    flex: 1;
+    min-height: 45px;
+    max-height: 120px;
+}
 
 #message { margin: 0; }
 
-.settings-section { margin: 12px 0; }
+/* SETTINGS AND MENUS */
 
+.settings-section { margin: 12px 0; }
 .settings-section button { width: 100%; text-align: left; }
 
 .settings-content {
     display: none;
     padding: 10px;
     border-radius: 8px;
-    background: #263249;
+    background: var(--panel-light);
 }
 
 .settings-content.visible { display: block; }
+
+.popup-menu {
+    position: absolute;
+    top: 60px;
+    right: 12px;
+    z-index: 50;
+    width: 220px;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #263249;
+    box-shadow: 0 8px 25px #0008;
+}
+
+.popup-menu button {
+    width: 100%;
+    display: block;
+    text-align: left;
+    background: transparent;
+}
+
+/* MODALS */
 
 .modal-overlay {
     display: none;
@@ -359,7 +450,7 @@ header {
     padding: 20px;
     border-radius: 12px;
     background: #202a3b;
-    border: 1px solid #43516b;
+    border: 1px solid var(--border);
 }
 
 .profile-picture-large {
@@ -369,7 +460,7 @@ header {
     margin: 15px auto;
     object-fit: cover;
     border-radius: 50%;
-    border: 3px solid #70d6ff;
+    border: 3px solid var(--green);
     cursor: zoom-in;
 }
 
@@ -383,20 +474,55 @@ header {
 #zoomOverlay { z-index: 1100; }
 
 .row-actions { display: flex; gap: 5px; flex-wrap: wrap; }
-
 .row-actions button { flex: 1; }
 
-#notification { font-size: 13px; color: #80ed99; min-height: 18px; }
+#notification {
+    font-size: 13px;
+    color: #80ed99;
+    min-height: 18px;
+}
 
-@media (max-width: 500px) {
-    .chat-app { border: 0; border-radius: 0; }
+/* MOBILE */
+
+@media (max-width: 650px) {
+    .chat-app { border: 0; }
+
     .main-content { padding: 8px; }
+
+    #inboxScreen {
+        display: block;
+    }
+
+    #activeChat {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        min-height: 100dvh;
+        background: #151b27;
+    }
+
+    #activeChat.mobile-open { display: flex; }
+
     .message { max-width: 90%; }
-    .chat-header-actions button { padding: 8px 6px; }
+
+    .chat-header-actions button {
+        padding: 8px 6px;
+    }
+
+    #messages {
+        max-height: none;
+        min-height: 0;
+    }
+
+    .send-area { padding: 9px; }
+
+    .modal-box {
+        max-height: 94vh;
+    }
 }
 </style>
 </head>
-
 <body>
 
 <!-- LOGIN -->
@@ -406,7 +532,6 @@ header {
             <h1>KCHAT</h1>
             <p>Connect with the people who matter.</p>
         </div>
-
         <h3>Login</h3>
         <input id="loginPhone" placeholder="Phone number or username">
         <input id="loginPassword" type="password" placeholder="Password">
@@ -425,38 +550,32 @@ header {
             <h1>KCHAT</h1>
             <p>Create your account</p>
         </div>
-
         <h3>Register</h3>
-
         <input id="registerPhone" placeholder="Phone number">
         <input id="registerPassword" type="password" placeholder="Password (minimum 8 characters)">
         <input id="registerUsername" placeholder="Username">
-
         <label>Profile picture</label>
         <input id="registerPicture" type="file" accept="image/png,image/jpeg,image/webp">
-
         <img id="registerPreview" class="picture-preview hidden" alt="Preview">
-
         <div id="registerUploadStatus" class="upload-status">No file chosen</div>
         <div id="registerError" class="error"></div>
-
         <button onclick="register()">Create account</button>
-
         <div class="switch" onclick="showPage('loginPage')">
             Already have an account? Login
         </div>
     </div>
 </div>
 
-<!-- MAIN CHAT APP -->
+<!-- MAIN APPLICATION -->
 <div id="chatScreen">
-
     <div class="chat-app">
 
+        <!-- HOME HEADER -->
         <header>
-            <div class="section-title">
+            <div class="top-header">
                 <h1>KCHAT</h1>
-                <button class="small-button" onclick="toggleSettings()">⚙ Settings</button>
+                <button class="icon-button" title="More options"
+                        onclick="toggleMainMenu()">⋮</button>
             </div>
 
             <div class="account-row">
@@ -467,26 +586,31 @@ header {
                 </div>
             </div>
 
-            <div id="chatMode">Private messaging</div>
-            <div id="onlineUsers">Connected to KCHAT</div>
+            <div id="mainMenu" class="popup-menu hidden">
+                <button onclick="toggleSettings();toggleMainMenu()">Settings</button>
+                <button onclick="showMyProfile()">My Profile</button>
+                <button onclick="loadContacts();toggleMainMenu();openSettingsSection('contactSettings')">Contacts</button>
+                <button onclick="loadGroups();toggleMainMenu();openSettingsSection('groupSettings')">Groups</button>
+                <button onclick="loadBlocked();toggleMainMenu();openSettingsSection('blockedSettings')">Blocked Contacts</button>
+                <button onclick="logout()">Logout</button>
+            </div>
         </header>
 
         <!-- SETTINGS -->
         <div id="settingsPanel" class="panel hidden">
             <div class="section-title">
                 <h3>KCHAT Settings</h3>
-                <button class="small-button secondary-button" onclick="toggleSettings()">Close</button>
+                <button class="small-button secondary-button"
+                        onclick="toggleSettings()">← Back</button>
             </div>
 
             <div class="settings-section">
                 <button onclick="toggleSection('profileSettings')">My Profile and About</button>
                 <div id="profileSettings" class="settings-content">
                     <img id="settingsAvatar" class="picture-preview" alt="My picture">
-
                     <label>Change profile picture</label>
                     <input id="settingsPicture" type="file" accept="image/png,image/jpeg,image/webp">
                     <div id="profileUploadStatus" class="upload-status">No file chosen</div>
-
                     <label>About</label>
                     <textarea id="myAbout" maxlength="500" placeholder="Write something about yourself..."></textarea>
                     <button onclick="saveProfile()">Save Profile</button>
@@ -495,29 +619,26 @@ header {
             </div>
 
             <div class="settings-section">
-                <button onclick="toggleSection('contactSettings')">Contacts and Contact Management</button>
+                <button onclick="toggleSection('contactSettings');loadContacts()">Contacts and Contact Management</button>
                 <div id="contactSettings" class="settings-content">
                     <h3>Add Contact</h3>
                     <input id="contactUsername" placeholder="Enter KCHAT username">
                     <button onclick="addContact()">Add Contact</button>
                     <div id="contactMessage"></div>
-
                     <h3>My Contacts</h3>
                     <div id="contactsList"></div>
                 </div>
             </div>
 
             <div class="settings-section">
-                <button onclick="toggleSection('groupSettings')">Group Settings</button>
+                <button onclick="toggleSection('groupSettings');loadGroups()">Group Settings</button>
                 <div id="groupSettings" class="settings-content">
                     <h3>Create Group</h3>
                     <input id="groupName" placeholder="Group name">
                     <button onclick="createGroup()">Create Group</button>
                     <div id="groupMessage"></div>
-
                     <h3>My Groups</h3>
                     <div id="groupsList"></div>
-
                     <h3>Group Members</h3>
                     <div id="groupMembers"></div>
                 </div>
@@ -539,19 +660,29 @@ header {
             </div>
         </div>
 
-        <!-- INBOX -->
+        <!-- INBOX / HOME -->
         <div id="inboxScreen" class="main-content">
 
             <div class="panel">
-                <h3>Search Messages</h3>
-                <input id="searchInput" placeholder="Search your messages...">
+                <input id="searchInput" placeholder="Search messages and chats...">
                 <button onclick="searchMessages()">Search</button>
                 <div id="searchResults"></div>
             </div>
 
+            <button class="new-chat-button" onclick="openNewChatPicker()">
+                <span>＋</span> New Chat
+            </button>
+
+            <div class="chat-filters">
+                <button class="active" data-filter="all" onclick="setChatFilter('all',this)">All</button>
+                <button data-filter="unread" onclick="setChatFilter('unread',this)">Unread</button>
+                <button data-filter="favorites" onclick="setChatFilter('favorites',this)">Favorites</button>
+                <button data-filter="groups" onclick="setChatFilter('groups',this)">Groups</button>
+            </div>
+
             <div class="panel">
                 <div class="section-title">
-                    <h3>Chats / Inbox</h3>
+                    <h3 id="inboxHeading">All Chats</h3>
                     <button class="small-button" onclick="loadInbox()">Refresh</button>
                 </div>
                 <div id="inboxList"></div>
@@ -564,21 +695,20 @@ header {
         <div id="activeChat">
 
             <div class="active-chat-bar">
-                <button class="small-button secondary-button" onclick="backToInbox()">←</button>
+                <button class="small-button secondary-button"
+                        onclick="backToInbox()">←</button>
 
                 <div class="chat-person" onclick="viewCurrentProfile()">
                     <img id="chatAvatar" alt="Contact">
-                    <div>
-                        <div id="chatPersonName" class="chat-person-name">Contact</div>
-                        <div id="chatPersonAbout" class="chat-person-about">View profile</div>
-                    </div>
+                    <div id="chatPersonName" class="chat-person-name">Contact</div>
+                    <div id="chatPersonStatus" class="chat-person-status">Offline</div>
                 </div>
 
                 <div class="chat-header-actions">
-                    <button title="Camera" onclick="showCallNote()">📷</button>
-                    <button title="Voice call" onclick="showCallNote()">📞</button>
-                    <button title="Video call" onclick="showCallNote()">🎥</button>
-                    <button title="More settings" onclick="toggleChatMenu()">⋮</button>
+                    <button title="Camera" onclick="openCamera()">📷</button>
+                    <button title="Voice call" onclick="openCallPicker('voice')">📞</button>
+                    <button title="Video call" onclick="openCallPicker('video')">🎥</button>
+                    <button title="More options" onclick="toggleChatMenu()">⋮</button>
                 </div>
             </div>
 
@@ -588,23 +718,64 @@ header {
                 <button onclick="toggleMute()">Mute / Unmute Notifications</button>
                 <button onclick="changeDisappearing()">Disappearing Messages</button>
                 <button onclick="changeTheme()">Change Chat Theme</button>
-                <button onclick="togglePin()">Pin / Unpin Chat</button>
+                <button onclick="togglePin()">Add / Remove Favourite</button>
                 <button onclick="toggleHide()">Hide / Unhide Chat</button>
                 <button onclick="toggleMediaVisibility()">Media Visibility</button>
-                <button onclick="createGroupFromChat()">Create New Group</button>
+                <button onclick="createGroupFromChat()">Create Group with this Contact</button>
                 <button onclick="removeCurrentContact()">Remove Contact</button>
                 <button class="danger-button" onclick="blockCurrentUser()">Block Contact</button>
-                <p class="call-note">Voice and video calling are not connected to the backend yet.</p>
             </div>
 
             <main id="messages"></main>
 
             <footer class="send-area">
                 <textarea id="message" placeholder="Type a message..."></textarea>
-                <button id="sendBtn" onclick="sendMessage()">Send</button>
+                <button id="sendBtn" onclick="sendMessage()">➤</button>
             </footer>
         </div>
+    </div>
+</div>
 
+<!-- NEW CHAT CONTACT PICKER -->
+<div id="newChatOverlay" class="modal-overlay">
+    <div class="modal-box">
+        <div class="section-title">
+            <h3>New Chat</h3>
+            <button class="small-button secondary-button" onclick="closeNewChatPicker()">Close</button>
+        </div>
+        <input id="newChatSearch" placeholder="Find a contact..." oninput="filterNewChatContacts()">
+        <div id="newChatContacts"></div>
+        <hr>
+        <h3>Invite someone</h3>
+        <p class="auth-description">Invite someone to join KCHAT.</p>
+        <button onclick="inviteUser()">Invite Contact</button>
+    </div>
+</div>
+
+<!-- CALL CONTACT PICKER -->
+<div id="callPickerOverlay" class="modal-overlay">
+    <div class="modal-box">
+        <div class="section-title">
+            <h3 id="callPickerTitle">Choose a contact</h3>
+            <button class="small-button secondary-button" onclick="closeCallPicker()">Close</button>
+        </div>
+        <div id="callPickerContacts"></div>
+        <p class="call-note">Calling will be enabled when the calling service is connected.</p>
+    </div>
+</div>
+
+<!-- CAMERA -->
+<input id="cameraInput" type="file" accept="image/*" capture="environment" class="hidden"
+       onchange="cameraPictureSelected(event)">
+
+<div id="cameraOverlay" class="modal-overlay">
+    <div class="modal-box">
+        <div class="section-title">
+            <h3>Photo</h3>
+            <button class="small-button secondary-button" onclick="closeCameraPreview()">Close</button>
+        </div>
+        <img id="cameraPreview" class="camera-preview" alt="Selected photo">
+        <p class="call-note">Photo capture is available. Sending photos requires the media upload service.</p>
     </div>
 </div>
 
@@ -615,12 +786,10 @@ header {
             <h3>Contact Profile</h3>
             <button class="small-button secondary-button" onclick="closeProfile()">Close</button>
         </div>
-
-        <img id="profilePictureLarge" class="profile-picture-large" alt="Profile picture" onclick="zoomProfilePicture()">
-
+        <img id="profilePictureLarge" class="profile-picture-large"
+             alt="Profile picture" onclick="zoomProfilePicture">
         <h2 id="profileUsername" style="text-align:center"></h2>
         <p id="profileAbout" style="text-align:center"></p>
-
         <button id="savePictureButton" onclick="saveProfilePicture()">Save Picture</button>
     </div>
 </div>
@@ -629,7 +798,6 @@ header {
 <div id="zoomOverlay" class="modal-overlay" onclick="closeZoom()">
     <img id="zoomPicture" class="zoom-picture" alt="Zoomed profile picture">
 </div>
-
 <script>
 /* ---------------- APP STATE ---------------- */
 
@@ -640,7 +808,6 @@ let myProfile = null;
 
 let socket = null;
 let groupSocket = null;
-
 let currentPeer = null;
 let currentGroup = null;
 let currentChatType = "private";
@@ -648,27 +815,34 @@ let currentChatType = "private";
 let contacts = [];
 let groups = [];
 let inbox = [];
+let onlineUsers = [];
 let currentProfilePicture = null;
 let currentProfileUsername = null;
 let currentSettings = {};
+let activeFilter = "all";
+let pendingPrivateChat = null;
+let reconnectTimer = null;
+let notificationTimer = null;
 
-/* ---------------- BASIC HELPERS ---------------- */
+/* ---------------- HELPERS ---------------- */
 
 function showPage(id) {
     document.querySelectorAll(".auth-page").forEach(page => {
         page.classList.remove("active");
     });
-
     document.getElementById(id).classList.add("active");
 }
 
 function notify(message) {
     const element = document.getElementById("notification");
-    element.textContent = message;
+    if (!element) return;
 
-    setTimeout(() => {
+    element.textContent = message;
+    clearTimeout(notificationTimer);
+
+    notificationTimer = setTimeout(() => {
         element.textContent = "";
-    }, 5000);
+    }, 4500);
 }
 
 function escapeHTML(value) {
@@ -689,14 +863,24 @@ function toggleSettings() {
     document.getElementById("settingsPanel").classList.toggle("hidden");
 }
 
+function toggleMainMenu() {
+    document.getElementById("mainMenu").classList.toggle("hidden");
+}
+
 function toggleSection(id) {
     document.getElementById(id).classList.toggle("visible");
 }
 
+function openSettingsSection(id) {
+    document.getElementById("settingsPanel").classList.remove("hidden");
+    document.querySelectorAll(".settings-content").forEach(item => {
+        item.classList.remove("visible");
+    });
+    document.getElementById(id).classList.add("visible");
+}
+
 function apiRequest(path, options = {}) {
-    const headers = {
-        ...(options.headers || {})
-    };
+    const headers = { ...(options.headers || {}) };
 
     if (token) headers.Authorization = "Bearer " + token;
 
@@ -712,14 +896,36 @@ function apiRequest(path, options = {}) {
 
         if (!response.ok) {
             if (response.status === 401) {
-                notify("Your session has expired. Please log in again.");
+                handleExpiredSession();
             }
 
-            throw new Error(data.error || "Request failed.");
+            throw new Error(data.error || data.detail || "Request failed.");
         }
 
         return data;
     });
+}
+
+function handleExpiredSession() {
+    if (!token) return;
+
+    token = "";
+    currentUser = "";
+
+    localStorage.removeItem("kchat_token");
+    localStorage.removeItem("kchat_username");
+
+    if (socket) socket.close();
+    if (groupSocket) groupSocket.close();
+
+    socket = null;
+    groupSocket = null;
+
+    document.getElementById("chatScreen").style.display = "none";
+    showPage("loginPage");
+
+    document.getElementById("loginError").textContent =
+        "Your session expired. Please log in again.";
 }
 
 /* ---------------- IMAGE PROCESSING ---------------- */
@@ -759,7 +965,9 @@ function resizePicture(file, statusElement) {
                 canvas.width = width;
                 canvas.height = height;
 
-                canvas.getContext("2d").drawImage(image, 0, 0, width, height);
+                canvas.getContext("2d").drawImage(
+                    image, 0, 0, width, height
+                );
 
                 const result = canvas.toDataURL("image/jpeg", 0.75);
 
@@ -791,7 +999,6 @@ document.getElementById("registerPicture").addEventListener("change", async func
         const picture = await resizePicture(file, status);
         document.getElementById("registerPreview").src = picture;
         document.getElementById("registerPreview").classList.remove("hidden");
-        status.textContent = "Picture ready.";
     } catch (error) {
         status.textContent = error.message;
     }
@@ -814,11 +1021,16 @@ async function register() {
         return;
     }
 
+    if (password.length < 8) {
+        errorElement.textContent = "Password must be at least 8 characters.";
+        return;
+    }
+
     try {
         const file = document.getElementById("registerPicture").files[0];
         const picture = file ? await resizePicture(file, status) : null;
 
-        status.textContent = "Creating account...";
+        status.textContent = "Creating your account...";
 
         const data = await apiRequest("/api/register", {
             method: "POST",
@@ -830,15 +1042,18 @@ async function register() {
             })
         });
 
+        if (!data.token) {
+            throw new Error("Account created, but no login token was returned.");
+        }
+
         token = data.token;
         currentUser = data.username;
 
         localStorage.setItem("kchat_token", token);
         localStorage.setItem("kchat_username", currentUser);
 
-        status.textContent = "Account created successfully.";
-
-        enterKchat();
+        status.textContent = "Account created. Opening KCHAT...";
+        await enterKchat();
 
     } catch (error) {
         errorElement.textContent = error.message;
@@ -851,9 +1066,14 @@ async function register() {
 async function login() {
     const phone = document.getElementById("loginPhone").value.trim();
     const password = document.getElementById("loginPassword").value;
-
     const errorElement = document.getElementById("loginError");
+
     errorElement.textContent = "";
+
+    if (!phone || !password) {
+        errorElement.textContent = "Enter your phone number and password.";
+        return;
+    }
 
     try {
         const data = await apiRequest("/api/login", {
@@ -864,13 +1084,15 @@ async function login() {
             })
         });
 
+        if (!data.token) throw new Error("Login token was not returned.");
+
         token = data.token;
         currentUser = data.username;
 
         localStorage.setItem("kchat_token", token);
         localStorage.setItem("kchat_username", currentUser);
 
-        enterKchat();
+        await enterKchat();
 
     } catch (error) {
         errorElement.textContent = error.message;
@@ -887,34 +1109,34 @@ async function enterKchat() {
     document.getElementById("chatScreen").style.display = "flex";
     document.getElementById("accountName").textContent = currentUser;
 
-    await loadMyProfile();
-    await loadContacts();
-    await loadGroups();
-    await loadInbox();
+    try {
+        await loadMyProfile();
+        await loadContacts();
+        await loadGroups();
+        await loadInbox();
 
-    connectPrivateSocket();
+        connectPrivateSocket();
+
+    } catch (error) {
+        notify(error.message);
+    }
 }
 
 /* ---------------- PROFILE ---------------- */
 
 async function loadMyProfile() {
-    try {
-        myProfile = await apiRequest(
-            "/api/profile/" + encodeURIComponent(currentUser)
-        );
+    myProfile = await apiRequest(
+        "/api/profile/" + encodeURIComponent(currentUser)
+    );
 
-        document.getElementById("myAvatar").src =
-            avatarSource(myProfile.profile_picture);
+    document.getElementById("myAvatar").src =
+        avatarSource(myProfile.profile_picture);
 
-        document.getElementById("settingsAvatar").src =
-            avatarSource(myProfile.profile_picture);
+    document.getElementById("settingsAvatar").src =
+        avatarSource(myProfile.profile_picture);
 
-        document.getElementById("myAbout").value =
-            myProfile.about || "";
-
-    } catch (error) {
-        notify(error.message);
-    }
+    document.getElementById("myAbout").value =
+        myProfile.about || "";
 }
 
 async function saveProfile() {
@@ -926,9 +1148,8 @@ async function saveProfile() {
         const update = { about };
 
         if (file) {
-            status.textContent = "Preparing picture...";
             update.profile_picture = await resizePicture(file, status);
-            status.textContent = "Uploading picture...";
+            status.textContent = "Saving picture...";
         }
 
         await apiRequest("/api/profile", {
@@ -939,8 +1160,7 @@ async function saveProfile() {
         document.getElementById("profileMessage").textContent =
             "Profile updated successfully.";
 
-        status.textContent = file ? "Picture uploaded." : "Profile saved.";
-
+        status.textContent = file ? "Picture saved." : "About saved.";
         document.getElementById("settingsPicture").value = "";
 
         await loadMyProfile();
@@ -951,49 +1171,68 @@ async function saveProfile() {
     }
 }
 
+function showMyProfile() {
+    if (!myProfile) return;
+
+    currentProfilePicture = myProfile.profile_picture;
+    currentProfileUsername = currentUser;
+
+    document.getElementById("profileUsername").textContent = currentUser;
+    document.getElementById("profileAbout").textContent =
+        myProfile.about || "No About information.";
+
+    document.getElementById("profilePictureLarge").src =
+        avatarSource(myProfile.profile_picture);
+
+    document.getElementById("profileOverlay").classList.add("visible");
+    toggleMainMenu();
+}
+
 /* ---------------- CONTACTS ---------------- */
 
 async function loadContacts() {
-    try {
-        const data = await apiRequest("/api/contacts");
-        contacts = data.contacts || [];
+    const data = await apiRequest("/api/contacts");
+    contacts = data.contacts || [];
 
-        const container = document.getElementById("contactsList");
-        container.innerHTML = "";
+    const container = document.getElementById("contactsList");
+    container.innerHTML = "";
 
-        if (!contacts.length) {
-            container.innerHTML = '<div class="empty-note">No contacts yet.</div>';
-            return;
-        }
-
-        contacts.forEach(username => {
-            const item = document.createElement("div");
-            item.className = "group-member";
-
-            const name = document.createElement("span");
-            name.textContent = username;
-
-            const open = document.createElement("button");
-            open.className = "small-button";
-            open.textContent = "Chat";
-            open.onclick = () => openPrivateChat(username);
-
-            const remove = document.createElement("button");
-            remove.className = "small-button danger-button";
-            remove.textContent = "Remove";
-            remove.onclick = () => removeContact(username);
-
-            item.append(name, open, remove);
-            container.appendChild(item);
-        });
-
-    } catch (error) {
-        notify(error.message);
+    if (!contacts.length) {
+        container.innerHTML =
+            '<div class="empty-note">No contacts yet. Add a contact to start.</div>';
+        return;
     }
+
+    contacts.forEach(username => {
+        const row = document.createElement("div");
+        row.className = "group-member";
+
+        const name = document.createElement("span");
+        name.textContent = username;
+
+        const open = document.createElement("button");
+        open.className = "small-button";
+        open.textContent = "Chat";
+        open.onclick = () => openPrivateChat(username);
+
+        const remove = document.createElement("button");
+        remove.className = "small-button danger-button";
+        remove.textContent = "Remove";
+        remove.onclick = () => removeContact(username);
+
+        row.append(name, open, remove);
+        container.appendChild(row);
+    });
 }
 
 async function addContact() {
     const username = document.getElementById("contactUsername").value.trim();
+
+    if (!username) {
+        document.getElementById("contactMessage").textContent =
+            "Enter a username.";
+        return;
+    }
 
     try {
         const data = await apiRequest("/api/contacts", {
@@ -1001,10 +1240,13 @@ async function addContact() {
             body: JSON.stringify({ username })
         });
 
-        document.getElementById("contactMessage").textContent = data.message;
+        document.getElementById("contactMessage").textContent =
+            data.message || "Contact added.";
+
         document.getElementById("contactUsername").value = "";
 
         await loadContacts();
+        await loadInbox();
 
     } catch (error) {
         document.getElementById("contactMessage").textContent = error.message;
@@ -1020,6 +1262,8 @@ async function removeContact(username) {
         });
 
         await loadContacts();
+        await loadInbox();
+
         notify("Contact removed.");
 
     } catch (error) {
@@ -1027,25 +1271,168 @@ async function removeContact(username) {
     }
 }
 
-/* ---------------- INBOX ---------------- */
+/* ---------------- NEW CHAT CONTACT PICKER ---------------- */
+
+function openNewChatPicker() {
+    document.getElementById("newChatOverlay").classList.add("visible");
+    document.getElementById("newChatSearch").value = "";
+    renderNewChatContacts(contacts);
+}
+
+function closeNewChatPicker() {
+    document.getElementById("newChatOverlay").classList.remove("visible");
+}
+
+function renderNewChatContacts(list) {
+    const container = document.getElementById("newChatContacts");
+    container.innerHTML = "";
+
+    if (!list.length) {
+        container.innerHTML =
+            '<div class="empty-note">No contacts found. Add contacts in Settings.</div>';
+        return;
+    }
+
+    list.forEach(username => {
+        const row = document.createElement("div");
+        row.className = "contact-row";
+
+        const name = document.createElement("span");
+        name.className = "contact-row-name";
+        name.textContent = username;
+
+        const button = document.createElement("button");
+        button.textContent = "Message";
+        button.onclick = () => {
+            closeNewChatPicker();
+            openPrivateChat(username);
+        };
+
+        row.append(name, button);
+        container.appendChild(row);
+    });
+}
+
+function filterNewChatContacts() {
+    const query = document.getElementById("newChatSearch").value
+        .trim().toLowerCase();
+
+    renderNewChatContacts(
+        contacts.filter(name => name.toLowerCase().includes(query))
+    );
+}
+
+async function inviteUser() {
+    const inviteText =
+        "Join me on KCHAT and let's chat! " + location.origin;
+
+    try {
+        if (navigator.share) {
+            await navigator.share({
+                title: "Join KCHAT",
+                text: inviteText
+            });
+        } else if (navigator.clipboard) {
+            await navigator.clipboard.writeText(inviteText);
+            notify("Invitation copied. Share it with your contact.");
+        } else {
+            prompt("Copy this invitation:", inviteText);
+        }
+    } catch (error) {
+        if (error.name !== "AbortError") {
+            notify("Could not open sharing. Please try again.");
+        }
+    }
+}
+
+/* ---------------- INBOX AND FILTERS ---------------- */
 
 async function loadInbox() {
     try {
         const data = await apiRequest("/api/inbox");
         inbox = data.inbox || [];
+        renderInbox();
 
-        const container = document.getElementById("inboxList");
-        container.innerHTML = "";
+    } catch (error) {
+        notify(error.message);
+    }
+}
 
-        if (!inbox.length) {
-            container.innerHTML = '<div class="empty-note">No conversations yet. Add a contact to start chatting.</div>';
-            return;
-        }
+function setChatFilter(filter, button) {
+    activeFilter = filter;
 
-        inbox.forEach(item => {
-            const row = document.createElement("div");
-            row.className = "inbox-item";
+    document.querySelectorAll(".chat-filters button").forEach(item => {
+        item.classList.remove("active");
+    });
 
+    if (button) button.classList.add("active");
+
+    const headings = {
+        all: "All Chats",
+        unread: "Unread Chats",
+        favorites: "Favorites",
+        groups: "Groups"
+    };
+
+    document.getElementById("inboxHeading").textContent =
+        headings[filter] || "Chats";
+
+    renderInbox();
+}
+
+function renderInbox() {
+    const container = document.getElementById("inboxList");
+    container.innerHTML = "";
+
+    let list = [...inbox];
+
+    if (activeFilter === "unread") {
+        list = list.filter(item => Number(item.unread_count) > 0);
+    } else if (activeFilter === "favorites") {
+        list = list.filter(item => item.pinned);
+    } else if (activeFilter === "groups") {
+        list = groups.map(group => ({
+            is_group: true,
+            group
+        }));
+    }
+
+    if (!list.length) {
+        container.innerHTML =
+            '<div class="empty-note">Nothing to show here yet.</div>';
+        return;
+    }
+
+    list.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "inbox-item";
+
+        if (item.is_group) {
+            const details = document.createElement("div");
+            details.className = "inbox-details";
+
+            const name = document.createElement("div");
+            name.className = "inbox-name";
+            name.textContent = "👥 " + item.group.name;
+
+            const preview = document.createElement("div");
+            preview.className = "inbox-preview";
+            preview.textContent =
+                (item.group.member_count || 0) + " group members";
+
+            details.append(name, preview);
+
+            const open = document.createElement("button");
+            open.textContent = "Open";
+            open.onclick = event => {
+                event.stopPropagation();
+                openGroup(item.group);
+            };
+
+            row.append(details, open);
+            row.onclick = () => openGroup(item.group);
+
+        } else {
             const picture = document.createElement("img");
             picture.className = "inbox-avatar";
             picture.src = avatarSource(item.profile_picture);
@@ -1055,7 +1442,10 @@ async function loadInbox() {
 
             const name = document.createElement("div");
             name.className = "inbox-name";
-            name.textContent = item.username + (item.muted ? " 🔕" : "");
+            name.textContent =
+                item.username +
+                (item.muted ? " 🔕" : "") +
+                (item.pinned ? " 📌" : "");
 
             const preview = document.createElement("div");
             preview.className = "inbox-preview";
@@ -1068,29 +1458,16 @@ async function loadInbox() {
                 : "";
 
             details.append(name, preview, unread);
-
-            const actions = document.createElement("div");
-            actions.className = "row-actions";
-
-            if (item.pinned) {
-                const pin = document.createElement("span");
-                pin.textContent = "📌";
-                actions.appendChild(pin);
-            }
-
-            row.append(picture, details, actions);
+            row.append(picture, details);
 
             row.onclick = () => openPrivateChat(item.username, item);
+        }
 
-            container.appendChild(row);
-        });
-
-    } catch (error) {
-        notify(error.message);
-    }
+        container.appendChild(row);
+    });
 }
 
-/* ---------------- WEBSOCKET CONNECTION ---------------- */
+/* ---------------- WEBSOCKET ---------------- */
 
 function websocketURL(room) {
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -1101,26 +1478,34 @@ function websocketURL(room) {
 }
 
 function connectPrivateSocket() {
-    if (socket && socket.readyState === WebSocket.OPEN) return;
+    if (!token) return;
 
-    const url = websocketURL("general");
-    socket = new WebSocket(url);
+    if (socket &&
+        (socket.readyState === WebSocket.OPEN ||
+         socket.readyState === WebSocket.CONNECTING)) {
+        return;
+    }
+
+    socket = new WebSocket(websocketURL("general"));
 
     socket.onopen = () => {
-        document.getElementById("status").textContent = "Connected";
+        document.getElementById("status").textContent = "Online";
         document.getElementById("status").style.color = "#80ed99";
+
+        if (pendingPrivateChat) {
+            const pending = pendingPrivateChat;
+            pendingPrivateChat = null;
+            openPrivateChat(pending.username, pending.item);
+        }
     };
 
     socket.onclose = () => {
-        document.getElementById("status").textContent = "Disconnected";
+        document.getElementById("status").textContent = "Reconnecting...";
         document.getElementById("status").style.color = "#f6c453";
 
         if (token) {
-            setTimeout(() => {
-                if (token && (!socket || socket.readyState === WebSocket.CLOSED)) {
-                    connectPrivateSocket();
-                }
-            }, 3000);
+            clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(connectPrivateSocket, 3000);
         }
     };
 
@@ -1129,23 +1514,31 @@ function connectPrivateSocket() {
     };
 
     socket.onmessage = event => {
-        const data = JSON.parse(event.data);
+        let data;
 
-        if (data.type === "welcome") {
-            document.getElementById("status").textContent = "Connected";
+        try {
+            data = JSON.parse(event.data);
+        } catch {
             return;
         }
 
+        if (data.type === "welcome") return;
+
         if (data.type === "users") {
-            document.getElementById("onlineUsers").textContent =
-                "Online: " + data.users.length;
+            onlineUsers = (data.users || []).map(user =>
+                typeof user === "string" ? user : user.username
+            ).filter(Boolean);
+
+            document.getElementById("status").textContent = "Online";
+            updatePeerPresence();
             return;
         }
 
         if (data.type === "private_history") {
             if (currentChatType === "private" &&
-                data.with.toLowerCase() === currentPeer?.toLowerCase()) {
-                renderHistory(data.history);
+                currentPeer &&
+                data.with.toLowerCase() === currentPeer.toLowerCase()) {
+                renderHistory(data.history || []);
             }
             return;
         }
@@ -1164,20 +1557,29 @@ function connectPrivateSocket() {
 
         if (data.type === "private") {
             receivePrivateMessage(data);
-            return;
-        }
-
-        if (data.type === "chat") {
-            return;
         }
     };
 }
 
+function updatePeerPresence() {
+    if (!currentPeer) return;
+
+    const isOnline = onlineUsers.some(name =>
+        name.toLowerCase() === currentPeer.toLowerCase()
+    );
+
+    const element = document.getElementById("chatPersonStatus");
+    element.textContent = isOnline ? "Online" : "Offline";
+    element.classList.toggle("online", isOnline);
+}
+
 /* ---------------- PRIVATE CHAT ---------------- */
 
-async function openPrivateChat(username, inboxItem = null) {
+function openPrivateChat(username, inboxItem = null) {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-        notify("Connecting to KCHAT. Please try again.");
+        pendingPrivateChat = { username, item: inboxItem };
+        notify("Connecting to KCHAT...");
+
         connectPrivateSocket();
         return;
     }
@@ -1192,19 +1594,21 @@ async function openPrivateChat(username, inboxItem = null) {
     }
 
     document.getElementById("inboxScreen").classList.add("hidden");
-    document.getElementById("activeChat").style.display = "flex";
+
+    const active = document.getElementById("activeChat");
+    active.style.display = "flex";
+    active.classList.add("mobile-open");
 
     document.getElementById("chatPersonName").textContent = username;
-    document.getElementById("chatPersonAbout").textContent =
-        inboxItem?.about || "View profile";
-
     document.getElementById("chatAvatar").src =
         avatarSource(inboxItem?.profile_picture);
+
+    currentSettings = inboxItem || {};
 
     document.getElementById("messages").innerHTML = "";
     document.getElementById("chatMenu").classList.remove("visible");
 
-    currentSettings = inboxItem || {};
+    updatePeerPresence();
 
     socket.send(JSON.stringify({
         type: "open_private",
@@ -1214,14 +1618,12 @@ async function openPrivateChat(username, inboxItem = null) {
 
 function receivePrivateMessage(data) {
     const isMine = data.username.toLowerCase() === currentUser.toLowerCase();
-
     const peer = isMine ? data.to : data.username;
 
-    if (
-        currentChatType === "private" &&
+    if (currentChatType === "private" &&
         currentPeer &&
-        peer.toLowerCase() === currentPeer.toLowerCase()
-    ) {
+        peer &&
+        peer.toLowerCase() === currentPeer.toLowerCase()) {
         appendMessage(data);
     }
 
@@ -1230,7 +1632,6 @@ function receivePrivateMessage(data) {
 
 function sendMessage() {
     const text = document.getElementById("message").value.trim();
-
     if (!text) return;
 
     if (currentChatType === "private") {
@@ -1273,48 +1674,39 @@ document.getElementById("message").addEventListener("keydown", event => {
 
 function appendMessage(item) {
     const container = document.getElementById("messages");
-
     const message = document.createElement("div");
 
     const mine = item.username.toLowerCase() === currentUser.toLowerCase();
 
     message.className = "message" + (mine ? " mine" : "");
-    message.dataset.messageId = item.id || "";
+    message.dataset.messageId = item.id == null ? "" : String(item.id);
 
     const sender = document.createElement("strong");
     sender.textContent = mine ? "You" : item.username;
 
     const text = document.createElement("div");
-    text.textContent = item.text;
+    text.textContent = item.text || "";
 
     const time = document.createElement("div");
     time.className = "message-time";
 
-    let timeText = "";
-
     if (item.created_at) {
         const date = new Date(item.created_at);
-        timeText = date.toLocaleTimeString([], {
+        time.textContent = date.toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit"
         });
     }
 
-    time.textContent = timeText;
-
     if (mine && item.status) {
         const status = document.createElement("span");
-        status.className = "status-dot" + (
-            item.status === "read" ? " read" : ""
-        );
-
+        status.className = "status-dot";
         status.textContent = item.status === "sent" ? "•" : "••";
         time.appendChild(status);
     }
 
     message.append(sender, text, time);
     container.appendChild(message);
-
     container.scrollTop = container.scrollHeight;
 }
 
@@ -1326,27 +1718,23 @@ function renderHistory(history) {
 }
 
 function addSystemMessage(text) {
-    const container = document.getElementById("messages");
     const element = document.createElement("div");
-
     element.className = "system";
     element.textContent = text;
 
+    const container = document.getElementById("messages");
     container.appendChild(element);
     container.scrollTop = container.scrollHeight;
 }
 
 function updateMessageStatus(id, statusValue) {
-    const messages = document.querySelectorAll("[data-message-id]");
-
-    messages.forEach(message => {
-        if (message.dataset.messageId !== id) return;
+    document.querySelectorAll("[data-message-id]").forEach(message => {
+        if (message.dataset.messageId !== String(id)) return;
 
         const status = message.querySelector(".status-dot");
 
         if (status) {
             status.textContent = statusValue === "sent" ? "•" : "••";
-            status.classList.toggle("read", statusValue === "read");
         }
     });
 }
@@ -1354,46 +1742,52 @@ function updateMessageStatus(id, statusValue) {
 /* ---------------- GROUPS ---------------- */
 
 async function loadGroups() {
-    try {
-        const data = await apiRequest("/api/groups");
-        groups = data.groups || [];
+    const data = await apiRequest("/api/groups");
+    groups = data.groups || [];
 
-        const container = document.getElementById("groupsList");
-        container.innerHTML = "";
+    const container = document.getElementById("groupsList");
+    container.innerHTML = "";
 
-        if (!groups.length) {
-            container.innerHTML = '<div class="empty-note">You have not joined any groups.</div>';
-            return;
-        }
-
-        groups.forEach(group => {
-            const row = document.createElement("div");
-            row.className = "group-member";
-
-            const name = document.createElement("span");
-            name.textContent = group.name + " (" + group.member_count + " members)";
-
-            const open = document.createElement("button");
-            open.textContent = "Open";
-            open.className = "small-button";
-            open.onclick = () => openGroup(group);
-
-            const members = document.createElement("button");
-            members.textContent = "Members";
-            members.className = "small-button secondary-button";
-            members.onclick = () => loadGroupMembers(group.id);
-
-            row.append(name, open, members);
-            container.appendChild(row);
-        });
-
-    } catch (error) {
-        notify(error.message);
+    if (!groups.length) {
+        container.innerHTML =
+            '<div class="empty-note">You have not joined any groups.</div>';
+        return;
     }
+
+    groups.forEach(group => {
+        const row = document.createElement("div");
+        row.className = "group-member";
+
+        const name = document.createElement("span");
+        name.textContent =
+            group.name + " (" + group.member_count + " members)";
+
+        const open = document.createElement("button");
+        open.className = "small-button";
+        open.textContent = "Open";
+        open.onclick = () => openGroup(group);
+
+        const members = document.createElement("button");
+        members.className = "small-button secondary-button";
+        members.textContent = "Members";
+        members.onclick = () => {
+            currentGroup = group;
+            loadGroupMembers(group.id);
+        };
+
+        row.append(name, open, members);
+        container.appendChild(row);
+    });
 }
 
 async function createGroup() {
     const name = document.getElementById("groupName").value.trim();
+
+    if (!name) {
+        document.getElementById("groupMessage").textContent =
+            "Enter a group name.";
+        return;
+    }
 
     try {
         const data = await apiRequest("/api/groups", {
@@ -1401,7 +1795,9 @@ async function createGroup() {
             body: JSON.stringify({ name })
         });
 
-        document.getElementById("groupMessage").textContent = data.message;
+        document.getElementById("groupMessage").textContent =
+            data.message || "Group created.";
+
         document.getElementById("groupName").value = "";
 
         await loadGroups();
@@ -1418,29 +1814,34 @@ function openGroup(group) {
     currentPeer = null;
     currentChatType = "group";
 
-    if (socket && socket.readyState === WebSocket.OPEN) {
-        // Keep the general socket open for private messages.
-    }
-
     if (groupSocket) groupSocket.close();
 
     document.getElementById("inboxScreen").classList.add("hidden");
-    document.getElementById("activeChat").style.display = "flex";
+
+    const active = document.getElementById("activeChat");
+    active.style.display = "flex";
+    active.classList.add("mobile-open");
 
     document.getElementById("chatPersonName").textContent = group.name;
-    document.getElementById("chatPersonAbout").textContent = "Group conversation";
+    document.getElementById("chatPersonStatus").textContent = "Group";
+    document.getElementById("chatPersonStatus").classList.remove("online");
     document.getElementById("chatAvatar").src = "";
     document.getElementById("messages").innerHTML = "";
 
-    const url = websocketURL("group_" + group.id);
-    groupSocket = new WebSocket(url);
+    groupSocket = new WebSocket(websocketURL("group_" + group.id));
 
     groupSocket.onopen = () => {
         document.getElementById("status").textContent = "Group connected";
     };
 
     groupSocket.onmessage = event => {
-        const data = JSON.parse(event.data);
+        let data;
+
+        try {
+            data = JSON.parse(event.data);
+        } catch {
+            return;
+        }
 
         if (data.type === "welcome") {
             renderHistory(data.history || []);
@@ -1460,29 +1861,31 @@ function openGroup(group) {
 
 async function loadGroupMembers(groupId) {
     try {
-        const data = await apiRequest("/api/groups/" + groupId + "/members");
-        const container = document.getElementById("groupMembers");
+        const data = await apiRequest(
+            "/api/groups/" + groupId + "/members"
+        );
 
+        const container = document.getElementById("groupMembers");
         container.innerHTML = "<h3>Group Members</h3>";
 
-        data.members.forEach(member => {
+        const isCreator = currentGroup &&
+            Number(currentGroup.id) === Number(groupId) &&
+            currentGroup.role === "creator";
+
+        (data.members || []).forEach(member => {
             const row = document.createElement("div");
             row.className = "group-member";
 
             const name = document.createElement("span");
             name.textContent = member.username + " — " + member.role;
-
             row.appendChild(name);
 
-            if (currentGroup && currentGroup.id === groupId &&
-                currentGroup.creator_id &&
-                currentGroup.creator_id === myProfile?.id &&
-                member.role !== "admin") {
-
+            if (isCreator && member.username !== currentUser) {
                 const remove = document.createElement("button");
                 remove.className = "small-button danger-button";
                 remove.textContent = "Remove";
-                remove.onclick = () => removeGroupMember(groupId, member.username);
+                remove.onclick = () =>
+                    removeGroupMember(groupId, member.username);
 
                 row.appendChild(remove);
             }
@@ -1490,7 +1893,7 @@ async function loadGroupMembers(groupId) {
             container.appendChild(row);
         });
 
-        if (currentGroup && currentGroup.id === groupId) {
+        if (isCreator) {
             const input = document.createElement("input");
             input.id = "addGroupMemberInput";
             input.placeholder = "Username to add";
@@ -1508,7 +1911,13 @@ async function loadGroupMembers(groupId) {
 }
 
 async function addGroupMember(groupId) {
-    const username = document.getElementById("addGroupMemberInput").value.trim();
+    const input = document.getElementById("addGroupMemberInput");
+    const username = input ? input.value.trim() : "";
+
+    if (!username) {
+        notify("Enter a username.");
+        return;
+    }
 
     try {
         await apiRequest("/api/groups/" + groupId + "/members", {
@@ -1530,7 +1939,8 @@ async function removeGroupMember(groupId, username) {
 
     try {
         await apiRequest(
-            "/api/groups/" + groupId + "/members/" + encodeURIComponent(username),
+            "/api/groups/" + groupId + "/members/" +
+            encodeURIComponent(username),
             { method: "DELETE" }
         );
 
@@ -1542,12 +1952,46 @@ async function removeGroupMember(groupId, username) {
     }
 }
 
-function createGroupFromChat() {
-    document.getElementById("chatMenu").classList.remove("visible");
-    document.getElementById("settingsPanel").classList.remove("hidden");
-    document.getElementById("groupSettings").classList.add("visible");
-    document.getElementById("groupName").focus();
-    notify("Enter a group name in Group Settings to create your group.");
+async function createGroupFromChat() {
+    if (!currentPeer) {
+        notify("Open a private chat first.");
+        return;
+    }
+
+    const peer = currentPeer;
+    const name = prompt("Enter a name for the new group:");
+
+    if (!name || !name.trim()) return;
+
+    try {
+        const data = await apiRequest("/api/groups", {
+            method: "POST",
+            body: JSON.stringify({ name: name.trim() })
+        });
+
+        const group = data.group;
+
+        if (!group || !group.id) {
+            throw new Error("The group was created, but its ID was not returned.");
+        }
+
+        await apiRequest(
+            "/api/groups/" + group.id + "/members",
+            {
+                method: "POST",
+                body: JSON.stringify({ username: peer })
+            }
+        );
+
+        await loadGroups();
+        document.getElementById("chatMenu").classList.remove("visible");
+
+        openGroup(group);
+        notify("Group created with " + peer + ".");
+
+    } catch (error) {
+        notify(error.message);
+    }
 }
 
 /* ---------------- CHAT SETTINGS ---------------- */
@@ -1557,7 +2001,10 @@ function toggleChatMenu() {
 }
 
 async function updateChatSetting(setting) {
-    if (!currentPeer) return;
+    if (!currentPeer) {
+        notify("These settings are for private chats.");
+        return false;
+    }
 
     try {
         const result = await apiRequest(
@@ -1568,13 +2015,15 @@ async function updateChatSetting(setting) {
             }
         );
 
-        currentSettings = { ...currentSettings, ...result };
+        currentSettings = { ...currentSettings, ...setting, ...result };
 
         await loadInbox();
         notify("Chat settings updated.");
+        return true;
 
     } catch (error) {
         notify(error.message);
+        return false;
     }
 }
 
@@ -1586,10 +2035,12 @@ function togglePin() {
     updateChatSetting({ pinned: !currentSettings.pinned });
 }
 
-function toggleHide() {
-    updateChatSetting({ hidden: !currentSettings.hidden }).then(() => {
-        backToInbox();
+async function toggleHide() {
+    const success = await updateChatSetting({
+        hidden: !currentSettings.hidden
     });
+
+    if (success && currentSettings.hidden) backToInbox();
 }
 
 function toggleMediaVisibility() {
@@ -1613,7 +2064,7 @@ function changeDisappearing() {
         "3": 7776000
     };
 
-    if (!(choice in values)) {
+    if (!Object.prototype.hasOwnProperty.call(values, choice)) {
         notify("Choose 0, 1, 2 or 3.");
         return;
     }
@@ -1623,13 +2074,20 @@ function changeDisappearing() {
 
 function changeTheme() {
     const choice = prompt(
-        "Choose theme:\ndefault, dark, light, blue, green",
+        "Choose theme: default, dark, light, blue or green",
         currentSettings.theme || "default"
     );
 
     if (!choice) return;
 
-    updateChatSetting({ theme: choice.toLowerCase() });
+    const theme = choice.toLowerCase();
+
+    if (!["default", "dark", "light", "blue", "green"].includes(theme)) {
+        notify("That theme is not available.");
+        return;
+    }
+
+    updateChatSetting({ theme });
 }
 
 /* ---------------- SEARCH ---------------- */
@@ -1640,13 +2098,19 @@ async function searchMessages() {
 
     container.innerHTML = "";
 
+    if (query.length < 2) {
+        container.textContent = "Enter at least two characters.";
+        return;
+    }
+
     try {
         const data = await apiRequest(
             "/api/messages/search?q=" + encodeURIComponent(query)
         );
 
-        if (!data.results.length) {
-            container.innerHTML = '<div class="empty-note">No matching messages found.</div>';
+        if (!(data.results || []).length) {
+            container.innerHTML =
+                '<div class="empty-note">No matching messages found.</div>';
             return;
         }
 
@@ -1655,12 +2119,12 @@ async function searchMessages() {
             row.className = "search-result";
 
             const text = document.createElement("span");
-            text.textContent = item.with + ": " + item.text;
+            text.textContent = (item.with || item.username) + ": " + item.text;
 
             const open = document.createElement("button");
             open.textContent = "Open";
             open.className = "small-button";
-            open.onclick = () => openPrivateChat(item.with);
+            open.onclick = () => openPrivateChat(item.with || item.username);
 
             row.append(text, open);
             container.appendChild(row);
@@ -1671,35 +2135,37 @@ async function searchMessages() {
     }
 }
 
-function searchCurrentChat() {
+async function searchCurrentChat() {
     if (!currentPeer) return;
 
     const query = prompt("Enter a message to search for:");
+    if (!query || query.trim().length < 2) return;
 
-    if (!query) return;
+    try {
+        const data = await apiRequest(
+            "/api/messages/search?q=" + encodeURIComponent(query.trim()) +
+            "&with_user=" + encodeURIComponent(currentPeer)
+        );
 
-    apiRequest(
-        "/api/messages/search?q=" + encodeURIComponent(query) +
-        "&with_user=" + encodeURIComponent(currentPeer)
-    ).then(data => {
         const container = document.getElementById("messages");
         container.innerHTML = "";
 
-        data.results.reverse().forEach(item => appendMessage({
-            ...item,
-            username: item.username,
-            to: item.to
-        }));
+        (data.results || []).forEach(item => appendMessage(item));
 
         document.getElementById("chatMenu").classList.remove("visible");
 
-    }).catch(error => notify(error.message));
+    } catch (error) {
+        notify(error.message);
+    }
 }
 
-/* ---------------- PROFILE VIEW ---------------- */
+/* ---------------- VIEW CONTACT PROFILE ---------------- */
 
 async function viewCurrentProfile() {
-    if (!currentPeer) return;
+    if (!currentPeer) {
+        notify("Group profiles are not available here.");
+        return;
+    }
 
     try {
         const profile = await apiRequest(
@@ -1709,12 +2175,14 @@ async function viewCurrentProfile() {
         currentProfilePicture = profile.profile_picture;
         currentProfileUsername = profile.username;
 
-        document.getElementById("profileUsername").textContent = profile.username;
+        document.getElementById("profileUsername").textContent =
+            profile.username;
+
         document.getElementById("profileAbout").textContent =
             profile.about || "No About information.";
 
-        const picture = document.getElementById("profilePictureLarge");
-        picture.src = avatarSource(profile.profile_picture);
+        document.getElementById("profilePictureLarge").src =
+            avatarSource(profile.profile_picture);
 
         document.getElementById("profileOverlay").classList.add("visible");
 
@@ -1789,8 +2257,9 @@ async function loadBlocked() {
         const data = await apiRequest("/api/blocks");
         container.innerHTML = "";
 
-        if (!data.blocked.length) {
-            container.innerHTML = '<div class="empty-note">No blocked contacts.</div>';
+        if (!(data.blocked || []).length) {
+            container.innerHTML =
+                '<div class="empty-note">No blocked contacts.</div>';
             return;
         }
 
@@ -1831,15 +2300,81 @@ async function unblockUser(username) {
     }
 }
 
+/* ---------------- CALL CONTACT SELECTION ---------------- */
+
+function openCallPicker(type) {
+    const title = type === "video" ? "Choose who to video call" : "Choose who to call";
+
+    document.getElementById("callPickerTitle").textContent = title;
+
+    const container = document.getElementById("callPickerContacts");
+    container.innerHTML = "";
+
+    if (!contacts.length) {
+        container.innerHTML =
+            '<div class="empty-note">Add contacts before choosing someone to call.</div>';
+    }
+
+    contacts.forEach(username => {
+        const row = document.createElement("div");
+        row.className = "contact-row";
+
+        const name = document.createElement("span");
+        name.textContent = username;
+
+        const choose = document.createElement("button");
+        choose.textContent = type === "video" ? "Video" : "Call";
+        choose.onclick = () => {
+            closeCallPicker();
+            notify(
+                "You selected " + username +
+                ". " + (type === "video" ? "Video" : "Voice") +
+                " calling will be available when the calling backend is added."
+            );
+        };
+
+        row.append(name, choose);
+        container.appendChild(row);
+    });
+
+    document.getElementById("callPickerOverlay").classList.add("visible");
+}
+
+function closeCallPicker() {
+    document.getElementById("callPickerOverlay").classList.remove("visible");
+}
+
+/* ---------------- CAMERA ---------------- */
+
+function openCamera() {
+    document.getElementById("cameraInput").click();
+}
+
+function cameraPictureSelected(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const preview = document.getElementById("cameraPreview");
+    preview.src = URL.createObjectURL(file);
+
+    document.getElementById("cameraOverlay").classList.add("visible");
+    event.target.value = "";
+}
+
+function closeCameraPreview() {
+    document.getElementById("cameraOverlay").classList.remove("visible");
+    document.getElementById("cameraPreview").src = "";
+}
+
 /* ---------------- OTHER ACTIONS ---------------- */
 
 async function markAllRead() {
     try {
-        const data = await apiRequest("/api/messages/read-all", {
+        await apiRequest("/api/messages/read-all", {
             method: "POST"
         });
 
-        notify(data.message);
+        notify("Messages marked as read.");
         await loadInbox();
 
     } catch (error) {
@@ -1856,12 +2391,9 @@ async function removeCurrentContact() {
     backToInbox();
 }
 
-function showCallNote() {
-    notify("Calling and camera features require the calling and media backend, which has not been implemented yet.");
-}
-
 function backToInbox() {
     document.getElementById("activeChat").style.display = "none";
+    document.getElementById("activeChat").classList.remove("mobile-open");
     document.getElementById("inboxScreen").classList.remove("hidden");
     document.getElementById("chatMenu").classList.remove("visible");
 
@@ -1880,17 +2412,19 @@ function backToInbox() {
 /* ---------------- LOGOUT ---------------- */
 
 function logout() {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "logout" }));
+    if (socket) {
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: "logout" }));
+        }
         socket.close();
     }
 
-    if (groupSocket) {
-        groupSocket.close();
-        groupSocket = null;
-    }
+    if (groupSocket) groupSocket.close();
+
+    clearTimeout(reconnectTimer);
 
     socket = null;
+    groupSocket = null;
     token = "";
     currentUser = "";
 
@@ -1907,9 +2441,10 @@ function logout() {
 
 /* ---------------- AUTOMATIC LOGIN ---------------- */
 
-window.addEventListener("load", () => {
+window.addEventListener("load", async () => {
     if (token && currentUser) {
-        enterKchat();
+        document.getElementById("loginPage").classList.remove("active");
+        await enterKchat();
     }
 });
 </script>
