@@ -50,7 +50,7 @@ input, textarea, select {
     padding: 12px;
     margin: 7px 0;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 9px;
     color: white;
     background: #121925;
 }
@@ -70,13 +70,12 @@ h3 { font-size: 16px; }
     display: flex;
     flex-direction: column;
     background: var(--panel);
-    border: 1px solid var(--border);
+    position: relative;
 }
 
 header {
     padding: 15px;
     background: #202a3b;
-    border-bottom: 1px solid var(--border);
 }
 
 .account-row {
@@ -153,7 +152,6 @@ header {
 .panel {
     padding: 12px;
     margin-bottom: 12px;
-    border: 1px solid var(--border);
     border-radius: 10px;
     background: #182232;
 }
@@ -172,22 +170,28 @@ header {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+    margin-bottom: 12px;
 }
 
 .top-header h1 { margin: 0; }
+
+.icon-button {
+    background: transparent;
+    font-size: 26px;
+    padding: 4px 12px;
+}
 
 .inbox-item, .group-member, .search-result, .blocked-item {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px;
-    margin: 7px 0;
+    padding: 11px 5px;
+    margin: 4px 0;
     border-radius: 9px;
-    background: var(--panel-light);
 }
 
 .inbox-item { cursor: pointer; }
-.inbox-item:hover { background: #354258; }
+.inbox-item:hover { background: #263249; }
 
 .inbox-avatar {
     width: 44px;
@@ -199,7 +203,7 @@ header {
 }
 
 .inbox-details { flex: 1; min-width: 0; }
-.inbox-name { font-weight: bold; color: var(--green); }
+.inbox-name { font-weight: bold; color: var(--text); }
 
 .inbox-preview {
     font-size: 12px;
@@ -211,23 +215,65 @@ header {
 .inbox-unread { color: #80ed99; font-size: 12px; margin-top: 4px; }
 .empty-note { color: var(--muted); font-size: 13px; padding: 8px; }
 
-/* NEW CHAT */
+/* ROUND NEW CHAT BUTTON */
 
 .new-chat-button {
+    position: fixed;
+    z-index: 80;
+    right: max(22px, calc((100vw - 1060px) / 2));
+    bottom: 25px;
+    width: 62px;
+    height: 62px;
+    padding: 0;
+    margin: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    width: 100%;
-    margin: 8px 0 12px;
-    padding: 15px;
+    border-radius: 50%;
     background: var(--green);
     color: white;
-    font-size: 17px;
-    border-radius: 10px;
+    font-size: 34px;
+    box-shadow: 0 5px 18px #0007;
 }
 
-.new-chat-button span { font-size: 25px; }
+.new-chat-button:hover {
+    transform: scale(1.04);
+    background: var(--green-dark);
+}
+
+.new-chat-button span { line-height: 1; }
+
+/* NEW CHAT ACTION MENU */
+
+.new-chat-actions {
+    position: fixed;
+    z-index: 79;
+    right: max(22px, calc((100vw - 1060px) / 2));
+    bottom: 100px;
+    width: min(280px, calc(100vw - 36px));
+    padding: 8px 14px;
+    border-radius: 15px;
+    background: #202a3b;
+    box-shadow: 0 8px 30px #0009;
+}
+
+.new-chat-actions button {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    width: 100%;
+    margin: 0;
+    padding: 13px 5px;
+    color: var(--text);
+    text-align: left;
+    background: transparent;
+    border-radius: 8px;
+    font-weight: normal;
+}
+
+.new-chat-actions button:hover { background: #354258; }
+.action-icon { width: 27px; text-align: center; font-size: 19px; }
+.action-label { flex: 1; }
 
 /* CHAT FILTERS */
 
@@ -267,7 +313,6 @@ header {
     gap: 10px;
     padding: 10px;
     background: #202a3b;
-    border-bottom: 1px solid var(--border);
 }
 
 .chat-person {
@@ -316,7 +361,6 @@ header {
     display: none;
     padding: 12px;
     background: #182232;
-    border-bottom: 1px solid var(--border);
 }
 
 .chat-menu.visible { display: block; }
@@ -394,28 +438,151 @@ header {
 
 #message { margin: 0; }
 
-/* SETTINGS AND MENUS */
+/* FULL-SCREEN SETTINGS */
 
-.settings-section { margin: 12px 0; }
-.settings-section button { width: 100%; text-align: left; }
+#settingsPanel {
+    display: none;
+    position: fixed;
+    z-index: 200;
+    inset: 0;
+    width: 100%;
+    min-height: 100dvh;
+    overflow-y: auto;
+    padding: 0;
+    margin: 0;
+    background: var(--background);
+}
+
+#settingsPanel.visible {
+    display: block;
+}
+
+.settings-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 17px 16px;
+    background: var(--background);
+}
+
+.settings-header h2 {
+    margin: 0;
+    font-size: 21px;
+    color: var(--text);
+}
+
+.settings-back {
+    background: transparent;
+    color: var(--text);
+    font-size: 25px;
+    padding: 2px 8px;
+    margin: 0;
+}
+
+.settings-body {
+    width: min(700px, 100%);
+    margin: auto;
+    padding: 8px 18px 40px;
+}
+
+.settings-profile-summary {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 0 22px;
+    cursor: pointer;
+}
+
+.settings-profile-summary img {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #354258;
+}
+
+.settings-profile-summary strong {
+    display: block;
+    font-size: 17px;
+}
+
+.settings-profile-summary small {
+    display: block;
+    color: var(--muted);
+    margin-top: 6px;
+}
+
+.settings-heading {
+    margin: 22px 0 7px;
+    color: var(--green);
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: .5px;
+}
+
+.settings-option {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 15px;
+    padding: 14px 3px;
+    margin: 0;
+    text-align: left;
+    color: var(--text);
+    background: transparent;
+    border-radius: 0;
+    font-weight: normal;
+}
+
+.settings-option:hover { background: #1b2635; }
+
+.settings-option-icon {
+    width: 28px;
+    text-align: center;
+    font-size: 20px;
+}
+
+.settings-option-text { flex: 1; }
+
+.settings-option-text strong {
+    display: block;
+    font-size: 15px;
+    font-weight: normal;
+}
+
+.settings-option-text small {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 4px;
+}
 
 .settings-content {
     display: none;
-    padding: 10px;
-    border-radius: 8px;
-    background: var(--panel-light);
+    padding: 10px 0 18px;
 }
 
 .settings-content.visible { display: block; }
+
+.settings-content h3 { margin: 15px 0 8px; }
+
+.settings-content .group-member,
+.settings-content .blocked-item {
+    background: transparent;
+}
+
+/* TOP MENU */
 
 .popup-menu {
     position: absolute;
     top: 60px;
     right: 12px;
-    z-index: 50;
+    z-index: 90;
     width: 220px;
     padding: 8px;
-    border: 1px solid var(--border);
     border-radius: 10px;
     background: #263249;
     box-shadow: 0 8px 25px #0008;
@@ -448,9 +615,8 @@ header {
     max-height: 90vh;
     overflow-y: auto;
     padding: 20px;
-    border-radius: 12px;
+    border-radius: 14px;
     background: #202a3b;
-    border: 1px solid var(--border);
 }
 
 .profile-picture-large {
@@ -473,6 +639,24 @@ header {
 
 #zoomOverlay { z-index: 1100; }
 
+.camera-preview {
+    display: block;
+    width: 100%;
+    max-height: 55vh;
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+.contact-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 2px;
+}
+
+.contact-row-name { flex: 1; }
+
 .row-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 .row-actions button { flex: 1; }
 
@@ -485,13 +669,8 @@ header {
 /* MOBILE */
 
 @media (max-width: 650px) {
-    .chat-app { border: 0; }
-
+    .chat-app { width: 100%; }
     .main-content { padding: 8px; }
-
-    #inboxScreen {
-        display: block;
-    }
 
     #activeChat {
         display: none;
@@ -506,9 +685,7 @@ header {
 
     .message { max-width: 90%; }
 
-    .chat-header-actions button {
-        padding: 8px 6px;
-    }
+    .chat-header-actions button { padding: 8px 6px; }
 
     #messages {
         max-height: none;
@@ -516,10 +693,19 @@ header {
     }
 
     .send-area { padding: 9px; }
+    .modal-box { max-height: 94vh; }
 
-    .modal-box {
-        max-height: 94vh;
+    .new-chat-button {
+        right: 20px;
+        bottom: 22px;
     }
+
+    .new-chat-actions {
+        right: 18px;
+        bottom: 94px;
+    }
+
+    #settingsPanel { z-index: 200; }
 }
 </style>
 </head>
@@ -589,25 +775,103 @@ header {
             <div id="mainMenu" class="popup-menu hidden">
                 <button onclick="toggleSettings();toggleMainMenu()">Settings</button>
                 <button onclick="showMyProfile()">My Profile</button>
-                <button onclick="loadContacts();toggleMainMenu();openSettingsSection('contactSettings')">Contacts</button>
-                <button onclick="loadGroups();toggleMainMenu();openSettingsSection('groupSettings')">Groups</button>
-                <button onclick="loadBlocked();toggleMainMenu();openSettingsSection('blockedSettings')">Blocked Contacts</button>
                 <button onclick="logout()">Logout</button>
             </div>
         </header>
 
-        <!-- SETTINGS -->
-        <div id="settingsPanel" class="panel hidden">
-            <div class="section-title">
-                <h3>KCHAT Settings</h3>
-                <button class="small-button secondary-button"
-                        onclick="toggleSettings()">← Back</button>
+        <!-- FULL-SCREEN SETTINGS -->
+        <div id="settingsPanel">
+            <div class="settings-header">
+                <button class="settings-back" onclick="toggleSettings()">←</button>
+                <h2>Settings</h2>
             </div>
 
-            <div class="settings-section">
-                <button onclick="toggleSection('profileSettings')">My Profile and About</button>
+            <div class="settings-body">
+
+                <div class="settings-profile-summary" onclick="openSettingsSection('profileSettings')">
+                    <img id="settingsAvatar" alt="My profile picture">
+                    <div>
+                        <strong id="settingsAccountName">My Profile</strong>
+                        <small id="settingsAboutPreview">Profile picture and About</small>
+                    </div>
+                </div>
+
+                <div class="settings-heading">ACCOUNT</div>
+
+                <button class="settings-option" onclick="openSettingsSection('profileSettings')">
+                    <span class="settings-option-icon">👤</span>
+                    <span class="settings-option-text">
+                        <strong>Profile and About</strong>
+                        <small>Edit your picture and personal information</small>
+                    </span>
+                </button>
+
+                <button class="settings-option" onclick="openSettingsSection('privacySettings')">
+                    <span class="settings-option-icon">🔒</span>
+                    <span class="settings-option-text">
+                        <strong>Privacy</strong>
+                        <small>Blocked contacts and privacy controls</small>
+                    </span>
+                </button>
+
+                <div class="settings-heading">CHATS AND CONTACTS</div>
+
+                <button class="settings-option" onclick="openSettingsSection('contactSettings');loadContacts()">
+                    <span class="settings-option-icon">👥</span>
+                    <span class="settings-option-text">
+                        <strong>Contacts</strong>
+                        <small>Add, view and manage your contacts</small>
+                    </span>
+                </button>
+
+                <button class="settings-option" onclick="openSettingsSection('groupSettings');loadGroups()">
+                    <span class="settings-option-icon">👨‍👩‍👧‍👦</span>
+                    <span class="settings-option-text">
+                        <strong>Groups</strong>
+                        <small>Create groups and manage members</small>
+                    </span>
+                </button>
+
+                <button class="settings-option" onclick="markAllRead()">
+                    <span class="settings-option-icon">✓</span>
+                    <span class="settings-option-text">
+                        <strong>Mark all messages as read</strong>
+                        <small>Clear unread message counts</small>
+                    </span>
+                </button>
+
+                <div class="settings-heading">PRIVACY</div>
+
+                <button class="settings-option" onclick="openSettingsSection('blockedSettings');loadBlocked()">
+                    <span class="settings-option-icon">🚫</span>
+                    <span class="settings-option-text">
+                        <strong>Blocked Contacts</strong>
+                        <small>View and unblock people</small>
+                    </span>
+                </button>
+
+                <div class="settings-heading">OTHER</div>
+
+                <button class="settings-option" onclick="openSettingsSection('eventSettings')">
+                    <span class="settings-option-icon">📅</span>
+                    <span class="settings-option-text">
+                        <strong>Events</strong>
+                        <small>Create and manage KCHAT events</small>
+                    </span>
+                </button>
+
+                <button class="settings-option" onclick="logout()">
+                    <span class="settings-option-icon">↪</span>
+                    <span class="settings-option-text">
+                        <strong>Logout</strong>
+                        <small>Sign out of this account</small>
+                    </span>
+                </button>
+
+                <!-- PROFILE SETTINGS CONTENT -->
                 <div id="profileSettings" class="settings-content">
-                    <img id="settingsAvatar" class="picture-preview" alt="My picture">
+                    <h3>My Profile and About</h3>
+                    <img id="profileSettingsAvatar" class="picture-preview" alt="My picture">
                     <label>Change profile picture</label>
                     <input id="settingsPicture" type="file" accept="image/png,image/jpeg,image/webp">
                     <div id="profileUploadStatus" class="upload-status">No file chosen</div>
@@ -616,10 +880,8 @@ header {
                     <button onclick="saveProfile()">Save Profile</button>
                     <div id="profileMessage"></div>
                 </div>
-            </div>
 
-            <div class="settings-section">
-                <button onclick="toggleSection('contactSettings');loadContacts()">Contacts and Contact Management</button>
+                <!-- CONTACT SETTINGS CONTENT -->
                 <div id="contactSettings" class="settings-content">
                     <h3>Add Contact</h3>
                     <input id="contactUsername" placeholder="Enter KCHAT username">
@@ -628,10 +890,8 @@ header {
                     <h3>My Contacts</h3>
                     <div id="contactsList"></div>
                 </div>
-            </div>
 
-            <div class="settings-section">
-                <button onclick="toggleSection('groupSettings');loadGroups()">Group Settings</button>
+                <!-- GROUP SETTINGS CONTENT -->
                 <div id="groupSettings" class="settings-content">
                     <h3>Create Group</h3>
                     <input id="groupName" placeholder="Group name">
@@ -642,21 +902,30 @@ header {
                     <h3>Group Members</h3>
                     <div id="groupMembers"></div>
                 </div>
-            </div>
 
-            <div class="settings-section">
-                <button onclick="toggleSection('blockedSettings');loadBlocked()">Blocked Contacts</button>
+                <!-- PRIVACY SETTINGS CONTENT -->
+                <div id="privacySettings" class="settings-content">
+                    <h3>Privacy</h3>
+                    <p class="auth-description">Manage who you have blocked on KCHAT.</p>
+                    <button class="settings-option" onclick="openSettingsSection('blockedSettings');loadBlocked()">
+                        🚫 View Blocked Contacts
+                    </button>
+                </div>
+
+                <!-- BLOCKED CONTACTS CONTENT -->
                 <div id="blockedSettings" class="settings-content">
+                    <h3>Blocked Contacts</h3>
                     <div id="blockedList"></div>
                 </div>
-            </div>
 
-            <div class="settings-section">
-                <button onclick="markAllRead()">Mark all messages as read</button>
-            </div>
+                <!-- EVENT SETTINGS CONTENT -->
+                <div id="eventSettings" class="settings-content">
+                    <h3>Events</h3>
+                    <p class="auth-description">Create an event and share its details with your KCHAT contacts.</p>
+                    <button onclick="openEventCreator()">＋ Create New Event</button>
+                    <div id="settingsEventList"></div>
+                </div>
 
-            <div class="settings-section">
-                <button class="danger-button" onclick="logout()">Logout</button>
             </div>
         </div>
 
@@ -668,10 +937,6 @@ header {
                 <button onclick="searchMessages()">Search</button>
                 <div id="searchResults"></div>
             </div>
-
-            <button class="new-chat-button" onclick="openNewChatPicker()">
-                <span>＋</span> New Chat
-            </button>
 
             <div class="chat-filters">
                 <button class="active" data-filter="all" onclick="setChatFilter('all',this)">All</button>
@@ -689,6 +954,51 @@ header {
             </div>
 
             <div id="notification"></div>
+        </div>
+
+        <!-- ROUND NEW CHAT BUTTON -->
+        <button id="newChatButton" class="new-chat-button"
+                title="New Chat" onclick="toggleNewChatActions()">
+            <span>＋</span>
+        </button>
+
+        <!-- NEW CHAT ACTION MENU -->
+        <div id="newChatActions" class="new-chat-actions hidden">
+
+            <button onclick="openAddContact()">
+                <span class="action-icon">👤</span>
+                <span class="action-label">Add Contact</span>
+            </button>
+
+            <button onclick="openNewChatPicker()">
+                <span class="action-icon">💬</span>
+                <span class="action-label">Select Contact to Message</span>
+            </button>
+
+            <button onclick="openInvitePicker()">
+                <span class="action-icon">📨</span>
+                <span class="action-label">Invite Members to KCHAT</span>
+            </button>
+
+            <button onclick="openEventCreator()">
+                <span class="action-icon">📅</span>
+                <span class="action-label">New Event</span>
+            </button>
+
+            <button onclick="openNewGroupPicker()">
+                <span class="action-icon">👥</span>
+                <span class="action-label">New Group</span>
+            </button>
+
+            <button onclick="refreshKchat()">
+                <span class="action-icon">🔄</span>
+                <span class="action-label">Refresh</span>
+            </button>
+
+            <button onclick="openContactSettings()">
+                <span class="action-icon">⚙</span>
+                <span class="action-label">Contact Settings</span>
+            </button>
         </div>
 
         <!-- ACTIVE CHAT -->
@@ -736,6 +1046,20 @@ header {
     </div>
 </div>
 
+<!-- ADD CONTACT SCREEN -->
+<div id="addContactOverlay" class="modal-overlay">
+    <div class="modal-box">
+        <div class="section-title">
+            <h3>Add Contact</h3>
+            <button class="small-button secondary-button" onclick="closeAddContact()">Close</button>
+        </div>
+        <p class="auth-description">Enter the KCHAT username of the person you want to add.</p>
+        <input id="quickContactUsername" placeholder="KCHAT username">
+        <div id="quickContactMessage"></div>
+        <button onclick="addQuickContact()">Add Contact</button>
+    </div>
+</div>
+
 <!-- NEW CHAT CONTACT PICKER -->
 <div id="newChatOverlay" class="modal-overlay">
     <div class="modal-box">
@@ -745,10 +1069,59 @@ header {
         </div>
         <input id="newChatSearch" placeholder="Find a contact..." oninput="filterNewChatContacts()">
         <div id="newChatContacts"></div>
-        <hr>
-        <h3>Invite someone</h3>
-        <p class="auth-description">Invite someone to join KCHAT.</p>
-        <button onclick="inviteUser()">Invite Contact</button>
+    </div>
+</div>
+
+<!-- INVITE MEMBERS -->
+<div id="inviteOverlay" class="modal-overlay">
+    <div class="modal-box">
+        <div class="section-title">
+            <h3>Invite Members</h3>
+            <button class="small-button secondary-button" onclick="closeInvitePicker()">Close</button>
+        </div>
+        <p class="auth-description">
+            Invite people who are not yet using KCHAT. Share the invitation link with them.
+        </p>
+        <input id="inviteSearch" placeholder="Search saved contacts..." oninput="filterInviteContacts()">
+        <div id="inviteContacts"></div>
+        <button onclick="shareKchatInvite()">Share KCHAT Invitation</button>
+    </div>
+</div>
+
+<!-- NEW GROUP PICKER -->
+<div id="newGroupOverlay" class="modal-overlay">
+    <div class="modal-box">
+        <div class="section-title">
+            <h3>Create New Group</h3>
+            <button class="small-button secondary-button" onclick="closeNewGroupPicker()">Close</button>
+        </div>
+        <input id="newGroupName" placeholder="Enter group name">
+        <p class="auth-description">Choose the contacts you want to add to your group.</p>
+        <div id="newGroupContacts"></div>
+        <div id="newGroupMessage"></div>
+        <button onclick="createGroupFromPicker()">Create Group</button>
+    </div>
+</div>
+
+<!-- NEW EVENT -->
+<div id="eventOverlay" class="modal-overlay">
+    <div class="modal-box">
+        <div class="section-title">
+            <h3>Create New Event</h3>
+            <button class="small-button secondary-button" onclick="closeEventCreator()">Close</button>
+        </div>
+        <label>Event name</label>
+        <input id="eventName" placeholder="e.g. Birthday celebration">
+        <label>Event date</label>
+        <input id="eventDate" type="date">
+        <label>Event time</label>
+        <input id="eventTime" type="time">
+        <label>Location</label>
+        <input id="eventLocation" placeholder="Where will it happen?">
+        <label>Details</label>
+        <textarea id="eventDetails" placeholder="Add event information..."></textarea>
+        <div id="eventMessage"></div>
+        <button onclick="createKchatEvent()">Create Event</button>
     </div>
 </div>
 
@@ -765,8 +1138,8 @@ header {
 </div>
 
 <!-- CAMERA -->
-<input id="cameraInput" type="file" accept="image/*" capture="environment" class="hidden"
-       onchange="cameraPictureSelected(event)">
+<input id="cameraInput" type="file" accept="image/*" capture="environment"
+       class="hidden" onchange="cameraPictureSelected(event)">
 
 <div id="cameraOverlay" class="modal-overlay">
     <div class="modal-box">
@@ -787,7 +1160,7 @@ header {
             <button class="small-button secondary-button" onclick="closeProfile()">Close</button>
         </div>
         <img id="profilePictureLarge" class="profile-picture-large"
-             alt="Profile picture" onclick="zoomProfilePicture">
+             alt="Profile picture" onclick="zoomProfilePicture()">
         <h2 id="profileUsername" style="text-align:center"></h2>
         <p id="profileAbout" style="text-align:center"></p>
         <button id="savePictureButton" onclick="saveProfilePicture()">Save Picture</button>
@@ -799,7 +1172,7 @@ header {
     <img id="zoomPicture" class="zoom-picture" alt="Zoomed profile picture">
 </div>
 <script>
-/* ---------------- APP STATE ---------------- */
+/* ================= APP STATE ================= */
 
 const API = "";
 let token = localStorage.getItem("kchat_token") || "";
@@ -824,20 +1197,23 @@ let pendingPrivateChat = null;
 let reconnectTimer = null;
 let notificationTimer = null;
 
-/* ---------------- HELPERS ---------------- */
+/* ================= HELPERS ================= */
 
 function showPage(id) {
     document.querySelectorAll(".auth-page").forEach(page => {
         page.classList.remove("active");
     });
+
     document.getElementById(id).classList.add("active");
 }
 
 function notify(message) {
     const element = document.getElementById("notification");
+
     if (!element) return;
 
     element.textContent = message;
+
     clearTimeout(notificationTimer);
 
     notificationTimer = setTimeout(() => {
@@ -859,12 +1235,31 @@ function avatarSource(picture) {
     return picture || "";
 }
 
-function toggleSettings() {
-    document.getElementById("settingsPanel").classList.toggle("hidden");
-}
-
 function toggleMainMenu() {
     document.getElementById("mainMenu").classList.toggle("hidden");
+}
+
+function toggleSettings() {
+    const settings = document.getElementById("settingsPanel");
+    const inboxScreen = document.getElementById("inboxScreen");
+    const activeChat = document.getElementById("activeChat");
+
+    const opening = settings.classList.contains("hidden");
+
+    if (opening) {
+        settings.classList.remove("hidden");
+        inboxScreen.classList.add("hidden");
+        activeChat.style.display = "none";
+        document.getElementById("mainMenu").classList.add("hidden");
+    } else {
+        settings.classList.add("hidden");
+        inboxScreen.classList.remove("hidden");
+    }
+}
+
+function closeSettingsPage() {
+    document.getElementById("settingsPanel").classList.add("hidden");
+    document.getElementById("inboxScreen").classList.remove("hidden");
 }
 
 function toggleSection(id) {
@@ -873,16 +1268,21 @@ function toggleSection(id) {
 
 function openSettingsSection(id) {
     document.getElementById("settingsPanel").classList.remove("hidden");
+    document.getElementById("inboxScreen").classList.add("hidden");
+
     document.querySelectorAll(".settings-content").forEach(item => {
         item.classList.remove("visible");
     });
+
     document.getElementById(id).classList.add("visible");
 }
 
 function apiRequest(path, options = {}) {
     const headers = { ...(options.headers || {}) };
 
-    if (token) headers.Authorization = "Bearer " + token;
+    if (token) {
+        headers.Authorization = "Bearer " + token;
+    }
 
     if (options.body && !(options.body instanceof FormData)) {
         headers["Content-Type"] = "application/json";
@@ -895,11 +1295,15 @@ function apiRequest(path, options = {}) {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            if (response.status === 401) {
-                handleExpiredSession();
+            if (response.status === 401 || response.status === 403) {
+                if (response.status === 401) {
+                    handleExpiredSession();
+                }
             }
 
-            throw new Error(data.error || data.detail || "Request failed.");
+            throw new Error(
+                data.error || data.detail || "Request failed."
+            );
         }
 
         return data;
@@ -922,13 +1326,14 @@ function handleExpiredSession() {
     groupSocket = null;
 
     document.getElementById("chatScreen").style.display = "none";
+
     showPage("loginPage");
 
     document.getElementById("loginError").textContent =
         "Your session expired. Please log in again.";
 }
 
-/* ---------------- IMAGE PROCESSING ---------------- */
+/* ================= IMAGE PROCESSING ================= */
 
 function resizePicture(file, statusElement) {
     return new Promise((resolve, reject) => {
@@ -958,6 +1363,7 @@ function resizePicture(file, statusElement) {
 
                 if (width > max || height > max) {
                     const ratio = Math.min(max / width, max / height);
+
                     width = Math.round(width * ratio);
                     height = Math.round(height * ratio);
                 }
@@ -966,13 +1372,19 @@ function resizePicture(file, statusElement) {
                 canvas.height = height;
 
                 canvas.getContext("2d").drawImage(
-                    image, 0, 0, width, height
+                    image,
+                    0,
+                    0,
+                    width,
+                    height
                 );
 
                 const result = canvas.toDataURL("image/jpeg", 0.75);
 
                 if (result.length > 2400000) {
-                    reject(new Error("Picture is too large. Choose a smaller image."));
+                    reject(new Error(
+                        "Picture is too large. Choose a smaller image."
+                    ));
                     return;
                 }
 
@@ -980,31 +1392,44 @@ function resizePicture(file, statusElement) {
                 resolve(result);
             };
 
-            image.onerror = () => reject(new Error("Could not read picture."));
+            image.onerror = () => {
+                reject(new Error("Could not read picture."));
+            };
+
             image.src = reader.result;
         };
 
-        reader.onerror = () => reject(new Error("Picture upload failed."));
+        reader.onerror = () => {
+            reject(new Error("Picture upload failed."));
+        };
+
         reader.readAsDataURL(file);
     });
 }
 
-document.getElementById("registerPicture").addEventListener("change", async function() {
-    const file = this.files[0];
-    const status = document.getElementById("registerUploadStatus");
+document.getElementById("registerPicture").addEventListener(
+    "change",
+    async function() {
+        const file = this.files[0];
+        const status = document.getElementById("registerUploadStatus");
 
-    if (!file) return;
+        if (!file) return;
 
-    try {
-        const picture = await resizePicture(file, status);
-        document.getElementById("registerPreview").src = picture;
-        document.getElementById("registerPreview").classList.remove("hidden");
-    } catch (error) {
-        status.textContent = error.message;
+        try {
+            const picture = await resizePicture(file, status);
+
+            document.getElementById("registerPreview").src = picture;
+
+            document.getElementById("registerPreview")
+                .classList.remove("hidden");
+
+        } catch (error) {
+            status.textContent = error.message;
+        }
     }
-});
+);
 
-/* ---------------- REGISTRATION ---------------- */
+/* ================= REGISTRATION ================= */
 
 async function register() {
     const phone = document.getElementById("registerPhone").value.trim();
@@ -1022,13 +1447,17 @@ async function register() {
     }
 
     if (password.length < 8) {
-        errorElement.textContent = "Password must be at least 8 characters.";
+        errorElement.textContent =
+            "Password must be at least 8 characters.";
         return;
     }
 
     try {
         const file = document.getElementById("registerPicture").files[0];
-        const picture = file ? await resizePicture(file, status) : null;
+
+        const picture = file
+            ? await resizePicture(file, status)
+            : null;
 
         status.textContent = "Creating your account...";
 
@@ -1043,7 +1472,9 @@ async function register() {
         });
 
         if (!data.token) {
-            throw new Error("Account created, but no login token was returned.");
+            throw new Error(
+                "Account created, but no login token was returned."
+            );
         }
 
         token = data.token;
@@ -1053,6 +1484,7 @@ async function register() {
         localStorage.setItem("kchat_username", currentUser);
 
         status.textContent = "Account created. Opening KCHAT...";
+
         await enterKchat();
 
     } catch (error) {
@@ -1061,17 +1493,19 @@ async function register() {
     }
 }
 
-/* ---------------- LOGIN ---------------- */
+/* ================= LOGIN ================= */
 
 async function login() {
     const phone = document.getElementById("loginPhone").value.trim();
     const password = document.getElementById("loginPassword").value;
+
     const errorElement = document.getElementById("loginError");
 
     errorElement.textContent = "";
 
     if (!phone || !password) {
-        errorElement.textContent = "Enter your phone number and password.";
+        errorElement.textContent =
+            "Enter your phone number and password.";
         return;
     }
 
@@ -1084,7 +1518,9 @@ async function login() {
             })
         });
 
-        if (!data.token) throw new Error("Login token was not returned.");
+        if (!data.token) {
+            throw new Error("Login token was not returned.");
+        }
 
         token = data.token;
         currentUser = data.username;
@@ -1099,7 +1535,7 @@ async function login() {
     }
 }
 
-/* ---------------- ENTER KCHAT ---------------- */
+/* ================= ENTER KCHAT ================= */
 
 async function enterKchat() {
     document.querySelectorAll(".auth-page").forEach(page => {
@@ -1107,6 +1543,7 @@ async function enterKchat() {
     });
 
     document.getElementById("chatScreen").style.display = "flex";
+
     document.getElementById("accountName").textContent = currentUser;
 
     try {
@@ -1122,7 +1559,7 @@ async function enterKchat() {
     }
 }
 
-/* ---------------- PROFILE ---------------- */
+/* ================= PROFILE ================= */
 
 async function loadMyProfile() {
     myProfile = await apiRequest(
@@ -1141,7 +1578,9 @@ async function loadMyProfile() {
 
 async function saveProfile() {
     const file = document.getElementById("settingsPicture").files[0];
+
     const status = document.getElementById("profileUploadStatus");
+
     const about = document.getElementById("myAbout").value.trim();
 
     try {
@@ -1160,7 +1599,10 @@ async function saveProfile() {
         document.getElementById("profileMessage").textContent =
             "Profile updated successfully.";
 
-        status.textContent = file ? "Picture saved." : "About saved.";
+        status.textContent = file
+            ? "Picture saved."
+            : "About saved.";
+
         document.getElementById("settingsPicture").value = "";
 
         await loadMyProfile();
@@ -1177,7 +1619,9 @@ function showMyProfile() {
     currentProfilePicture = myProfile.profile_picture;
     currentProfileUsername = currentUser;
 
-    document.getElementById("profileUsername").textContent = currentUser;
+    document.getElementById("profileUsername").textContent =
+        currentUser;
+
     document.getElementById("profileAbout").textContent =
         myProfile.about || "No About information.";
 
@@ -1185,16 +1629,19 @@ function showMyProfile() {
         avatarSource(myProfile.profile_picture);
 
     document.getElementById("profileOverlay").classList.add("visible");
+
     toggleMainMenu();
 }
 
-/* ---------------- CONTACTS ---------------- */
+/* ================= CONTACT MANAGEMENT ================= */
 
 async function loadContacts() {
     const data = await apiRequest("/api/contacts");
+
     contacts = data.contacts || [];
 
     const container = document.getElementById("contactsList");
+
     container.innerHTML = "";
 
     if (!contacts.length) {
@@ -1205,6 +1652,7 @@ async function loadContacts() {
 
     contacts.forEach(username => {
         const row = document.createElement("div");
+
         row.className = "group-member";
 
         const name = document.createElement("span");
@@ -1213,20 +1661,24 @@ async function loadContacts() {
         const open = document.createElement("button");
         open.className = "small-button";
         open.textContent = "Chat";
+
         open.onclick = () => openPrivateChat(username);
 
         const remove = document.createElement("button");
         remove.className = "small-button danger-button";
         remove.textContent = "Remove";
+
         remove.onclick = () => removeContact(username);
 
         row.append(name, open, remove);
+
         container.appendChild(row);
     });
 }
 
 async function addContact() {
-    const username = document.getElementById("contactUsername").value.trim();
+    const username =
+        document.getElementById("contactUsername").value.trim();
 
     if (!username) {
         document.getElementById("contactMessage").textContent =
@@ -1249,17 +1701,21 @@ async function addContact() {
         await loadInbox();
 
     } catch (error) {
-        document.getElementById("contactMessage").textContent = error.message;
+        document.getElementById("contactMessage").textContent =
+            error.message;
     }
 }
 
 async function removeContact(username) {
-    if (!confirm("Remove " + username + " from your contacts?")) return;
+    if (!confirm("Remove " + username + " from your contacts?")) {
+        return;
+    }
 
     try {
-        await apiRequest("/api/contacts/" + encodeURIComponent(username), {
-            method: "DELETE"
-        });
+        await apiRequest(
+            "/api/contacts/" + encodeURIComponent(username),
+            { method: "DELETE" }
+        );
 
         await loadContacts();
         await loadInbox();
@@ -1271,11 +1727,15 @@ async function removeContact(username) {
     }
 }
 
-/* ---------------- NEW CHAT CONTACT PICKER ---------------- */
+/* ================= ROUND NEW CHAT BUTTON MENU ================= */
 
 function openNewChatPicker() {
-    document.getElementById("newChatOverlay").classList.add("visible");
+    const menu = document.getElementById("newChatOverlay");
+
+    menu.classList.add("visible");
+
     document.getElementById("newChatSearch").value = "";
+
     renderNewChatContacts(contacts);
 }
 
@@ -1285,16 +1745,18 @@ function closeNewChatPicker() {
 
 function renderNewChatContacts(list) {
     const container = document.getElementById("newChatContacts");
+
     container.innerHTML = "";
 
     if (!list.length) {
         container.innerHTML =
-            '<div class="empty-note">No contacts found. Add contacts in Settings.</div>';
+            '<div class="empty-note">No contacts found. Add or invite someone.</div>';
         return;
     }
 
     list.forEach(username => {
         const row = document.createElement("div");
+
         row.className = "contact-row";
 
         const name = document.createElement("span");
@@ -1303,24 +1765,30 @@ function renderNewChatContacts(list) {
 
         const button = document.createElement("button");
         button.textContent = "Message";
+
         button.onclick = () => {
             closeNewChatPicker();
             openPrivateChat(username);
         };
 
         row.append(name, button);
+
         container.appendChild(row);
     });
 }
 
 function filterNewChatContacts() {
-    const query = document.getElementById("newChatSearch").value
-        .trim().toLowerCase();
+    const query = document.getElementById("newChatSearch")
+        .value.trim().toLowerCase();
 
     renderNewChatContacts(
-        contacts.filter(name => name.toLowerCase().includes(query))
+        contacts.filter(name =>
+            name.toLowerCase().includes(query)
+        )
     );
 }
+
+/* ================= INVITE PEOPLE TO KCHAT ================= */
 
 async function inviteUser() {
     const inviteText =
@@ -1332,12 +1800,16 @@ async function inviteUser() {
                 title: "Join KCHAT",
                 text: inviteText
             });
+
         } else if (navigator.clipboard) {
             await navigator.clipboard.writeText(inviteText);
+
             notify("Invitation copied. Share it with your contact.");
+
         } else {
             prompt("Copy this invitation:", inviteText);
         }
+
     } catch (error) {
         if (error.name !== "AbortError") {
             notify("Could not open sharing. Please try again.");
@@ -1345,12 +1817,86 @@ async function inviteUser() {
     }
 }
 
-/* ---------------- INBOX AND FILTERS ---------------- */
+/* ================= NEW EVENT ================= */
+
+function createNewEvent() {
+    closeNewChatPicker();
+
+    const eventName = prompt("Enter the event name:");
+
+    if (!eventName || !eventName.trim()) return;
+
+    const eventDate = prompt(
+        "Enter the event date and time:"
+    );
+
+    if (!eventDate || !eventDate.trim()) return;
+
+    const eventDetails = prompt(
+        "Enter event details (optional):"
+    ) || "";
+
+    const eventText =
+        "KCHAT EVENT\n\n" +
+        "Name: " + eventName.trim() + "\n" +
+        "Date: " + eventDate.trim() + "\n" +
+        "Details: " + eventDetails;
+
+    if (navigator.share) {
+        navigator.share({
+            title: "KCHAT Event",
+            text: eventText
+        }).catch(() => {});
+    } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(eventText)
+            .then(() => notify("Event details copied."))
+            .catch(() => notify(eventText));
+    } else {
+        alert(eventText);
+    }
+}
+
+/* ================= NEW GROUP SHORTCUT ================= */
+
+function newGroupFromButton() {
+    closeNewChatPicker();
+
+    document.getElementById("settingsPanel").classList.remove("hidden");
+    document.getElementById("inboxScreen").classList.add("hidden");
+
+    document.querySelectorAll(".settings-content").forEach(item => {
+        item.classList.remove("visible");
+    });
+
+    document.getElementById("groupSettings").classList.add("visible");
+
+    document.getElementById("groupName").focus();
+}
+
+/* ================= REFRESH ================= */
+
+async function refreshKchat() {
+    try {
+        await loadContacts();
+        await loadGroups();
+        await loadInbox();
+        await loadBlocked();
+
+        notify("KCHAT refreshed.");
+
+    } catch (error) {
+        notify("Refresh failed: " + error.message);
+    }
+}
+
+/* ================= INBOX ================= */
 
 async function loadInbox() {
     try {
         const data = await apiRequest("/api/inbox");
+
         inbox = data.inbox || [];
+
         renderInbox();
 
     } catch (error) {
@@ -1382,14 +1928,19 @@ function setChatFilter(filter, button) {
 
 function renderInbox() {
     const container = document.getElementById("inboxList");
+
     container.innerHTML = "";
 
     let list = [...inbox];
 
     if (activeFilter === "unread") {
-        list = list.filter(item => Number(item.unread_count) > 0);
+        list = list.filter(item =>
+            Number(item.unread_count) > 0
+        );
+
     } else if (activeFilter === "favorites") {
         list = list.filter(item => item.pinned);
+
     } else if (activeFilter === "groups") {
         list = groups.map(group => ({
             is_group: true,
@@ -1405,1049 +1956,966 @@ function renderInbox() {
 
     list.forEach(item => {
         const row = document.createElement("div");
+
         row.className = "inbox-item";
 
         if (item.is_group) {
             const details = document.createElement("div");
+
             details.className = "inbox-details";
 
             const name = document.createElement("div");
+
             name.className = "inbox-name";
             name.textContent = "👥 " + item.group.name;
 
             const preview = document.createElement("div");
+
             preview.className = "inbox-preview";
             preview.textContent =
                 (item.group.member_count || 0) + " group members";
 
             details.append(name, preview);
 
-            const open = document.createElement("button");
-            open.textContent = "Open";
-            open.onclick = event => {
-                event.stopPropagation();
-                openGroup(item.group);
-            };
+            row.append(details);
 
-            row.append(details, open);
             row.onclick = () => openGroup(item.group);
 
         } else {
             const picture = document.createElement("img");
+
             picture.className = "inbox-avatar";
             picture.src = avatarSource(item.profile_picture);
 
             const details = document.createElement("div");
+
             details.className = "inbox-details";
 
             const name = document.createElement("div");
+
             name.className = "inbox-name";
+
             name.textContent =
                 item.username +
                 (item.muted ? " 🔕" : "") +
                 (item.pinned ? " 📌" : "");
 
             const preview = document.createElement("div");
+
             preview.className = "inbox-preview";
-            preview.textContent = item.last_message || "Start a conversation";
+            preview.textContent =
+                item.last_message || "Start a conversation";
 
             const unread = document.createElement("div");
+
             unread.className = "inbox-unread";
+
             unread.textContent = item.unread_count
                 ? item.unread_count + " unread"
                 : "";
 
             details.append(name, preview, unread);
+
             row.append(picture, details);
 
-            row.onclick = () => openPrivateChat(item.username, item);
+            row.onclick = () =>
+                openPrivateChat(item.username, item);
         }
 
         container.appendChild(row);
     });
 }
+   <script>
+/* ================= APP STATE ================= */
 
-/* ---------------- WEBSOCKET ---------------- */
+const API = "";
+let token = localStorage.getItem("kchat_token") || "";
+let currentUser = localStorage.getItem("kchat_username") || "";
+let myProfile = null;
 
-function websocketURL(room) {
-    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+let socket = null;
+let groupSocket = null;
+let currentPeer = null;
+let currentGroup = null;
+let currentChatType = "private";
 
-    return protocol + "//" + location.host +
-        "/ws/" + encodeURIComponent(room) +
-        "?token=" + encodeURIComponent(token);
+let contacts = [];
+let groups = [];
+let inbox = [];
+let onlineUsers = [];
+let currentProfilePicture = null;
+let currentProfileUsername = null;
+let currentSettings = {};
+let activeFilter = "all";
+let pendingPrivateChat = null;
+let reconnectTimer = null;
+let notificationTimer = null;
+
+/* ================= HELPERS ================= */
+
+function showPage(id) {
+    document.querySelectorAll(".auth-page").forEach(page => {
+        page.classList.remove("active");
+    });
+
+    document.getElementById(id).classList.add("active");
 }
 
-function connectPrivateSocket() {
+function notify(message) {
+    const element = document.getElementById("notification");
+
+    if (!element) return;
+
+    element.textContent = message;
+
+    clearTimeout(notificationTimer);
+
+    notificationTimer = setTimeout(() => {
+        element.textContent = "";
+    }, 4500);
+}
+
+function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    })[char]);
+}
+
+function avatarSource(picture) {
+    return picture || "";
+}
+
+function toggleMainMenu() {
+    document.getElementById("mainMenu").classList.toggle("hidden");
+}
+
+function toggleSettings() {
+    const settings = document.getElementById("settingsPanel");
+    const inboxScreen = document.getElementById("inboxScreen");
+    const activeChat = document.getElementById("activeChat");
+
+    const opening = settings.classList.contains("hidden");
+
+    if (opening) {
+        settings.classList.remove("hidden");
+        inboxScreen.classList.add("hidden");
+        activeChat.style.display = "none";
+        document.getElementById("mainMenu").classList.add("hidden");
+    } else {
+        settings.classList.add("hidden");
+        inboxScreen.classList.remove("hidden");
+    }
+}
+
+function closeSettingsPage() {
+    document.getElementById("settingsPanel").classList.add("hidden");
+    document.getElementById("inboxScreen").classList.remove("hidden");
+}
+
+function toggleSection(id) {
+    document.getElementById(id).classList.toggle("visible");
+}
+
+function openSettingsSection(id) {
+    document.getElementById("settingsPanel").classList.remove("hidden");
+    document.getElementById("inboxScreen").classList.add("hidden");
+
+    document.querySelectorAll(".settings-content").forEach(item => {
+        item.classList.remove("visible");
+    });
+
+    document.getElementById(id).classList.add("visible");
+}
+
+function apiRequest(path, options = {}) {
+    const headers = { ...(options.headers || {}) };
+
+    if (token) {
+        headers.Authorization = "Bearer " + token;
+    }
+
+    if (options.body && !(options.body instanceof FormData)) {
+        headers["Content-Type"] = "application/json";
+    }
+
+    return fetch(API + path, {
+        ...options,
+        headers
+    }).then(async response => {
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                if (response.status === 401) {
+                    handleExpiredSession();
+                }
+            }
+
+            throw new Error(
+                data.error || data.detail || "Request failed."
+            );
+        }
+
+        return data;
+    });
+}
+
+function handleExpiredSession() {
     if (!token) return;
 
-    if (socket &&
-        (socket.readyState === WebSocket.OPEN ||
-         socket.readyState === WebSocket.CONNECTING)) {
-        return;
-    }
-
-    socket = new WebSocket(websocketURL("general"));
-
-    socket.onopen = () => {
-        document.getElementById("status").textContent = "Online";
-        document.getElementById("status").style.color = "#80ed99";
-
-        if (pendingPrivateChat) {
-            const pending = pendingPrivateChat;
-            pendingPrivateChat = null;
-            openPrivateChat(pending.username, pending.item);
-        }
-    };
-
-    socket.onclose = () => {
-        document.getElementById("status").textContent = "Reconnecting...";
-        document.getElementById("status").style.color = "#f6c453";
-
-        if (token) {
-            clearTimeout(reconnectTimer);
-            reconnectTimer = setTimeout(connectPrivateSocket, 3000);
-        }
-    };
-
-    socket.onerror = () => {
-        document.getElementById("status").textContent = "Connection problem";
-    };
-
-    socket.onmessage = event => {
-        let data;
-
-        try {
-            data = JSON.parse(event.data);
-        } catch {
-            return;
-        }
-
-        if (data.type === "welcome") return;
-
-        if (data.type === "users") {
-            onlineUsers = (data.users || []).map(user =>
-                typeof user === "string" ? user : user.username
-            ).filter(Boolean);
-
-            document.getElementById("status").textContent = "Online";
-            updatePeerPresence();
-            return;
-        }
-
-        if (data.type === "private_history") {
-            if (currentChatType === "private" &&
-                currentPeer &&
-                data.with.toLowerCase() === currentPeer.toLowerCase()) {
-                renderHistory(data.history || []);
-            }
-            return;
-        }
-
-        if (data.type === "private_status") {
-            updateMessageStatus(data.id, data.status);
-            return;
-        }
-
-        if (data.type === "system") {
-            if (currentChatType === "private") {
-                addSystemMessage(data.text);
-            }
-            return;
-        }
-
-        if (data.type === "private") {
-            receivePrivateMessage(data);
-        }
-    };
-}
-
-function updatePeerPresence() {
-    if (!currentPeer) return;
-
-    const isOnline = onlineUsers.some(name =>
-        name.toLowerCase() === currentPeer.toLowerCase()
-    );
-
-    const element = document.getElementById("chatPersonStatus");
-    element.textContent = isOnline ? "Online" : "Offline";
-    element.classList.toggle("online", isOnline);
-}
-
-/* ---------------- PRIVATE CHAT ---------------- */
-
-function openPrivateChat(username, inboxItem = null) {
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-        pendingPrivateChat = { username, item: inboxItem };
-        notify("Connecting to KCHAT...");
-
-        connectPrivateSocket();
-        return;
-    }
-
-    currentPeer = username;
-    currentGroup = null;
-    currentChatType = "private";
-
-    if (groupSocket) {
-        groupSocket.close();
-        groupSocket = null;
-    }
-
-    document.getElementById("inboxScreen").classList.add("hidden");
-
-    const active = document.getElementById("activeChat");
-    active.style.display = "flex";
-    active.classList.add("mobile-open");
-
-    document.getElementById("chatPersonName").textContent = username;
-    document.getElementById("chatAvatar").src =
-        avatarSource(inboxItem?.profile_picture);
-
-    currentSettings = inboxItem || {};
-
-    document.getElementById("messages").innerHTML = "";
-    document.getElementById("chatMenu").classList.remove("visible");
-
-    updatePeerPresence();
-
-    socket.send(JSON.stringify({
-        type: "open_private",
-        to: username
-    }));
-}
-
-function receivePrivateMessage(data) {
-    const isMine = data.username.toLowerCase() === currentUser.toLowerCase();
-    const peer = isMine ? data.to : data.username;
-
-    if (currentChatType === "private" &&
-        currentPeer &&
-        peer &&
-        peer.toLowerCase() === currentPeer.toLowerCase()) {
-        appendMessage(data);
-    }
-
-    loadInbox();
-}
-
-function sendMessage() {
-    const text = document.getElementById("message").value.trim();
-    if (!text) return;
-
-    if (currentChatType === "private") {
-        if (!currentPeer) return;
-
-        if (!socket || socket.readyState !== WebSocket.OPEN) {
-            notify("Not connected. Please wait.");
-            return;
-        }
-
-        socket.send(JSON.stringify({
-            type: "private",
-            to: currentPeer,
-            text
-        }));
-
-    } else if (currentChatType === "group") {
-        if (!groupSocket || groupSocket.readyState !== WebSocket.OPEN) {
-            notify("Group connection is not ready.");
-            return;
-        }
-
-        groupSocket.send(JSON.stringify({
-            type: "chat",
-            text
-        }));
-    }
-
-    document.getElementById("message").value = "";
-}
-
-document.getElementById("message").addEventListener("keydown", event => {
-    if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-        sendMessage();
-    }
-});
-
-/* ---------------- MESSAGE DISPLAY ---------------- */
-
-function appendMessage(item) {
-    const container = document.getElementById("messages");
-    const message = document.createElement("div");
-
-    const mine = item.username.toLowerCase() === currentUser.toLowerCase();
-
-    message.className = "message" + (mine ? " mine" : "");
-    message.dataset.messageId = item.id == null ? "" : String(item.id);
-
-    const sender = document.createElement("strong");
-    sender.textContent = mine ? "You" : item.username;
-
-    const text = document.createElement("div");
-    text.textContent = item.text || "";
-
-    const time = document.createElement("div");
-    time.className = "message-time";
-
-    if (item.created_at) {
-        const date = new Date(item.created_at);
-        time.textContent = date.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit"
-        });
-    }
-
-    if (mine && item.status) {
-        const status = document.createElement("span");
-        status.className = "status-dot";
-        status.textContent = item.status === "sent" ? "•" : "••";
-        time.appendChild(status);
-    }
-
-    message.append(sender, text, time);
-    container.appendChild(message);
-    container.scrollTop = container.scrollHeight;
-}
-
-function renderHistory(history) {
-    const container = document.getElementById("messages");
-    container.innerHTML = "";
-
-    history.forEach(item => appendMessage(item));
-}
-
-function addSystemMessage(text) {
-    const element = document.createElement("div");
-    element.className = "system";
-    element.textContent = text;
-
-    const container = document.getElementById("messages");
-    container.appendChild(element);
-    container.scrollTop = container.scrollHeight;
-}
-
-function updateMessageStatus(id, statusValue) {
-    document.querySelectorAll("[data-message-id]").forEach(message => {
-        if (message.dataset.messageId !== String(id)) return;
-
-        const status = message.querySelector(".status-dot");
-
-        if (status) {
-            status.textContent = statusValue === "sent" ? "•" : "••";
-        }
-    });
-}
-
-/* ---------------- GROUPS ---------------- */
-
-async function loadGroups() {
-    const data = await apiRequest("/api/groups");
-    groups = data.groups || [];
-
-    const container = document.getElementById("groupsList");
-    container.innerHTML = "";
-
-    if (!groups.length) {
-        container.innerHTML =
-            '<div class="empty-note">You have not joined any groups.</div>';
-        return;
-    }
-
-    groups.forEach(group => {
-        const row = document.createElement("div");
-        row.className = "group-member";
-
-        const name = document.createElement("span");
-        name.textContent =
-            group.name + " (" + group.member_count + " members)";
-
-        const open = document.createElement("button");
-        open.className = "small-button";
-        open.textContent = "Open";
-        open.onclick = () => openGroup(group);
-
-        const members = document.createElement("button");
-        members.className = "small-button secondary-button";
-        members.textContent = "Members";
-        members.onclick = () => {
-            currentGroup = group;
-            loadGroupMembers(group.id);
-        };
-
-        row.append(name, open, members);
-        container.appendChild(row);
-    });
-}
-
-async function createGroup() {
-    const name = document.getElementById("groupName").value.trim();
-
-    if (!name) {
-        document.getElementById("groupMessage").textContent =
-            "Enter a group name.";
-        return;
-    }
-
-    try {
-        const data = await apiRequest("/api/groups", {
-            method: "POST",
-            body: JSON.stringify({ name })
-        });
-
-        document.getElementById("groupMessage").textContent =
-            data.message || "Group created.";
-
-        document.getElementById("groupName").value = "";
-
-        await loadGroups();
-
-        if (data.group) openGroup(data.group);
-
-    } catch (error) {
-        document.getElementById("groupMessage").textContent = error.message;
-    }
-}
-
-function openGroup(group) {
-    currentGroup = group;
-    currentPeer = null;
-    currentChatType = "group";
-
-    if (groupSocket) groupSocket.close();
-
-    document.getElementById("inboxScreen").classList.add("hidden");
-
-    const active = document.getElementById("activeChat");
-    active.style.display = "flex";
-    active.classList.add("mobile-open");
-
-    document.getElementById("chatPersonName").textContent = group.name;
-    document.getElementById("chatPersonStatus").textContent = "Group";
-    document.getElementById("chatPersonStatus").classList.remove("online");
-    document.getElementById("chatAvatar").src = "";
-    document.getElementById("messages").innerHTML = "";
-
-    groupSocket = new WebSocket(websocketURL("group_" + group.id));
-
-    groupSocket.onopen = () => {
-        document.getElementById("status").textContent = "Group connected";
-    };
-
-    groupSocket.onmessage = event => {
-        let data;
-
-        try {
-            data = JSON.parse(event.data);
-        } catch {
-            return;
-        }
-
-        if (data.type === "welcome") {
-            renderHistory(data.history || []);
-        } else if (data.type === "chat") {
-            appendMessage(data);
-        } else if (data.type === "system") {
-            addSystemMessage(data.text);
-        }
-    };
-
-    groupSocket.onclose = () => {
-        if (currentChatType === "group") {
-            notify("Group connection closed.");
-        }
-    };
-}
-
-async function loadGroupMembers(groupId) {
-    try {
-        const data = await apiRequest(
-            "/api/groups/" + groupId + "/members"
-        );
-
-        const container = document.getElementById("groupMembers");
-        container.innerHTML = "<h3>Group Members</h3>";
-
-        const isCreator = currentGroup &&
-            Number(currentGroup.id) === Number(groupId) &&
-            currentGroup.role === "creator";
-
-        (data.members || []).forEach(member => {
-            const row = document.createElement("div");
-            row.className = "group-member";
-
-            const name = document.createElement("span");
-            name.textContent = member.username + " — " + member.role;
-            row.appendChild(name);
-
-            if (isCreator && member.username !== currentUser) {
-                const remove = document.createElement("button");
-                remove.className = "small-button danger-button";
-                remove.textContent = "Remove";
-                remove.onclick = () =>
-                    removeGroupMember(groupId, member.username);
-
-                row.appendChild(remove);
-            }
-
-            container.appendChild(row);
-        });
-
-        if (isCreator) {
-            const input = document.createElement("input");
-            input.id = "addGroupMemberInput";
-            input.placeholder = "Username to add";
-
-            const add = document.createElement("button");
-            add.textContent = "Add Member";
-            add.onclick = () => addGroupMember(groupId);
-
-            container.append(input, add);
-        }
-
-    } catch (error) {
-        notify(error.message);
-    }
-}
-
-async function addGroupMember(groupId) {
-    const input = document.getElementById("addGroupMemberInput");
-    const username = input ? input.value.trim() : "";
-
-    if (!username) {
-        notify("Enter a username.");
-        return;
-    }
-
-    try {
-        await apiRequest("/api/groups/" + groupId + "/members", {
-            method: "POST",
-            body: JSON.stringify({ username })
-        });
-
-        notify("Member added.");
-        await loadGroupMembers(groupId);
-        await loadGroups();
-
-    } catch (error) {
-        notify(error.message);
-    }
-}
-
-async function removeGroupMember(groupId, username) {
-    if (!confirm("Remove " + username + " from this group?")) return;
-
-    try {
-        await apiRequest(
-            "/api/groups/" + groupId + "/members/" +
-            encodeURIComponent(username),
-            { method: "DELETE" }
-        );
-
-        await loadGroupMembers(groupId);
-        await loadGroups();
-
-    } catch (error) {
-        notify(error.message);
-    }
-}
-
-async function createGroupFromChat() {
-    if (!currentPeer) {
-        notify("Open a private chat first.");
-        return;
-    }
-
-    const peer = currentPeer;
-    const name = prompt("Enter a name for the new group:");
-
-    if (!name || !name.trim()) return;
-
-    try {
-        const data = await apiRequest("/api/groups", {
-            method: "POST",
-            body: JSON.stringify({ name: name.trim() })
-        });
-
-        const group = data.group;
-
-        if (!group || !group.id) {
-            throw new Error("The group was created, but its ID was not returned.");
-        }
-
-        await apiRequest(
-            "/api/groups/" + group.id + "/members",
-            {
-                method: "POST",
-                body: JSON.stringify({ username: peer })
-            }
-        );
-
-        await loadGroups();
-        document.getElementById("chatMenu").classList.remove("visible");
-
-        openGroup(group);
-        notify("Group created with " + peer + ".");
-
-    } catch (error) {
-        notify(error.message);
-    }
-}
-
-/* ---------------- CHAT SETTINGS ---------------- */
-
-function toggleChatMenu() {
-    document.getElementById("chatMenu").classList.toggle("visible");
-}
-
-async function updateChatSetting(setting) {
-    if (!currentPeer) {
-        notify("These settings are for private chats.");
-        return false;
-    }
-
-    try {
-        const result = await apiRequest(
-            "/api/chats/" + encodeURIComponent(currentPeer) + "/settings",
-            {
-                method: "PUT",
-                body: JSON.stringify(setting)
-            }
-        );
-
-        currentSettings = { ...currentSettings, ...setting, ...result };
-
-        await loadInbox();
-        notify("Chat settings updated.");
-        return true;
-
-    } catch (error) {
-        notify(error.message);
-        return false;
-    }
-}
-
-function toggleMute() {
-    updateChatSetting({ muted: !currentSettings.muted });
-}
-
-function togglePin() {
-    updateChatSetting({ pinned: !currentSettings.pinned });
-}
-
-async function toggleHide() {
-    const success = await updateChatSetting({
-        hidden: !currentSettings.hidden
-    });
-
-    if (success && currentSettings.hidden) backToInbox();
-}
-
-function toggleMediaVisibility() {
-    updateChatSetting({
-        media_visibility: !currentSettings.media_visibility
-    });
-}
-
-function changeDisappearing() {
-    const choice = prompt(
-        "Disappearing messages:\n0 = Off\n1 = 24 hours\n2 = 7 days\n3 = 90 days",
-        "0"
-    );
-
-    if (choice === null) return;
-
-    const values = {
-        "0": 0,
-        "1": 86400,
-        "2": 604800,
-        "3": 7776000
-    };
-
-    if (!Object.prototype.hasOwnProperty.call(values, choice)) {
-        notify("Choose 0, 1, 2 or 3.");
-        return;
-    }
-
-    updateChatSetting({ disappearing_seconds: values[choice] });
-}
-
-function changeTheme() {
-    const choice = prompt(
-        "Choose theme: default, dark, light, blue or green",
-        currentSettings.theme || "default"
-    );
-
-    if (!choice) return;
-
-    const theme = choice.toLowerCase();
-
-    if (!["default", "dark", "light", "blue", "green"].includes(theme)) {
-        notify("That theme is not available.");
-        return;
-    }
-
-    updateChatSetting({ theme });
-}
-
-/* ---------------- SEARCH ---------------- */
-
-async function searchMessages() {
-    const query = document.getElementById("searchInput").value.trim();
-    const container = document.getElementById("searchResults");
-
-    container.innerHTML = "";
-
-    if (query.length < 2) {
-        container.textContent = "Enter at least two characters.";
-        return;
-    }
-
-    try {
-        const data = await apiRequest(
-            "/api/messages/search?q=" + encodeURIComponent(query)
-        );
-
-        if (!(data.results || []).length) {
-            container.innerHTML =
-                '<div class="empty-note">No matching messages found.</div>';
-            return;
-        }
-
-        data.results.forEach(item => {
-            const row = document.createElement("div");
-            row.className = "search-result";
-
-            const text = document.createElement("span");
-            text.textContent = (item.with || item.username) + ": " + item.text;
-
-            const open = document.createElement("button");
-            open.textContent = "Open";
-            open.className = "small-button";
-            open.onclick = () => openPrivateChat(item.with || item.username);
-
-            row.append(text, open);
-            container.appendChild(row);
-        });
-
-    } catch (error) {
-        container.textContent = error.message;
-    }
-}
-
-async function searchCurrentChat() {
-    if (!currentPeer) return;
-
-    const query = prompt("Enter a message to search for:");
-    if (!query || query.trim().length < 2) return;
-
-    try {
-        const data = await apiRequest(
-            "/api/messages/search?q=" + encodeURIComponent(query.trim()) +
-            "&with_user=" + encodeURIComponent(currentPeer)
-        );
-
-        const container = document.getElementById("messages");
-        container.innerHTML = "";
-
-        (data.results || []).forEach(item => appendMessage(item));
-
-        document.getElementById("chatMenu").classList.remove("visible");
-
-    } catch (error) {
-        notify(error.message);
-    }
-}
-
-/* ---------------- VIEW CONTACT PROFILE ---------------- */
-
-async function viewCurrentProfile() {
-    if (!currentPeer) {
-        notify("Group profiles are not available here.");
-        return;
-    }
-
-    try {
-        const profile = await apiRequest(
-            "/api/profile/" + encodeURIComponent(currentPeer)
-        );
-
-        currentProfilePicture = profile.profile_picture;
-        currentProfileUsername = profile.username;
-
-        document.getElementById("profileUsername").textContent =
-            profile.username;
-
-        document.getElementById("profileAbout").textContent =
-            profile.about || "No About information.";
-
-        document.getElementById("profilePictureLarge").src =
-            avatarSource(profile.profile_picture);
-
-        document.getElementById("profileOverlay").classList.add("visible");
-
-    } catch (error) {
-        notify(error.message);
-    }
-}
-
-function closeProfile() {
-    document.getElementById("profileOverlay").classList.remove("visible");
-}
-
-function closeProfileOutside(event) {
-    if (event.target.id === "profileOverlay") closeProfile();
-}
-
-function zoomProfilePicture() {
-    if (!currentProfilePicture) {
-        notify("This user has no profile picture.");
-        return;
-    }
-
-    document.getElementById("zoomPicture").src = currentProfilePicture;
-    document.getElementById("zoomOverlay").classList.add("visible");
-}
-
-function closeZoom() {
-    document.getElementById("zoomOverlay").classList.remove("visible");
-}
-
-function saveProfilePicture() {
-    if (!currentProfilePicture) {
-        notify("No profile picture is available.");
-        return;
-    }
-
-    const link = document.createElement("a");
-    link.href = currentProfilePicture;
-    link.download = (currentProfileUsername || "KCHAT") + "-profile.jpg";
-
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-}
-
-/* ---------------- BLOCKING ---------------- */
-
-async function blockCurrentUser() {
-    if (!currentPeer) return;
-
-    if (!confirm("Block " + currentPeer + "?")) return;
-
-    try {
-        await apiRequest("/api/blocks", {
-            method: "POST",
-            body: JSON.stringify({ username: currentPeer })
-        });
-
-        notify("Contact blocked.");
-        closeProfile();
-        backToInbox();
-
-    } catch (error) {
-        notify(error.message);
-    }
-}
-
-async function loadBlocked() {
-    const container = document.getElementById("blockedList");
-
-    try {
-        const data = await apiRequest("/api/blocks");
-        container.innerHTML = "";
-
-        if (!(data.blocked || []).length) {
-            container.innerHTML =
-                '<div class="empty-note">No blocked contacts.</div>';
-            return;
-        }
-
-        data.blocked.forEach(item => {
-            const row = document.createElement("div");
-            row.className = "blocked-item";
-
-            const name = document.createElement("span");
-            name.textContent = item.username;
-
-            const unblock = document.createElement("button");
-            unblock.className = "small-button";
-            unblock.textContent = "Unblock";
-            unblock.onclick = () => unblockUser(item.username);
-
-            row.append(name, unblock);
-            container.appendChild(row);
-        });
-
-    } catch (error) {
-        container.textContent = error.message;
-    }
-}
-
-async function unblockUser(username) {
-    try {
-        await apiRequest("/api/blocks/" + encodeURIComponent(username), {
-            method: "DELETE"
-        });
-
-        await loadBlocked();
-        await loadInbox();
-
-        notify("Contact unblocked.");
-
-    } catch (error) {
-        notify(error.message);
-    }
-}
-
-/* ---------------- CALL CONTACT SELECTION ---------------- */
-
-function openCallPicker(type) {
-    const title = type === "video" ? "Choose who to video call" : "Choose who to call";
-
-    document.getElementById("callPickerTitle").textContent = title;
-
-    const container = document.getElementById("callPickerContacts");
-    container.innerHTML = "";
-
-    if (!contacts.length) {
-        container.innerHTML =
-            '<div class="empty-note">Add contacts before choosing someone to call.</div>';
-    }
-
-    contacts.forEach(username => {
-        const row = document.createElement("div");
-        row.className = "contact-row";
-
-        const name = document.createElement("span");
-        name.textContent = username;
-
-        const choose = document.createElement("button");
-        choose.textContent = type === "video" ? "Video" : "Call";
-        choose.onclick = () => {
-            closeCallPicker();
-            notify(
-                "You selected " + username +
-                ". " + (type === "video" ? "Video" : "Voice") +
-                " calling will be available when the calling backend is added."
-            );
-        };
-
-        row.append(name, choose);
-        container.appendChild(row);
-    });
-
-    document.getElementById("callPickerOverlay").classList.add("visible");
-}
-
-function closeCallPicker() {
-    document.getElementById("callPickerOverlay").classList.remove("visible");
-}
-
-/* ---------------- CAMERA ---------------- */
-
-function openCamera() {
-    document.getElementById("cameraInput").click();
-}
-
-function cameraPictureSelected(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const preview = document.getElementById("cameraPreview");
-    preview.src = URL.createObjectURL(file);
-
-    document.getElementById("cameraOverlay").classList.add("visible");
-    event.target.value = "";
-}
-
-function closeCameraPreview() {
-    document.getElementById("cameraOverlay").classList.remove("visible");
-    document.getElementById("cameraPreview").src = "";
-}
-
-/* ---------------- OTHER ACTIONS ---------------- */
-
-async function markAllRead() {
-    try {
-        await apiRequest("/api/messages/read-all", {
-            method: "POST"
-        });
-
-        notify("Messages marked as read.");
-        await loadInbox();
-
-    } catch (error) {
-        notify(error.message);
-    }
-}
-
-async function removeCurrentContact() {
-    if (!currentPeer) return;
-
-    if (!confirm("Remove " + currentPeer + " from your contacts?")) return;
-
-    await removeContact(currentPeer);
-    backToInbox();
-}
-
-function backToInbox() {
-    document.getElementById("activeChat").style.display = "none";
-    document.getElementById("activeChat").classList.remove("mobile-open");
-    document.getElementById("inboxScreen").classList.remove("hidden");
-    document.getElementById("chatMenu").classList.remove("visible");
-
-    currentPeer = null;
-    currentGroup = null;
-    currentChatType = "private";
-
-    if (groupSocket) {
-        groupSocket.close();
-        groupSocket = null;
-    }
-
-    loadInbox();
-}
-
-/* ---------------- LOGOUT ---------------- */
-
-function logout() {
-    if (socket) {
-        if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ type: "logout" }));
-        }
-        socket.close();
-    }
-
-    if (groupSocket) groupSocket.close();
-
-    clearTimeout(reconnectTimer);
-
-    socket = null;
-    groupSocket = null;
     token = "";
     currentUser = "";
 
     localStorage.removeItem("kchat_token");
     localStorage.removeItem("kchat_username");
 
+    if (socket) socket.close();
+    if (groupSocket) groupSocket.close();
+
+    socket = null;
+    groupSocket = null;
+
     document.getElementById("chatScreen").style.display = "none";
-    document.getElementById("settingsPanel").classList.add("hidden");
-    document.getElementById("activeChat").style.display = "none";
-    document.getElementById("inboxScreen").classList.remove("hidden");
+
+    showPage("loginPage");
+
+    document.getElementById("loginError").textContent =
+        "Your session expired. Please log in again.";
+}
+
+/* ================= IMAGE PROCESSING ================= */
+
+function resizePicture(file, statusElement) {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            resolve(null);
+            return;
+        }
+
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+            reject(new Error("Choose a JPG, PNG or WEBP picture."));
+            return;
+        }
+
+        statusElement.textContent = "Preparing picture...";
+
+        const reader = new FileReader();
+
+        reader.onload = () => {
+            const image = new Image();
+
+            image.onload = () => {
+                const canvas = document.createElement("canvas");
+                const max = 700;
+
+                let width = image.width;
+                let height = image.height;
+
+                if (width > max || height > max) {
+                    const ratio = Math.min(max / width, max / height);
+
+                    width = Math.round(width * ratio);
+                    height = Math.round(height * ratio);
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                canvas.getContext("2d").drawImage(
+                    image,
+                    0,
+                    0,
+                    width,
+                    height
+                );
+
+                const result = canvas.toDataURL("image/jpeg", 0.75);
+
+                if (result.length > 2400000) {
+                    reject(new Error(
+                        "Picture is too large. Choose a smaller image."
+                    ));
+                    return;
+                }
+
+                statusElement.textContent = "Picture ready.";
+                resolve(result);
+            };
+
+            image.onerror = () => {
+                reject(new Error("Could not read picture."));
+            };
+
+            image.src = reader.result;
+        };
+
+        reader.onerror = () => {
+            reject(new Error("Picture upload failed."));
+        };
+
+        reader.readAsDataURL(file);
+    });
+}
+
+document.getElementById("registerPicture").addEventListener(
+    "change",
+    async function() {
+        const file = this.files[0];
+        const status = document.getElementById("registerUploadStatus");
+
+        if (!file) return;
+
+        try {
+            const picture = await resizePicture(file, status);
+
+            document.getElementById("registerPreview").src = picture;
+
+            document.getElementById("registerPreview")
+                .classList.remove("hidden");
+
+        } catch (error) {
+            status.textContent = error.message;
+        }
+    }
+);
+
+/* ================= REGISTRATION ================= */
+
+async function register() {
+    const phone = document.getElementById("registerPhone").value.trim();
+    const password = document.getElementById("registerPassword").value;
+    const username = document.getElementById("registerUsername").value.trim();
+
+    const errorElement = document.getElementById("registerError");
+    const status = document.getElementById("registerUploadStatus");
+
+    errorElement.textContent = "";
+
+    if (!phone || !password || !username) {
+        errorElement.textContent = "Complete all required fields.";
+        return;
+    }
+
+    if (password.length < 8) {
+        errorElement.textContent =
+            "Password must be at least 8 characters.";
+        return;
+    }
+
+    try {
+        const file = document.getElementById("registerPicture").files[0];
+
+        const picture = file
+            ? await resizePicture(file, status)
+            : null;
+
+        status.textContent = "Creating your account...";
+
+        const data = await apiRequest("/api/register", {
+            method: "POST",
+            body: JSON.stringify({
+                phone_number: phone,
+                password,
+                username,
+                profile_picture: picture
+            })
+        });
+
+        if (!data.token) {
+            throw new Error(
+                "Account created, but no login token was returned."
+            );
+        }
+
+        token = data.token;
+        currentUser = data.username;
+
+        localStorage.setItem("kchat_token", token);
+        localStorage.setItem("kchat_username", currentUser);
+
+        status.textContent = "Account created. Opening KCHAT...";
+
+        await enterKchat();
+
+    } catch (error) {
+        errorElement.textContent = error.message;
+        status.textContent = "Registration failed.";
+    }
+}
+
+/* ================= LOGIN ================= */
+
+async function login() {
+    const phone = document.getElementById("loginPhone").value.trim();
+    const password = document.getElementById("loginPassword").value;
+
+    const errorElement = document.getElementById("loginError");
+
+    errorElement.textContent = "";
+
+    if (!phone || !password) {
+        errorElement.textContent =
+            "Enter your phone number and password.";
+        return;
+    }
+
+    try {
+        const data = await apiRequest("/api/login", {
+            method: "POST",
+            body: JSON.stringify({
+                phone_number: phone,
+                password
+            })
+        });
+
+        if (!data.token) {
+            throw new Error("Login token was not returned.");
+        }
+
+        token = data.token;
+        currentUser = data.username;
+
+        localStorage.setItem("kchat_token", token);
+        localStorage.setItem("kchat_username", currentUser);
+
+        await enterKchat();
+
+    } catch (error) {
+        errorElement.textContent = error.message;
+    }
+}
+
+/* ================= ENTER KCHAT ================= */
+
+async function enterKchat() {
+    document.querySelectorAll(".auth-page").forEach(page => {
+        page.classList.remove("active");
+    });
+
+    document.getElementById("chatScreen").style.display = "flex";
+
+    document.getElementById("accountName").textContent = currentUser;
+
+    try {
+        await loadMyProfile();
+        await loadContacts();
+        await loadGroups();
+        await loadInbox();
+
+        connectPrivateSocket();
+
+    } catch (error) {
+        notify(error.message);
+    }
+}
+
+/* ================= PROFILE ================= */
+
+async function loadMyProfile() {
+    myProfile = await apiRequest(
+        "/api/profile/" + encodeURIComponent(currentUser)
+    );
+
+    document.getElementById("myAvatar").src =
+        avatarSource(myProfile.profile_picture);
+
+    document.getElementById("settingsAvatar").src =
+        avatarSource(myProfile.profile_picture);
+
+    document.getElementById("myAbout").value =
+        myProfile.about || "";
+}
+
+async function saveProfile() {
+    const file = document.getElementById("settingsPicture").files[0];
+
+    const status = document.getElementById("profileUploadStatus");
+
+    const about = document.getElementById("myAbout").value.trim();
+
+    try {
+        const update = { about };
+
+        if (file) {
+            update.profile_picture = await resizePicture(file, status);
+            status.textContent = "Saving picture...";
+        }
+
+        await apiRequest("/api/profile", {
+            method: "PUT",
+            body: JSON.stringify(update)
+        });
+
+        document.getElementById("profileMessage").textContent =
+            "Profile updated successfully.";
+
+        status.textContent = file
+            ? "Picture saved."
+            : "About saved.";
+
+        document.getElementById("settingsPicture").value = "";
+
+        await loadMyProfile();
+        await loadInbox();
+
+    } catch (error) {
+        status.textContent = "Upload failed: " + error.message;
+    }
+}
+
+function showMyProfile() {
+    if (!myProfile) return;
+
+    currentProfilePicture = myProfile.profile_picture;
+    currentProfileUsername = currentUser;
+
+    document.getElementById("profileUsername").textContent =
+        currentUser;
+
+    document.getElementById("profileAbout").textContent =
+        myProfile.about || "No About information.";
+
+    document.getElementById("profilePictureLarge").src =
+        avatarSource(myProfile.profile_picture);
+
+    document.getElementById("profileOverlay").classList.add("visible");
+
+    toggleMainMenu();
+}
+
+/* ================= CONTACT MANAGEMENT ================= */
+
+async function loadContacts() {
+    const data = await apiRequest("/api/contacts");
+
+    contacts = data.contacts || [];
+
+    const container = document.getElementById("contactsList");
+
+    container.innerHTML = "";
+
+    if (!contacts.length) {
+        container.innerHTML =
+            '<div class="empty-note">No contacts yet. Add a contact to start.</div>';
+        return;
+    }
+
+    contacts.forEach(username => {
+        const row = document.createElement("div");
+
+        row.className = "group-member";
+
+        const name = document.createElement("span");
+        name.textContent = username;
+
+        const open = document.createElement("button");
+        open.className = "small-button";
+        open.textContent = "Chat";
+
+        open.onclick = () => openPrivateChat(username);
+
+        const remove = document.createElement("button");
+        remove.className = "small-button danger-button";
+        remove.textContent = "Remove";
+
+        remove.onclick = () => removeContact(username);
+
+        row.append(name, open, remove);
+
+        container.appendChild(row);
+    });
+}
+
+async function addContact() {
+    const username =
+        document.getElementById("contactUsername").value.trim();
+
+    if (!username) {
+        document.getElementById("contactMessage").textContent =
+            "Enter a username.";
+        return;
+    }
+
+    try {
+        const data = await apiRequest("/api/contacts", {
+            method: "POST",
+            body: JSON.stringify({ username })
+        });
+
+        document.getElementById("contactMessage").textContent =
+            data.message || "Contact added.";
+
+        document.getElementById("contactUsername").value = "";
+
+        await loadContacts();
+        await loadInbox();
+
+    } catch (error) {
+        document.getElementById("contactMessage").textContent =
+            error.message;
+    }
+}
+
+async function removeContact(username) {
+    if (!confirm("Remove " + username + " from your contacts?")) {
+        return;
+    }
+
+    try {
+        await apiRequest(
+            "/api/contacts/" + encodeURIComponent(username),
+            { method: "DELETE" }
+        );
+
+        await loadContacts();
+        await loadInbox();
+
+        notify("Contact removed.");
+
+    } catch (error) {
+        notify(error.message);
+    }
+}
+
+/* ================= ROUND NEW CHAT BUTTON MENU ================= */
+
+function openNewChatPicker() {
+    const menu = document.getElementById("newChatOverlay");
+
+    menu.classList.add("visible");
+
+    document.getElementById("newChatSearch").value = "";
+
+    renderNewChatContacts(contacts);
+}
+
+function closeNewChatPicker() {
+    document.getElementById("newChatOverlay").classList.remove("visible");
+}
+
+function renderNewChatContacts(list) {
+    const container = document.getElementById("newChatContacts");
+
+    container.innerHTML = "";
+
+    if (!list.length) {
+        container.innerHTML =
+            '<div class="empty-note">No contacts found. Add or invite someone.</div>';
+        return;
+    }
+
+    list.forEach(username => {
+        const row = document.createElement("div");
+
+        row.className = "contact-row";
+
+        const name = document.createElement("span");
+        name.className = "contact-row-name";
+        name.textContent = username;
+
+        const button = document.createElement("button");
+        button.textContent = "Message";
+
+        button.onclick = () => {
+            closeNewChatPicker();
+            openPrivateChat(username);
+        };
+
+        row.append(name, button);
+
+        container.appendChild(row);
+    });
+}
+
+function filterNewChatContacts() {
+    const query = document.getElementById("newChatSearch")
+        .value.trim().toLowerCase();
+
+    renderNewChatContacts(
+        contacts.filter(name =>
+            name.toLowerCase().includes(query)
+        )
+    );
+}
+
+/* ================= INVITE PEOPLE TO KCHAT ================= */
+
+async function inviteUser() {
+    const inviteText =
+        "Join me on KCHAT and let's chat! " + location.origin;
+
+    try {
+        if (navigator.share) {
+            await navigator.share({
+                title: "Join KCHAT",
+                text: inviteText
+            });
+
+        } else if (navigator.clipboard) {
+            await navigator.clipboard.writeText(inviteText);
+
+            notify("Invitation copied. Share it with your contact.");
+
+        } else {
+            prompt("Copy this invitation:", inviteText);
+        }
+
+    } catch (error) {
+        if (error.name !== "AbortError") {
+            notify("Could not open sharing. Please try again.");
+        }
+    }
+}
+
+/* ================= NEW EVENT ================= */
+
+function createNewEvent() {
+    closeNewChatPicker();
+
+    const eventName = prompt("Enter the event name:");
+
+    if (!eventName || !eventName.trim()) return;
+
+    const eventDate = prompt(
+        "Enter the event date and time:"
+    );
+
+    if (!eventDate || !eventDate.trim()) return;
+
+    const eventDetails = prompt(
+        "Enter event details (optional):"
+    ) || "";
+
+    const eventText =
+        "KCHAT EVENT\n\n" +
+        "Name: " + eventName.trim() + "\n" +
+        "Date: " + eventDate.trim() + "\n" +
+        "Details: " + eventDetails;
+
+    if (navigator.share) {
+        navigator.share({
+            title: "KCHAT Event",
+            text: eventText
+        }).catch(() => {});
+    } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(eventText)
+            .then(() => notify("Event details copied."))
+            .catch(() => notify(eventText));
+    } else {
+        alert(eventText);
+    }
+}
+
+/* ================= NEW GROUP SHORTCUT ================= */
+
+function newGroupFromButton() {
+    closeNewChatPicker();
+
+    document.getElementById("settingsPanel").classList.remove("hidden");
+    document.getElementById("inboxScreen").classList.add("hidden");
+
+    document.querySelectorAll(".settings-content").forEach(item => {
+        item.classList.remove("visible");
+    });
+
+    document.getElementById("groupSettings").classList.add("visible");
+
+    document.getElementById("groupName").focus();
+}
+
+/* ================= REFRESH ================= */
+
+async function refreshKchat() {
+    try {
+        await loadContacts();
+        await loadGroups();
+        await loadInbox();
+        await loadBlocked();
+
+        notify("KCHAT refreshed.");
+
+    } catch (error) {
+        notify("Refresh failed: " + error.message);
+    }
+}
+
+/* ================= INBOX ================= */
+
+async function loadInbox() {
+    try {
+        const data = await apiRequest("/api/inbox");
+
+        inbox = data.inbox || [];
+
+        renderInbox();
+
+    } catch (error) {
+        notify(error.message);
+    }
+}
+
+function setChatFilter(filter, button) {
+    activeFilter = filter;
+
+    document.querySelectorAll(".chat-filters button").forEach(item => {
+        item.classList.remove("active");
+    });
+
+    if (button) button.classList.add("active");
+
+    const headings = {
+        all: "All Chats",
+        unread: "Unread Chats",
+        favorites: "Favorites",
+        groups: "Groups"
+    };
+
+    document.getElementById("inboxHeading").textContent =
+        headings[filter] || "Chats";
+
+    renderInbox();
+}
+
+function renderInbox() {
+    const container = document.getElementById("inboxList");
+
+    container.innerHTML = "";
+
+    let list = [...inbox];
+
+    if (activeFilter === "unread") {
+        list = list.filter(item =>
+            Number(item.unread_count) > 0
+        );
+
+    } else if (activeFilter === "favorites") {
+        list = list.filter(item => item.pinned);
+
+    } else if (activeFilter === "groups") {
+        list = groups.map(group => ({
+            is_group: true,
+            group
+        }));
+    }
+
+    if (!list.length) {
+        container.innerHTML =
+            '<div class="empty-note">Nothing to show here yet.</div>';
+        return;
+    }
+
+    list.forEach(item => {
+        const row = document.createElement("div");
+
+        row.className = "inbox-item";
+
+        if (item.is_group) {
+            const details = document.createElement("div");
+
+            details.className = "inbox-details";
+
+            const name = document.createElement("div");
+
+            name.className = "inbox-name";
+            name.textContent = "👥 " + item.group.name;
+
+            const preview = document.createElement("div");
+
+            preview.className = "inbox-preview";
+            preview.textContent =
+                (item.group.member_count || 0) + " group members";
+
+            details.append(name, preview);
+
+            row.append(details);
+
+            row.onclick = () => openGroup(item.group);
+
+        } else {
+            const picture = document.createElement("img");
+
+            picture.className = "inbox-avatar";
+            picture.src = avatarSource(item.profile_picture);
+
+            const details = document.createElement("div");
+
+            details.className = "inbox-details";
+
+            const name = document.createElement("div");
+
+            name.className = "inbox-name";
+
+            name.textContent =
+                item.username +
+                (item.muted ? " 🔕" : "") +
+                (item.pinned ? " 📌" : "");
+
+            const preview = document.createElement("div");
+
+            preview.className = "inbox-preview";
+            preview.textContent =
+                item.last_message || "Start a conversation";
+
+            const unread = document.createElement("div");
+
+            unread.className = "inbox-unread";
+
+            unread.textContent = item.unread_count
+                ? item.unread_count + " unread"
+                : "";
+
+            details.append(name, preview, unread);
+
+            row.append(picture, details);
+
+            row.onclick = () =>
+                openPrivateChat(item.username, item);
+        }
+
+        container.appendChild(row);
+    });
+} 
+    /* ================= LOGOUT ================= */
+
+async function logout() {
+    if (!confirm("Are you sure you want to log out?")) {
+        return;
+    }
+
+    if (socket) {
+        try {
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: "logout"
+                }));
+            }
+        } catch (error) {
+            console.log("Logout message error:", error);
+        }
+
+        socket.close();
+    }
+
+    if (groupSocket) {
+        groupSocket.close();
+    }
+
+    clearTimeout(reconnectTimer);
+
+    token = "";
+    currentUser = "";
+
+    localStorage.removeItem("kchat_token");
+    localStorage.removeItem("kchat_username");
+
+    socket = null;
+    groupSocket = null;
+
+    document.getElementById("chatScreen").style.display = "none";
 
     showPage("loginPage");
 }
-
-/* ---------------- AUTOMATIC LOGIN ---------------- */
-
-window.addEventListener("load", async () => {
-    if (token && currentUser) {
-        document.getElementById("loginPage").classList.remove("active");
-        await enterKchat();
-    }
-});
-</script>
-
-</body>
-</html>
