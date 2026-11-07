@@ -370,6 +370,8 @@ hr {
     display:flex;
     flex-direction:column;
     background:var(--bg);
+    background-size: cover;
+    background-position: center;
 }
 
 .welcome-screen {
@@ -434,7 +436,7 @@ hr {
     display:flex;
     flex-direction:column;
     gap:10px;
-    background-color:var(--bg);
+    background-color:transparent;
 }
 
 .message-row {
@@ -838,7 +840,7 @@ hr {
         </aside>
 
         <!-- RIGHT CHAT AREA -->
-        <main class="main-area">
+        <main class="main-area" id="mainChatArea">
             <div id="welcomeScreen" class="welcome-screen">
                 <div>
                     <h1>KCHAT</h1>
@@ -973,6 +975,16 @@ hr {
             </div>
             <span>›</span>
         </div>
+
+        <!-- NEW WALLPAPER SETTINGS ROW ADDED HERE -->
+        <div class="settings-row" id="subOpenWallpaper">
+            <div>
+                <div style="font-weight:bold;">Wallpaper</div>
+                <small>Change chat background from gallery</small>
+            </div>
+            <span>›</span>
+        </div>
+        <input id="wallpaperFileInput" type="file" accept="image/*" class="hidden">
 
         <div class="settings-row" id="subOpenAppearance">
             <div>
@@ -1634,6 +1646,24 @@ $("subOpenAppearance").addEventListener("click", () => {
 $("closeAppearanceButton").addEventListener("click", () => {
     hide($("appearancePanel"));
     show($("settingsPanel"));
+});
+
+// Wallpaper from Gallery Functionality
+$("subOpenWallpaper").addEventListener("click", () => {
+    $("wallpaperFileInput").click();
+});
+
+$("wallpaperFileInput").addEventListener("change", event => {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const res = e.target.result;
+            $("mainChatArea").style.backgroundImage = `url('${res}')`;
+            alert("Chat background wallpaper updated successfully from your gallery.");
+        };
+        reader.readAsDataURL(file);
+    }
 });
 
 // Profile Photo Update Live
