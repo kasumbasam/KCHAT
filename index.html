@@ -6,1105 +6,52 @@
 <title>KCHAT</title>
 
 <style>
-*{box-sizing:border-box}
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&display=swap');
 
-:root{
- --green:#00ed64;
- --green2:#00c853;
- --cyan:#00e5ff;
- --bg:#0b0f19;
- --panel:#0b0f19;
- --panel2:#161f30;
- --text:#ffffff;
- --muted:#8f9cae;
- --border:#263244;
- --chatbg:#080d16;
- --bubble-in:#182638;
- --bubble-out:#075e50;
- --white:#fff;
-}
-
-body.light-mode{
- --bg:#f0f2f5;
- --panel:#ffffff;
- --panel2:#e7edf4;
- --text:#0f172a;
- --muted:#64748b;
- --border:#d5dde7;
- --chatbg:#f5f7fa;
- --bubble-in:#e4eaf1;
- --bubble-out:#d8f8e6;
- --green:#3b82f6;
- --green2:#2563eb;
- --cyan:#3b82f6;
- --white:#0f172a;
-}
-
-body{
- margin:0;
- background:var(--bg);
- color:var(--text);
- font-family:"Trebuchet MS",Arial,Helvetica,sans-serif;
- transition:background .2s,color .2s;
-}
-button,input,textarea{font:inherit}
-button{cursor:pointer;border:0}
-.hidden{display:none!important}
-
-#authScreen{
- min-height:100vh;
- display:flex;
- align-items:center;
- justify-content:center;
- padding:20px;
- background:var(--bg);
-}
-.auth-card{
- width:100%;
- max-width:420px;
- background:var(--panel);
- border:1px solid var(--border);
- border-radius:20px;
- padding:28px;
- box-shadow:0 12px 40px #0005;
-}
-.logo{
- font-size:36px;
- font-weight:bold;
- color:var(--green);
- text-align:center;
- margin-bottom:6px;
-}
-.subtitle{
- text-align:center;
- color:var(--muted);
- margin-bottom:25px;
-}
-.auth-card h2{margin:0 0 18px;text-align:center}
-.field{
- display:block;
- width:100%;
- padding:14px;
- margin:10px 0;
- background:var(--bg);
- border:1px solid var(--border);
- border-radius:12px;
- color:var(--text);
- outline:none;
-}
-.field:focus{border-color:var(--cyan)}
-.primary{
- width:100%;
- padding:14px;
- background:var(--green);
- color:#fff;
- border-radius:12px;
- font-weight:bold;
- margin-top:12px;
-}
-.primary:hover{background:var(--green2)}
-.auth-switch{text-align:center;color:var(--muted);margin-top:18px}
-.link-button{background:none;color:var(--green);padding:5px}
-#authMessage{
- min-height:22px;
- color:#ffb5a8;
- text-align:center;
- margin-top:12px;
- font-size:14px;
-}
-
-/* MAIN APPLICATION */
-#chatApp{
- height:100vh;
- display:none;
- overflow:hidden;
- background:var(--bg);
-}
-.topbar{
- height:70px;
- background:var(--panel);
- display:flex;
- align-items:center;
- justify-content:space-between;
- padding:0 20px;
- border-bottom:1px solid var(--border);
-}
-.brand{
- font-size:27px;
- font-weight:bold;
- color:var(--green);
- letter-spacing:1px;
- font-style:italic;
-}
-.top-actions{display:flex;gap:9px;align-items:center}
-.icon-button{
- background:var(--panel2);
- color:var(--text);
- border:1px solid var(--border);
- min-width:42px;
- min-height:42px;
- padding:9px 12px;
- border-radius:50%;
-}
-.icon-button:hover{border-color:var(--cyan);color:var(--cyan)}
-.app-layout{
- height:calc(100vh - 70px);
- display:flex;
-}
-.sidebar{
- width:100%;
- max-width:100%;
- background:var(--panel);
- display:flex;
- flex-direction:column;
- min-width:0;
-}
-.sidebar-head{
- padding:14px 18px 12px;
- border-bottom:1px solid var(--border);
-}
-.search{
- width:100%;
- padding:15px 19px;
- background:var(--panel2);
- color:var(--text);
- border:1px solid var(--border);
- border-radius:28px;
- outline:none;
- font-size:15px;
-}
-.search:focus{border-color:var(--cyan)}
-.filters{
- display:flex;
- gap:9px;
- margin-top:13px;
- flex-wrap:nowrap;
- overflow-x:auto;
- padding-bottom:3px;
-}
-.filter-btn{
- background:var(--panel2);
- color:var(--muted);
- border:1px solid var(--border);
- border-radius:22px;
- padding:9px 16px;
- font-size:13px;
- white-space:nowrap;
-}
-.filter-btn.active{
- background:var(--green);
- color:#001b0b;
- border-color:var(--green);
- font-weight:bold;
-}
-#inboxList{
- overflow-y:auto;
- flex:1;
- padding-bottom:100px;
-}
-.inbox-item{
- display:flex;
- align-items:center;
- gap:14px;
- min-height:83px;
- padding:13px 20px;
- border-bottom:1px solid var(--border);
- cursor:pointer;
-}
-.inbox-item:hover,.inbox-item.selected{background:var(--panel2)}
-.avatar{
- width:56px;
- height:56px;
- flex-shrink:0;
- border-radius:50%;
- background:var(--panel2);
- border:2px solid var(--cyan);
- box-shadow:0 0 9px #00e5ff35;
- display:flex;
- align-items:center;
- justify-content:center;
- color:var(--text);
- font-weight:bold;
- font-size:19px;
- overflow:hidden;
-}
-.inbox-info{min-width:0;flex:1}
-.inbox-name{
- font-weight:bold;
- font-size:16px;
- margin-bottom:7px;
- color:var(--text);
-}
-.inbox-last{
- font-size:13px;
- color:var(--muted);
- white-space:nowrap;
- overflow:hidden;
- text-overflow:ellipsis;
-}
-.inbox-meta{
- display:flex;
- flex-direction:column;
- align-items:flex-end;
- gap:8px;
- min-width:48px;
- color:var(--muted);
- font-size:11px;
-}
-.unread-badge{
- background:var(--green);
- color:#001b0b;
- border-radius:20px;
- min-width:22px;
- height:22px;
- padding:0 6px;
- display:flex;
- align-items:center;
- justify-content:center;
- font-weight:bold;
-}
-.mention-tag{color:var(--cyan);font-weight:bold}
-
-/* CHAT WINDOW */
-.chat-area{
- flex:1;
- min-width:0;
- display:flex;
- flex-direction:column;
-}
-.welcome{
- flex:1;
- display:flex;
- align-items:center;
- justify-content:center;
- text-align:center;
- color:var(--muted);
- padding:25px;
-}
-#chatScreen{
- height:100%;
- display:flex;
- flex-direction:column;
-}
-.chat-header{
- min-height:70px;
- display:flex;
- align-items:center;
- gap:12px;
- padding:10px 16px;
- background:var(--panel);
- border-bottom:1px solid var(--border);
-}
-.chat-person{
- flex:1;
- min-width:0;
- cursor:pointer;
-}
-#chatUsername{font-weight:bold;font-size:16px}
-#chatUserStatus{font-size:12px;color:var(--muted);margin-top:4px}
-.chat-actions{display:flex;gap:6px}
-#messagesArea{
- flex:1;
- overflow-y:auto;
- padding:20px;
- display:flex;
- flex-direction:column;
- gap:10px;
- background:var(--chatbg);
-}
-.message{
- max-width:75%;
- padding:10px 13px;
- border-radius:14px;
- overflow-wrap:anywhere;
- background:var(--bubble-in);
- align-self:flex-start;
- color:var(--text);
-}
-.message.outgoing{
- background:var(--bubble-out);
- align-self:flex-end;
- color:var(--text);
-}
-.message-time{
- font-size:10px;
- color:var(--muted);
- text-align:right;
- margin-top:5px;
-}
-.composer{
- display:flex;
- align-items:center;
- gap:8px;
- padding:12px;
- background:var(--panel);
- border-top:1px solid var(--border);
-}
-.composer input{
- flex:1;
- min-width:0;
- padding:13px 16px;
- border:1px solid var(--border);
- border-radius:24px;
- background:var(--panel2);
- color:var(--text);
- outline:none;
-}
-.send-btn{
- background:var(--green);
- color:#001b0b;
- border-radius:50%;
- width:44px;
- height:44px;
- font-size:18px;
-}
-
-/* FLOATING ACTION BUTTON */
-.new-chat{
- position:fixed;
- bottom:91px;
- right:22px;
- width:62px;
- height:62px;
- border-radius:18px;
- background:#00ed64;
- color:#001b0b;
- font-size:34px;
- box-shadow:0 0 22px #00ed6466;
- z-index:8;
-}
-
-/* BOTTOM NAVIGATION */
-.bottom-nav{
- height:76px;
- position:fixed;
- bottom:0;
- left:0;
- right:0;
- z-index:7;
- background:var(--panel);
- border-top:1px solid var(--border);
- display:grid;
- grid-template-columns:repeat(4,1fr);
- padding:6px 8px;
-}
-.bottom-nav button{
- background:transparent;
- color:var(--muted);
- border-radius:15px;
- display:flex;
- flex-direction:column;
- align-items:center;
- justify-content:center;
- gap:4px;
- font-size:12px;
-}
-.bottom-nav button.active{
- background:var(--green);
- color:#001b0b;
- font-weight:bold;
-}
-.nav-icon{font-size:22px;line-height:1}
-
-/* TOP-RIGHT DROPDOWN MENU */
-.action-menu{
- position:fixed;
- z-index:25;
- right:12px;
- top:62px;
- width:min(290px,calc(100vw - 24px));
- padding:8px;
- background:var(--panel);
- border:1px solid var(--border);
- border-radius:18px;
- box-shadow:0 18px 50px #0009;
- display:none;
-}
-.action-menu.open{display:block}
-.action-menu button{
- width:100%;
- display:flex;
- align-items:center;
- gap:14px;
- padding:13px 12px;
- background:transparent;
- color:var(--text);
- text-align:left;
- border-radius:11px;
- font-size:14px;
-}
-.action-menu button:hover{background:var(--panel2)}
-.menu-icon{
- width:25px;
- text-align:center;
- color:var(--cyan);
- font-size:19px;
-}
-
-/* GENERAL SETTINGS */
-#settingsPanel{
- position:fixed;
- inset:0;
- background:var(--bg);
- z-index:20;
- display:none;
- overflow:auto;
-}
-.settings-head{
- display:flex;
- align-items:center;
- gap:15px;
- padding:18px;
- background:var(--panel);
- border-bottom:1px solid var(--border);
-}
-.settings-head h2{margin:0}
-.settings-row{
- display:flex;
- align-items:center;
- gap:15px;
- padding:18px;
- border-bottom:1px solid var(--border);
- cursor:pointer;
-}
-.settings-row:hover{background:var(--panel2)}
-.settings-icon{
- width:28px;
- color:var(--cyan);
- font-size:20px;
- text-align:center;
-}
-.settings-description{
- display:block;
- font-size:12px;
- color:var(--muted);
- margin-top:4px;
-}
-
-/* CONTACT PROFILE */
-#contactProfilePanel{
- position:fixed;
- inset:0;
- z-index:22;
- display:none;
- overflow-y:auto;
- background:var(--bg);
-}
-.profile-top{
- display:flex;
- align-items:center;
- gap:14px;
- padding:17px;
- background:var(--panel);
- border-bottom:1px solid var(--border);
-}
-.profile-top h2{font-size:18px;margin:0}
-.profile-content{
- max-width:650px;
- margin:0 auto;
- padding:25px 18px 50px;
-}
-.profile-hero{
- text-align:center;
- padding:28px 15px 25px;
- background:var(--panel);
- border:1px solid var(--border);
- border-radius:22px;
-}
-.profile-mood{
- color:var(--cyan);
- font-size:14px;
- margin-bottom:18px;
-}
-.profile-avatar{
- width:126px;
- height:126px;
- margin:0 auto 17px;
- border-radius:50%;
- border:3px solid var(--cyan);
- box-shadow:0 0 22px #00e5ff55;
- background:var(--panel2);
- display:flex;
- align-items:center;
- justify-content:center;
- overflow:hidden;
- font-size:42px;
- font-weight:bold;
-}
-.profile-avatar img{width:100%;height:100%;object-fit:cover}
-.profile-name{
- font-size:25px;
- font-weight:bold;
- margin-bottom:5px;
-}
-.profile-handle{
- color:var(--muted);
- font-size:14px;
-}
-.profile-about{
- color:var(--muted);
- font-size:14px;
- margin-top:15px;
-}
-.profile-actions{
- display:flex;
- justify-content:center;
- gap:12px;
- margin-top:20px;
- flex-wrap:wrap;
-}
-.profile-action{
- min-width:85px;
- padding:11px 15px;
- border-radius:13px;
- background:var(--panel2);
- color:var(--text);
- border:1px solid var(--border);
-}
-.profile-section{
- margin-top:18px;
- padding:18px;
- background:var(--panel);
- border:1px solid var(--border);
- border-radius:17px;
-}
-.profile-section h3{font-size:15px;margin:0 0 14px}
-.profile-detail{
- display:flex;
- justify-content:space-between;
- gap:15px;
- padding:11px 0;
- border-bottom:1px solid var(--border);
- font-size:14px;
-}
-.profile-detail:last-child{border-bottom:0}
-.profile-detail span:last-child{color:var(--muted);text-align:right}
-.profile-setting{
- width:100%;
- display:flex;
- align-items:center;
- gap:13px;
- padding:14px 0;
- text-align:left;
- color:var(--text);
- background:transparent;
- border-bottom:1px solid var(--border);
-}
-.profile-setting:last-child{border-bottom:0}
-.profile-setting .settings-icon{flex-shrink:0}
-
-/* MODALS */
-.modal{
- display:none;
- position:fixed;
- inset:0;
- background:#000b;
- z-index:30;
- align-items:center;
- justify-content:center;
- padding:15px;
-}
-.modal.show{display:flex}
-.modal-card{
- width:100%;
- max-width:430px;
- max-height:90vh;
- overflow:auto;
- background:var(--panel);
- border:1px solid var(--border);
- border-radius:18px;
- padding:20px;
-}
-.modal-head{
- display:flex;
- justify-content:space-between;
- align-items:center;
- margin-bottom:15px;
-}
-.modal-head button{
- background:transparent;
- color:var(--text);
- font-size:20px;
-}
-.modal-option{
- width:100%;
- padding:14px;
- margin:5px 0;
- text-align:left;
- background:var(--panel2);
- color:var(--text);
- border-radius:10px;
-}
-#photoPreview canvas{max-width:100%;max-height:55vh}
-.theme-choice{
- display:flex;
- gap:10px;
- margin:12px 0;
-}
-.theme-choice button{
- flex:1;
- padding:13px;
- border-radius:12px;
- background:var(--panel2);
- color:var(--text);
- border:1px solid var(--border);
-}
-.theme-choice button.active{border:2px solid var(--cyan)}
-
-/* RESPONSIVE */
-@media(max-width:700px){
- .sidebar{width:100%;max-width:100%}
- .chat-area{display:none}
- #chatApp.chat-open .sidebar{display:none}
- #chatApp.chat-open .chat-area{display:flex;width:100%}
- .new-chat{right:18px;bottom:91px}
- .topbar{padding:0 12px}
- .top-actions{gap:4px}
- .icon-button{min-width:39px;min-height:39px;padding:8px}
- .inbox-item{padding:12px 14px}
- .bottom-nav{height:72px}
- .profile-content{padding:15px 12px 35px}
-}
-</style>
-</head>
-
-<body>
-
-<!-- LOGIN AND REGISTRATION -->
-<section id="authScreen">
- <div class="auth-card">
-  <div class="logo">KCHAT</div>
-  <div class="subtitle">Connect. Chat. Share.</div>
-
-  <form id="loginForm">
-   <h2>Welcome back</h2>
-   <input class="field" id="loginPhone" type="tel"
-    placeholder="Phone number" autocomplete="tel" required>
-   <input class="field" id="loginPassword" type="password"
-    placeholder="Password" autocomplete="current-password" required>
-   <button class="primary" id="loginButton" type="submit">Login</button>
-   <div class="auth-switch">
-    New to KCHAT?
-    <button class="link-button" id="showRegisterButton" type="button">
-     Create account
-    </button>
-   </div>
-  </form>
-
-  <form id="registerForm" class="hidden">
-   <h2>Create your account</h2>
-   <input class="field" id="registerUsername" type="text"
-    placeholder="Your username" minlength="3" maxlength="30" required>
-   <input class="field" id="registerPhone" type="tel"
-    placeholder="Phone number" autocomplete="tel" required>
-   <input class="field" id="registerPassword" type="password"
-    placeholder="Create password" minlength="6"
-    autocomplete="new-password" required>
-   <button class="primary" id="registerButton" type="submit">
-    Create My Account
-   </button>
-   <div class="auth-switch">
-    Already registered?
-    <button class="link-button" id="showLoginButton" type="button">
-     Login
-    </button>
-   </div>
-  </form>
-
-  <div id="authMessage" role="status"></div>
- </div>
-</section>
-
-<!-- MAIN KCHAT APPLICATION -->
-<main id="chatApp">
- <header class="topbar">
-  <div class="brand">KCHAT <span style="color:var(--cyan)">●</span></div>
-  <div class="top-actions">
-   <button class="icon-button" id="mainVoiceButton" title="Call" aria-label="Call">☎</button>
-   <button class="icon-button" id="mainVideoButton" title="Video call" aria-label="Video call">▣</button>
-   <button class="icon-button" id="settingsButton" title="Menu" aria-label="Open menu">⋮</button>
-  </div>
- </header>
-
- <div class="app-layout">
-  <aside class="sidebar">
-   <div class="sidebar-head">
-    <input id="inboxSearch" class="search"
-     placeholder="Search chats and messages">
-    <div class="filters">
-     <button class="filter-btn active" data-filter="all">All Chats</button>
-     <button class="filter-btn" data-filter="unread">Unread</button>
-     <button class="filter-btn" data-filter="favorites">Favorites</button>
-     <button class="filter-btn" data-filter="groups">Groups</button>
-     <button class="filter-btn" data-filter="archived">Archived</button>
-    </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:13px">
-     <span style="font-size:13px;color:var(--muted)">Your conversations</span>
-     <button id="inboxThemeButton" class="link-button" type="button">☾ Dark mode</button>
-    </div>
-   </div>
-   <div id="inboxList"></div>
-  </aside>
-
-  <section class="chat-area">
-   <div id="welcomeScreen" class="welcome">
-    <div>
-     <div style="font-size:55px">💬</div>
-     <h2>Welcome to KCHAT</h2>
-     <p>Select a conversation to start chatting.</p>
-    </div>
-   </div>
-
-   <div id="chatScreen" class="hidden">
-    <header class="chat-header">
-     <button class="icon-button" id="backButton" type="button">←</button>
-     <div class="avatar" id="chatAvatar">K</div>
-     <div class="chat-person" id="openContactProfile" title="View profile">
-      <div id="chatUsername">Contact</div>
-      <div id="chatUserStatus">Offline</div>
-     </div>
-     <div class="chat-actions">
-      <button class="icon-button" id="chatVoiceButton" title="Voice call">☎</button>
-      <button class="icon-button" id="chatVideoButton" title="Video call">▣</button>
-      <button class="icon-button" id="chatMenuButton" title="Chat options">⋮</button>
-     </div>
-    </header>
-
-    <div id="messagesArea"></div>
-
-    <div class="composer">
-     <button class="icon-button" id="attachmentButton" title="Attach">＋</button>
-     <button class="icon-button" id="cameraButton" title="Camera">📷</button>
-     <input id="messageInput" type="text" placeholder="Message">
-     <button class="send-btn" id="sendButton" title="Send">➤</button>
-     <button class="icon-button" id="voiceMessageButton" title="Voice message">🎙</button>
-    </div>
-   </div>
-  </section>
- </div>
-
- <button class="new-chat" id="newChatButton" title="New action" aria-label="New action">＋</button>
-
- <nav class="bottom-nav" aria-label="Main navigation">
-  <button class="active" data-nav="chats">
-   <span class="nav-icon">▤</span><span>Chats</span>
-  </button>
-  <button data-nav="updates">
-   <span class="nav-icon">◉</span><span>Updates</span>
-  </button>
-  <button data-nav="communities">
-   <span class="nav-icon">♧</span><span>Communities</span>
-  </button>
-  <button data-nav="calls">
-   <span class="nav-icon">☎</span><span>Calls</span>
-  </button>
- </nav>
-</main>
-
-<!-- TOP-RIGHT DROPDOWN -->
-<div class="action-menu" id="actionMenu" role="menu">
- <button data-action="new-group"><span class="menu-icon">♧</span>New group</button>
- <button data-action="new-community"><span class="menu-icon">♙</span>New community</button>
- <button data-action="broadcast"><span class="menu-icon">◖</span>Broadcast lists</button>
- <button data-action="linked-devices"><span class="menu-icon">▣</span>Linked devices</button>
- <button data-action="starred"><span class="menu-icon">☆</span>Starred messages</button>
- <button data-action="read-all"><span class="menu-icon">✓</span>Read all</button>
- <button data-action="scheduled-calls"><span class="menu-icon">◷</span>Scheduled calls</button>
- <button data-action="settings"><span class="menu-icon">⚙</span>Settings</button>
-</div>
-
-<!-- GENERAL SETTINGS -->
-<section id="settingsPanel">
- <header class="settings-head">
-  <button class="icon-button" id="closeSettingsButton" type="button">←</button>
-  <h2>Settings</h2>
- </header>
-
- <div class="settings-row" id="myProfileButton">
-  <span class="settings-icon">◉</span>
-  <span>My profile<span class="settings-description">Name, photo and current mood</span></span>
- </div>
- <div class="settings-row" id="accountSettingsButton">
-  <span class="settings-icon">♙</span>
-  <span>Account<span class="settings-description">Phone number, security and linked devices</span></span>
- </div>
- <div class="settings-row" id="privacySettingsButton">
-  <span class="settings-icon">♧</span>
-  <span>Privacy<span class="settings-description">Blocked contacts and disappearing messages</span></span>
- </div>
- <div class="settings-row" id="chatSettingsButton">
-  <span class="settings-icon">▤</span>
-  <span>Chats<span class="settings-description">Lists, backups, exports and archives</span></span>
- </div>
- <div class="settings-row" id="appearanceSettingsButton">
-  <span class="settings-icon">◐</span>
-  <span>Appearance<span class="settings-description">Dark mode, light mode, wallpaper and accent</span></span>
- </div>
- <div class="settings-row" id="notificationSettingsButton">
-  <span class="settings-icon">♬</span>
-  <span>Notifications<span class="settings-description">Security and message alerts</span></span>
- </div>
- <div class="settings-row" id="blockedContactsButton">
-  <span class="settings-icon">⊘</span>
-  <span>Blocked contacts<span class="settings-description">Manage blocked accounts</span></span>
- </div>
- <div class="settings-row" id="logoutButton">
-  <span class="settings-icon">↪</span>
-  <span>Log out</span>
- </div>
-</section>
-
-<!-- CONTACT PROFILE: OPENS FROM THE CHAT HEADER -->
-<section id="contactProfilePanel">
- <header class="profile-top">
-  <button class="icon-button" id="closeContactProfile" type="button">←</button>
-  <h2>Contact info</h2>
- </header>
-
- <div class="profile-content">
-  <div class="profile-hero">
-   <div class="profile-mood" id="profileMood">Current Mood · Available</div>
-   <div class="profile-avatar" id="profileAvatar">K</div>
-   <div class="profile-name" id="profileName">Contact name</div>
-   <div class="profile-handle" id="profileHandle">@contact</div>
-   <div class="profile-about" id="profileAbout">Using KCHAT</div>
-
-   <div class="profile-actions">
-    <button class="profile-action" id="profileMessageButton">▤<br>Message</button>
-    <button class="profile-action" id="profileVoiceButton">☎<br>Call</button>
-    <button class="profile-action" id="profileVideoButton">▣<br>Video</button>
-   </div>
-  </div>
-
-  <div class="profile-section">
-   <h3>Contact details</h3>
-   <div class="profile-detail"><span>Username</span><span id="profileUsernameDetail">—</span></div>
-   <div class="profile-detail"><span>About</span><span id="profileAboutDetail">—</span></div>
-   <div class="profile-detail"><span>Groups in common</span><span id="profileGroupsCommon">—</span></div>
-  </div>
-
-  <div class="profile-section">
-   <h3>Personal chat settings</h3>
-   <button class="profile-setting" id="profileFavoriteButton">
-    <span class="settings-icon">☆</span><span>Add to favorites</span>
-   </button>
-   <button class="profile-setting" id="profilePinButton">
-    <span class="settings-icon">⌖</span><span>Pin conversation</span>
-   </button>
-   <button class="profile-setting" id="profileHideButton">
-    <span class="settings-icon">◉</span><span>Hide conversation</span>
-   </button>
-   <button class="profile-setting" id="profileDisappearingButton">
-    <span class="settings-icon">◷</span><span>Disappearing messages</span>
-   </button>
-   <button class="profile-setting" id="profileMuteButton">
-    <span class="settings-icon">♩</span><span>Mute notifications</span>
-   </button>
-   <button class="profile-setting" id="profileBlockButton">
-    <span class="settings-icon">⊘</span><span>Block contact</span>
-   </button>
-  </div>
- </div>
-</section>
-
-<!-- ATTACHMENTS -->
-<div class="modal" id="attachmentModal">
- <div class="modal-card">
-  <div class="modal-head">
-   <h3>Attach</h3>
-   <button data-close="attachmentModal" type="button">✕</button>
-  </div>
-  <button class="modal-option" id="galleryButton">🖼 Gallery — Photos and videos</button>
-  <button class="modal-option" id="documentButton">📄 Document</button>
-  <button class="modal-option" id="shareContactButton">👤 Contact</button>
-  <button class="modal-option" id="shareLocationButton">📍 Location</button>
- </div>
-</div>
-
-<!-- PHOTO EDITOR -->
-<div class="modal" id="photoEditorModal">
- <div class="modal-card">
-  <div class="modal-head">
-   <h3>Edit photo</h3>
-   <button data-close="photoEditorModal" type="button">✕</button>
-  </div>
-  <div id="photoPreview"></div>
-  <div class="filters">
-   <button class="filter-btn" id="cropButton">Crop</button>
-   <button class="filter-btn" id="stickerButton">Sticker</button>
-   <button class="filter-btn" id="textOnPhotoButton">Aa</button>
-   <button class="filter-btn" id="drawButton">Drawing</button>
-   <button class="filter-btn" id="filterButton">Filters</button>
-  </div>
-  <input class="field" id="photoCaption" placeholder="Add a caption">
-  <button class="primary" id="sendPhotoButton">Send photo</button>
- </div>
-</div>
-
-<input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
-<input type="file" id="galleryInput" accept="image/*,video/*" hidden>
-<input type="file" id="documentInput" hidden>
-
-<!-- PART 2 STARTS HERE -->
- <!-- NEW KCHAT INBOX HEADER -->
-<header class="topbar inbox-topbar">
-    <div class="brand">KCHAT</div>
-
-    <div class="top-actions">
-        <button class="icon-button" id="mainVoiceButton" title="Calls">☎</button>
-        <button class="icon-button" id="mainVideoButton" title="Video calls">▣</button>
-
-        <div class="menu-wrapper">
-            <button class="icon-button" id="settingsButton"
-                    title="More options">⋮</button>
-
-            <div class="dropdown-menu hidden" id="mainDropdown">
-                <button onclick="openNewGroup()">👥 New group</button>
-                <button onclick="openNewCommunity()">🌐 New community</button>
-                <button onclick="openBroadcastLists()">📢 Broadcast lists</button>
-                <button onclick="openLinkedDevices()">💻 Linked devices</button>
-                <button onclick="openStarredMessages()">⭐ Starred messages</button>
-                <button onclick="markAllRead()">✓ Read all</button>
-                <button onclick="openScheduledCalls()">📅 Scheduled calls</button>
-                <button onclick="openSettings()">⚙ Settings</button>
-            </div>
-        </div>
-    </div>
-</header>
-
-<div class="app-layout">
-
-    <!-- INBOX SIDEBAR -->
-    <aside class="sidebar">
-
-        <div class="sidebar-head">
-            <input id="inboxSearch" class="search"
-                   placeholder="Search contacts or chats">
-
-            <div class="filters">
-                <button class="filter-btn active"
-                        data-filter="all">All</button>
-                <button class="filter-btn"
-                        data-filter="unread">Unread</button>
-                <button class="filter-btn"
-                        data-filter="favorites">Favorites</button>
-                <button class="filter-btn"
-                        data-filter="groups">Groups</button>
-            </div>
-        </div>
-
-        <div id="inboxList"></div>
-
-        <!-- FLOATING NEW CHAT BUTTON -->
-        <button class="new-chat" id="newChatButton"
-                title="Start a new chat">＋</button>
-
-        <!-- BOTTOM NAVIGATION -->
-        <nav class="bottom-navigation">
-            <button class="bottom-nav-item active"
-                    id="chatsTab">
-                <span>💬</span>
-                <small>Chats</small>
-            </button>
-
-            <button class="bottom-nav-item"
-                    id="updatesTab">
-                <span>◉</span>
-                <small>Updates</small>
-            </button>
-
-            <button class="bottom-nav-item"
-                    id="communitiesTab">
-                <span>♧</span>
-                <small>Communities</small>
-            </button>
-
-            <button class="bottom-nav-item"
-                    id="callsTab">
-                <span>☎</span>
-                <small>Calls</small>
-            </button>
-        </nav>
-    </aside>
-
-    <!-- CHAT AREA -->
-    <section class="chat-area">
-
-        <div id="welcomeScreen" class="welcome">
-            <div>
-                <div style="font-size:55px">💬</div>
-                <h2>Welcome to KCHAT</h2>
-                <p>Select a conversation to start chatting.</p>
-            </div>
-        </div>
-
-        <div id="chatScreen" class="hidden">
-            <header class="chat-header">
-                <button class="icon-button" id="backButton">←</button>
-
-                <div class="avatar" id="chatAvatar">K</div>
-
-                <div class="chat-person">
-                    <div id="chatUsername">Contact</div>
-                    <div id="chatUserStatus">Offline</div>
-                </div>
-
-                <div class="chat-actions">
-                    <button class="icon-button"
-                            id="chatVoiceButton">☎</button>
-                    <button class="icon-button"
-                            id="chatVideoButton">▣</button>
-                    <button class="icon-button"
-                            id="chatMenuButton">⋮</button>
-                </div>
-            </header>
-
-            <div id="messagesArea"></div>
-
-            <div class="composer">
-                <button class="icon-button"
-                        id="attachmentButton">＋</button>
-                <button class="icon-button"
-                        id="cameraButton">📷</button>
-                <input id="messageInput"
-                       type="text" placeholder="Message">
-                <button class="send-btn"
-                        id="sendButton">➤</button>
-                <button class="icon-button"
-                        id="voiceMessageButton">🎙</button>
-            </div>
-        </div>
-
-    </section>
-</div>
-<style>
 :root {
     --bg: #0B0F19;
-    --card: #161F30;
-    --primary: #ffffff;
-    --secondary: #8F9CAE;
+    --panel: #161F30;
+    --panel2: #1D293D;
+    --text: #FFFFFF;
+    --muted: #8F9CAE;
     --accent: #00E5FF;
-    --green: #00a884;
-    --border: rgba(255,255,255,.08);
+    --green: #00D084;
+    --border: rgba(255,255,255,.09);
+    --input: #101827;
+    --outgoing: #075E4B;
+    --incoming: #202C3D;
+    --danger: #ff5263;
+    --shadow: 0 12px 35px rgba(0,0,0,.25);
 }
 
-body[data-theme="light"] {
+body.light-mode {
     --bg: #F0F2F5;
-    --card: #ffffff;
-    --primary: #0F172A;
-    --secondary: #64748B;
+    --panel: #FFFFFF;
+    --panel2: #E8EDF3;
+    --text: #0F172A;
+    --muted: #64748B;
     --accent: #3B82F6;
-    --border: rgba(15,23,42,.1);
+    --green: #00A86B;
+    --border: rgba(15,23,42,.10);
+    --input: #F1F5F9;
+    --outgoing: #D8FDD2;
+    --incoming: #FFFFFF;
+    --shadow: 0 12px 35px rgba(15,23,42,.08);
 }
 
-body {
+* {
+    box-sizing: border-box;
+}
+
+html, body {
     margin: 0;
+    min-height: 100%;
+    font-family: 'DM Sans', sans-serif;
     background: var(--bg);
-    color: var(--primary);
-    font-family: "Segoe Print", "Comic Sans MS", cursive;
+    color: var(--text);
 }
 
-button, input {
+button, input, textarea {
     font: inherit;
 }
 
@@ -1116,130 +63,273 @@ button {
     display: none !important;
 }
 
-.topbar {
-    height: 65px;
+.script-font {
+    font-family: 'Caveat', cursive;
+}
+
+/* AUTHENTICATION */
+
+#authScreen {
+    min-height: 100vh;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-    background: var(--card);
-    border-bottom: 1px solid var(--border);
+    justify-content: center;
+    padding: 20px;
+    background:
+        radial-gradient(circle at 20% 20%, rgba(0,229,255,.10), transparent 35%),
+        radial-gradient(circle at 80% 80%, rgba(0,208,132,.10), transparent 35%),
+        var(--bg);
 }
 
-.brand {
-    font-size: 25px;
-    font-weight: bold;
-    letter-spacing: 2px;
-    color: var(--accent);
-}
-
-.top-actions, .chat-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.icon-button {
-    border: 0;
-    background: transparent;
-    color: var(--primary);
-    font-size: 22px;
-    padding: 9px;
-    border-radius: 50%;
-}
-
-.icon-button:hover {
-    background: rgba(128,128,128,.15);
-}
-
-.app-layout {
-    display: flex;
-    height: calc(100vh - 66px);
-    min-height: 400px;
-}
-
-.sidebar {
-    width: 360px;
-    min-width: 280px;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    background: var(--card);
-    border-right: 1px solid var(--border);
-}
-
-.sidebar-head {
-    padding: 16px;
-}
-
-.search {
+.auth-card {
     width: 100%;
-    box-sizing: border-box;
+    max-width: 420px;
+    padding: 34px 28px;
     border: 1px solid var(--border);
     border-radius: 25px;
-    background: var(--bg);
-    color: var(--primary);
-    padding: 14px 18px;
-    outline: none;
+    background: var(--panel);
+    box-shadow: var(--shadow);
 }
 
-.search:focus {
+.logo {
+    text-align: center;
+    font-size: 43px;
+    font-weight: 800;
+    letter-spacing: -3px;
+    color: var(--accent);
+    margin-bottom: 5px;
+}
+
+.auth-subtitle {
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 30px;
+}
+
+.auth-card h2 {
+    text-align: center;
+    margin: 0 0 22px;
+    font-family: 'Caveat', cursive;
+    font-size: 32px;
+}
+
+.auth-field {
+    margin-bottom: 16px;
+}
+
+.auth-field label {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.auth-field input {
+    width: 100%;
+    padding: 15px;
+    border-radius: 12px;
+    outline: none;
+    border: 1px solid var(--border);
+    background: var(--input);
+    color: var(--text);
+}
+
+.auth-field input:focus {
     border-color: var(--accent);
 }
 
-.filters {
+.primary-button {
+    width: 100%;
+    padding: 15px;
+    border: 0;
+    border-radius: 13px;
+    background: var(--green);
+    color: #06150F;
+    font-weight: 800;
+    margin-top: 8px;
+}
+
+.primary-button:disabled {
+    opacity: .6;
+    cursor: wait;
+}
+
+.auth-switch {
+    text-align: center;
+    margin-top: 22px;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.auth-switch button {
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+#authMessage {
+    min-height: 20px;
+    margin-top: 14px;
+    text-align: center;
+    color: var(--danger);
+    font-size: 13px;
+}
+
+/* MAIN APPLICATION */
+
+#chatApp {
+    display: none;
+    height: 100vh;
+    min-height: 550px;
+    overflow: hidden;
+}
+
+.app-layout {
+    height: 100%;
+    display: flex;
+}
+
+/* INBOX */
+
+.inbox-panel {
+    width: 390px;
+    min-width: 310px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    position: relative;
+}
+
+.inbox-header {
+    padding: 18px 17px 12px;
+}
+
+.inbox-topline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 17px;
+}
+
+.inbox-brand {
+    font-size: 29px;
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    color: var(--accent);
+}
+
+.icon-button {
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--panel2);
+    color: var(--text);
+    font-size: 19px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-button:hover {
+    background: var(--accent);
+    color: #06150F;
+}
+
+.search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 25px;
+    padding: 0 15px;
+    height: 46px;
+    background: var(--input);
+    border: 1px solid var(--border);
+}
+
+.search-wrap span {
+    color: var(--muted);
+}
+
+.search-wrap input {
+    width: 100%;
+    border: 0;
+    outline: 0;
+    color: var(--text);
+    background: transparent;
+}
+
+.search-wrap input::placeholder {
+    color: var(--muted);
+}
+
+.inbox-filters {
     display: flex;
     gap: 8px;
+    padding: 10px 15px;
     overflow-x: auto;
-    padding-top: 14px;
 }
 
-.filter-btn {
-    border: 1px solid var(--border);
+.filter-button {
+    flex-shrink: 0;
+    padding: 8px 14px;
     border-radius: 20px;
-    padding: 7px 13px;
+    border: 1px solid var(--border);
+    color: var(--muted);
     background: transparent;
-    color: var(--secondary);
-    white-space: nowrap;
+    font-size: 12px;
 }
 
-.filter-btn.active {
+.filter-button.active {
     background: var(--green);
-    color: white;
+    color: #06150F;
     border-color: var(--green);
+    font-weight: 800;
 }
 
-#inboxList {
+.inbox-list {
     flex: 1;
     overflow-y: auto;
-    padding-bottom: 75px;
+    padding-bottom: 90px;
 }
 
-.inbox-item {
+.inbox-empty {
+    text-align: center;
+    padding: 35px 20px;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.chat-item {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 14px 16px;
+    padding: 13px 16px;
     cursor: pointer;
     border-bottom: 1px solid var(--border);
 }
 
-.inbox-item:hover {
-    background: rgba(128,128,128,.1);
+.chat-item:hover,
+.chat-item.active {
+    background: var(--panel2);
 }
 
 .avatar {
-    width: 47px;
-    height: 47px;
-    min-width: 47px;
+    width: 51px;
+    height: 51px;
+    flex-shrink: 0;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, var(--green), var(--accent));
-    color: white;
-    font-size: 20px;
     overflow: hidden;
+    background: linear-gradient(135deg, var(--accent), var(--green));
+    color: #06150F;
+    font-size: 20px;
+    font-weight: 800;
 }
 
 .avatar img {
@@ -1248,240 +338,485 @@ button {
     object-fit: cover;
 }
 
-.inbox-details {
-    flex: 1;
+.chat-item-content {
     min-width: 0;
+    flex: 1;
 }
 
-.inbox-name {
-    font-weight: bold;
-    color: var(--primary);
+.chat-item-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
 }
 
-.inbox-preview {
-    color: var(--secondary);
-    font-size: 13px;
+.chat-item-name {
+    font-size: 14px;
+    font-weight: 700;
     overflow: hidden;
-    white-space: nowrap;
     text-overflow: ellipsis;
-    margin-top: 5px;
+    white-space: nowrap;
 }
 
-.inbox-meta {
-    text-align: right;
-    color: var(--secondary);
-    font-size: 11px;
+.chat-item-time {
+    color: var(--muted);
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.chat-item-preview {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .unread-count {
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
     min-width: 19px;
     height: 19px;
-    padding: 0 4px;
-    margin-top: 6px;
-    border-radius: 20px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
     background: var(--green);
-    color: white;
+    color: #06150F;
+    font-size: 10px;
+    font-weight: 800;
+    margin-left: 5px;
 }
 
-.new-chat {
-    position: absolute;
-    right: 20px;
-    bottom: 83px;
-    width: 58px;
-    height: 58px;
-    border: none;
-    border-radius: 20px;
-    background: #00d47b;
-    color: white;
-    font-size: 34px;
-    box-shadow: 0 0 18px rgba(0,212,123,.35);
-    z-index: 5;
-}
+/* BOTTOM NAVIGATION */
 
-.bottom-navigation {
+.bottom-nav {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 65px;
+    height: 70px;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    background: var(--card);
+    background: var(--panel);
     border-top: 1px solid var(--border);
+    padding: 7px 5px;
 }
 
-.bottom-nav-item {
+.bottom-nav button {
     border: 0;
+    border-radius: 12px;
     background: transparent;
-    color: var(--secondary);
+    color: var(--muted);
+    font-size: 11px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
+    gap: 4px;
 }
 
-.bottom-nav-item span {
+.bottom-nav button span {
     font-size: 20px;
 }
 
-.bottom-nav-item small {
-    font-size: 11px;
+.bottom-nav button.active {
+    background: rgba(0,208,132,.14);
+    color: var(--green);
+    font-weight: 800;
 }
 
-.bottom-nav-item.active {
-    color: var(--green);
-    background: rgba(0,168,132,.12);
+/* FLOATING NEW CHAT BUTTON */
+
+.fab {
+    position: absolute;
+    right: 20px;
+    bottom: 88px;
+    width: 57px;
+    height: 57px;
+    border: 0;
+    border-radius: 19px;
+    background: var(--green);
+    color: #06150F;
+    font-size: 30px;
+    box-shadow: 0 5px 22px rgba(0,208,132,.25);
+    z-index: 5;
 }
+
+/* CHAT AREA */
 
 .chat-area {
     flex: 1;
     min-width: 0;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-}
-
-.welcome {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    color: var(--secondary);
-}
-
-.welcome h2 {
-    color: var(--primary);
-}
-
-#chatScreen {
     height: 100%;
     display: flex;
+    flex-direction: column;
+    background: var(--bg);
+}
+
+.welcome-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 30px;
+    color: var(--muted);
+}
+
+.welcome-logo {
+    font-size: 65px;
+    color: var(--accent);
+    font-weight: 800;
+}
+
+.chat-screen {
+    height: 100%;
+    display: none;
     flex-direction: column;
 }
 
 .chat-header {
-    min-height: 65px;
+    min-height: 72px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 0 12px;
-    background: var(--card);
+    gap: 12px;
+    padding: 10px 17px;
+    background: var(--panel);
     border-bottom: 1px solid var(--border);
 }
 
-.chat-person {
+.chat-header-info {
     flex: 1;
     min-width: 0;
+    cursor: pointer;
 }
 
-#chatUsername {
-    font-weight: bold;
+.chat-header-name {
+    font-weight: 800;
+    font-size: 15px;
 }
 
-#chatUserStatus {
-    color: var(--secondary);
-    font-size: 12px;
+.chat-header-status {
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 3px;
 }
 
-#messagesArea {
+.chat-header-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.messages-area {
     flex: 1;
     overflow-y: auto;
-    padding: 16px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
 }
 
-.composer {
+.message {
+    max-width: min(75%, 520px);
+    padding: 10px 12px 7px;
+    border-radius: 13px;
+    font-size: 14px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.message.incoming {
+    align-self: flex-start;
+    background: var(--incoming);
+    border: 1px solid var(--border);
+}
+
+.message.outgoing {
+    align-self: flex-end;
+    background: var(--outgoing);
+    color: var(--text);
+}
+
+.message-time {
+    display: block;
+    text-align: right;
+    font-size: 9px;
+    opacity: .65;
+    margin-top: 5px;
+}
+
+.message-status {
+    color: var(--accent);
+    margin-left: 4px;
+}
+
+.message-composer {
     display: flex;
     align-items: center;
-    gap: 7px;
-    padding: 10px;
-    background: var(--card);
+    gap: 8px;
+    padding: 11px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
 }
 
-.composer input {
+.message-composer input {
     flex: 1;
     min-width: 0;
     border: 1px solid var(--border);
+    outline: 0;
     border-radius: 25px;
+    background: var(--input);
+    color: var(--text);
     padding: 13px 16px;
-    outline: none;
-    background: var(--bg);
-    color: var(--primary);
 }
 
-.send-btn {
-    border: 0;
-    border-radius: 50%;
+.send-button {
     width: 43px;
     height: 43px;
+    border: 0;
+    border-radius: 50%;
     background: var(--green);
-    color: white;
-    font-size: 20px;
+    color: #06150F;
+    font-size: 18px;
 }
 
-.menu-wrapper {
-    position: relative;
-}
+/* ACTION MENU */
 
 .dropdown-menu {
+    display: none;
     position: absolute;
-    right: 0;
-    top: 48px;
-    z-index: 20;
-    width: 230px;
+    z-index: 30;
+    top: 66px;
+    right: 12px;
+    width: 225px;
     padding: 7px;
-    background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: 0 12px 35px rgba(0,0,0,.3);
+    border-radius: 15px;
+    background: var(--panel);
+    box-shadow: var(--shadow);
+}
+
+.dropdown-menu.open {
+    display: block;
 }
 
 .dropdown-menu button {
-    display: block;
     width: 100%;
-    text-align: left;
-    border: 0;
     padding: 12px;
-    border-radius: 8px;
+    border: 0;
+    border-radius: 9px;
     background: transparent;
-    color: var(--primary);
+    color: var(--text);
+    text-align: left;
+    font-size: 13px;
 }
 
 .dropdown-menu button:hover {
-    background: rgba(128,128,128,.15);
+    background: var(--panel2);
 }
 
-/* Personal appearance controls */
-.theme-control {
+/* SETTINGS AND PROFILE PANELS */
+
+.side-panel {
+    display: none;
+    position: fixed;
+    z-index: 60;
+    inset: 0;
+    overflow-y: auto;
+    padding: 20px;
+    background: var(--bg);
+}
+
+.panel-inner {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+    padding-bottom: 35px;
+}
+
+.panel-heading {
     display: flex;
-    gap: 10px;
-    padding: 12px;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 25px;
 }
 
-.theme-control button {
+.panel-heading h2 {
     flex: 1;
-    padding: 11px;
+    font-family: 'Caveat', cursive;
+    font-size: 32px;
+    margin: 0;
+}
+
+.settings-section {
+    padding: 15px;
+    margin-bottom: 13px;
+    border-radius: 15px;
+    background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--card);
-    color: var(--primary);
 }
 
-.theme-control button.selected {
-    border-color: var(--accent);
+.settings-section h3 {
+    margin: 0 0 12px;
     color: var(--accent);
+    font-family: 'Caveat', cursive;
+    font-size: 24px;
 }
 
-@media(max-width:700px) {
-    .app-layout {
-        height: calc(100vh - 66px);
+.settings-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 3px;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+}
+
+.settings-row:last-child {
+    border-bottom: 0;
+}
+
+.settings-row small {
+    display: block;
+    color: var(--muted);
+    margin-top: 4px;
+}
+
+.profile-hero {
+    text-align: center;
+    padding: 25px 10px;
+}
+
+.profile-photo {
+    width: 125px;
+    height: 125px;
+    margin: 12px auto;
+    border-radius: 50%;
+    border: 3px solid var(--accent);
+    overflow: hidden;
+    background: var(--panel2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 45px;
+}
+
+.profile-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-mood {
+    color: var(--accent);
+    font-family: 'Caveat', cursive;
+    font-size: 23px;
+}
+
+.profile-name {
+    font-family: 'Caveat', cursive;
+    font-size: 36px;
+    margin: 8px 0 0;
+}
+
+.profile-handle {
+    color: var(--muted);
+    font-family: 'Caveat', cursive;
+    font-size: 22px;
+}
+
+.panel-input {
+    width: 100%;
+    padding: 13px;
+    margin: 7px 0;
+    color: var(--text);
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    outline: 0;
+}
+
+.panel-button {
+    padding: 12px 17px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--green);
+    color: #06150F;
+    font-weight: 800;
+}
+
+.danger-button {
+    background: var(--danger);
+    color: white;
+}
+
+/* MODALS */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    z-index: 80;
+    inset: 0;
+    padding: 20px;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.65);
+}
+
+.modal-overlay.show {
+    display: flex;
+}
+
+.modal-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 22px;
+    border-radius: 18px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+}
+
+.modal-card h3 {
+    margin-top: 0;
+    font-family: 'Caveat', cursive;
+    font-size: 28px;
+}
+
+.modal-card button {
+    margin: 5px 0;
+}
+
+.contact-choice {
+    width: 100%;
+    padding: 13px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+}
+
+.contact-choice:hover {
+    background: var(--panel2);
+}
+
+/* MOBILE */
+
+@media(max-width: 760px) {
+    #chatApp {
+        min-height: 100%;
     }
 
-    .sidebar {
+    .inbox-panel {
         width: 100%;
         min-width: 0;
     }
@@ -1491,177 +826,2097 @@ button {
         width: 100%;
     }
 
-    body.chat-open .sidebar {
+    .app-layout.chat-open .inbox-panel {
         display: none;
     }
 
-    body.chat-open .chat-area {
+    .app-layout.chat-open .chat-area {
         display: flex;
     }
 
-    .topbar {
-        padding: 0 12px;
+    .chat-header {
+        padding: 8px;
+    }
+
+    .messages-area {
+        padding: 12px;
+    }
+
+    .message {
+        max-width: 85%;
+    }
+
+    .inbox-brand {
+        font-size: 27px;
     }
 }
 </style>
+</head>
+
+<body>
+
+<!-- AUTHENTICATION SCREEN -->
+
+<div id="authScreen">
+    <div class="auth-card">
+
+        <div class="logo">KCHAT</div>
+        <div class="auth-subtitle">Connect. Communicate. Belong.</div>
+
+        <form id="loginForm">
+            <h2>Welcome Back</h2>
+
+            <div class="auth-field">
+                <label for="loginPhone">Phone number</label>
+                <input
+                    id="loginPhone"
+                    type="tel"
+                    placeholder="Enter your registered phone number"
+                    autocomplete="tel"
+                    required
+                >
+            </div>
+
+            <div class="auth-field">
+                <label for="loginPassword">Password</label>
+                <input
+                    id="loginPassword"
+                    type="password"
+                    placeholder="Enter your password"
+                    autocomplete="current-password"
+                    required
+                >
+            </div>
+
+            <button class="primary-button" id="loginButton" type="submit">
+                Login
+            </button>
+
+            <div class="auth-switch">
+                New to KCHAT?
+                <button type="button" id="showRegisterButton">
+                    Create Account
+                </button>
+            </div>
+        </form>
+
+        <form id="registerForm" class="hidden">
+            <h2>Create Your Account</h2>
+
+            <div class="auth-field">
+                <label for="registerUsername">Username</label>
+                <input
+                    id="registerUsername"
+                    type="text"
+                    placeholder="Choose your username"
+                    minlength="3"
+                    maxlength="30"
+                    autocomplete="username"
+                    required
+                >
+            </div>
+
+            <div class="auth-field">
+                <label for="registerPhone">Phone number</label>
+                <input
+                    id="registerPhone"
+                    type="tel"
+                    placeholder="Enter your phone number"
+                    autocomplete="tel"
+                    required
+                >
+            </div>
+
+            <div class="auth-field">
+                <label for="registerPassword">Password</label>
+                <input
+                    id="registerPassword"
+                    type="password"
+                    placeholder="Create a password"
+                    minlength="6"
+                    autocomplete="new-password"
+                    required
+                >
+            </div>
+
+            <button class="primary-button" id="registerButton" type="submit">
+                Create My Account
+            </button>
+
+            <div class="auth-switch">
+                Already registered?
+                <button type="button" id="showLoginButton">
+                    Login
+                </button>
+            </div>
+        </form>
+
+        <div id="authMessage" role="status"></div>
+    </div>
+</div>
+
+<!-- MAIN KCHAT APPLICATION -->
+
+<div id="chatApp">
+    <div class="app-layout" id="appLayout">
+
+        <!-- INBOX -->
+
+        <aside class="inbox-panel">
+
+            <div class="inbox-header">
+                <div class="inbox-topline">
+                    <div class="inbox-brand">KCHAT</div>
+
+                    <button
+                        class="icon-button"
+                        id="settingsButton"
+                        type="button"
+                        aria-label="Open menu"
+                    >⋮</button>
+                </div>
+
+                <div class="search-wrap">
+                    <span>⌕</span>
+                    <input
+                        id="inboxSearch"
+                        type="search"
+                        placeholder="Search"
+                    >
+                </div>
+            </div>
+
+            <div class="inbox-filters">
+                <button class="filter-button active" data-filter="all">All</button>
+                <button class="filter-button" data-filter="unread">Unread</button>
+                <button class="filter-button" data-filter="favorites">Favorites</button>
+                <button class="filter-button" data-filter="groups">Groups</button>
+                <button class="filter-button" data-filter="archived">Archived</button>
+            </div>
+
+            <div class="inbox-list" id="inboxList">
+                <div class="inbox-empty">Your chats will appear here.</div>
+            </div>
+
+            <button class="fab" id="newChatButton" type="button" title="New chat">+</button>
+
+            <nav class="bottom-nav">
+                <button class="active" data-nav="chats" type="button">
+                    <span>▣</span>Chats
+                </button>
+                <button data-nav="updates" type="button">
+                    <span>◉</span>Updates
+                </button>
+                <button data-nav="communities" type="button">
+                    <span>♧</span>Communities
+                </button>
+                <button data-nav="calls" type="button">
+                    <span>☎</span>Calls
+                </button>
+            </nav>
+
+            <!-- TOP RIGHT MENU -->
+
+            <div class="dropdown-menu" id="actionMenu">
+                <button data-action="new-group">＋ New group</button>
+                <button data-action="new-community">♧ New community</button>
+                <button data-action="broadcast">▤ Broadcast lists</button>
+                <button data-action="linked-devices">▣ Linked devices</button>
+                <button data-action="starred">☆ Starred messages</button>
+                <button data-action="read-all">✓ Read all</button>
+                <button data-action="scheduled-calls">◷ Scheduled calls</button>
+                <button data-action="settings">⚙ Settings</button>
+            </div>
+
+        </aside>
+
+        <!-- CHAT AREA -->
+
+        <main class="chat-area">
+
+            <section class="welcome-screen" id="welcomeScreen">
+                <div class="welcome-logo">K</div>
+                <h2 class="script-font">Welcome to KCHAT</h2>
+                <p>Select a contact to start a conversation.</p>
+            </section>
+
+            <section class="chat-screen" id="chatScreen">
+
+                <header class="chat-header">
+                    <button
+                        class="icon-button"
+                        id="backButton"
+                        type="button"
+                        aria-label="Back"
+                    >‹</button>
+
+                    <div class="avatar" id="chatAvatar">K</div>
+
+                    <div class="chat-header-info" id="openContactProfile">
+                        <div class="chat-header-name" id="chatUsername">Contact</div>
+                        <div class="chat-header-status" id="chatUserStatus">Offline</div>
+                    </div>
+
+                    <div class="chat-header-actions">
+                        <button class="icon-button" id="chatVoiceButton" title="Voice call">☎</button>
+                        <button class="icon-button" id="chatVideoButton" title="Video call">▣</button>
+                        <button class="icon-button" id="chatMenuButton" title="Chat options">⋮</button>
+                    </div>
+                </header>
+
+                <div class="messages-area" id="messagesArea"></div>
+
+                <div class="message-composer">
+                    <button class="icon-button" id="attachmentButton" title="Attach">＋</button>
+                    <button class="icon-button" id="cameraButton" title="Camera">▧</button>
+
+                    <input
+                        id="messageInput"
+                        type="text"
+                        placeholder="Message"
+                        autocomplete="off"
+                    >
+
+                    <button class="icon-button" id="voiceMessageButton" title="Voice message">🎙</button>
+                    <button class="send-button" id="sendButton" title="Send">➤</button>
+                </div>
+
+            </section>
+        </main>
+
+    </div>
+</div>
+
+<!-- PART 2 CONTINUES HERE -->
+ <!-- SETTINGS PANEL -->
+
+<div class="side-panel" id="settingsPanel">
+    <div class="panel-inner">
+
+        <div class="panel-heading">
+            <button class="icon-button" id="closeSettingsButton">‹</button>
+            <h2>Settings</h2>
+        </div>
+
+        <div class="settings-section">
+            <h3>Personal account</h3>
+            <button class="settings-row" id="myProfileButton">
+                <span>My profile<small>Profile picture, name and mood</small></span>
+                <span>›</span>
+            </button>
+            <button class="settings-row" id="accountSettingsButton">
+                <span>Account<small>Security and linked phone number</small></span>
+                <span>›</span>
+            </button>
+            <button class="settings-row" id="privacySettingsButton">
+                <span>Privacy<small>Blocked users and disappearing messages</small></span>
+                <span>›</span>
+            </button>
+            <button class="settings-row" id="chatSettingsButton">
+                <span>Chats<small>Backups, archive and chat history</small></span>
+                <span>›</span>
+            </button>
+            <button class="settings-row" id="appearanceSettingsButton">
+                <span>Appearance<small>Dark mode, light mode and colours</small></span>
+                <span>›</span>
+            </button>
+            <button class="settings-row" id="notificationSettingsButton">
+                <span>Notifications<small>Manage message alerts</small></span>
+                <span>›</span>
+            </button>
+            <button class="settings-row" id="blockedContactsButton">
+                <span>Blocked contacts<small>Manage blocked users</small></span>
+                <span>›</span>
+            </button>
+        </div>
+
+        <div class="settings-section">
+            <h3>Appearance</h3>
+            <button class="settings-row" id="settingsDarkMode">
+                <span>Dark mode</span><span>☾</span>
+            </button>
+            <button class="settings-row" id="settingsLightMode">
+                <span>Light mode</span><span>☀</span>
+            </button>
+        </div>
+
+        <div class="settings-section">
+            <button class="settings-row" id="logoutButton">
+                <span style="color:var(--danger)">Log out</span>
+                <span>↗</span>
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<!-- PERSONAL PROFILE -->
+
+<div class="side-panel" id="contactProfilePanel">
+    <div class="panel-inner">
+
+        <div class="panel-heading">
+            <button class="icon-button" id="closeContactProfile">‹</button>
+            <h2>Personal profile</h2>
+        </div>
+
+        <div class="profile-hero">
+            <div class="profile-mood" id="profileMood">Living my moment ✨</div>
+            <div class="profile-photo" id="profileAvatar">K</div>
+            <h2 class="profile-name" id="profileName">KCHAT User</h2>
+            <div class="profile-handle" id="profileHandle">@username</div>
+            <p id="profileAbout" style="color:var(--muted)">Available on KCHAT</p>
+        </div>
+
+        <div class="settings-section">
+            <h3>Profile details</h3>
+            <label>Display name</label>
+            <input class="panel-input" id="editProfileName" placeholder="Your display name">
+            <label>About / mood</label>
+            <textarea class="panel-input" id="editProfileAbout" rows="3" maxlength="500" placeholder="Write something about yourself"></textarea>
+            <button class="panel-button" id="saveProfileButton">Save profile</button>
+        </div>
+
+        <div class="settings-section">
+            <h3>Account controls</h3>
+            <button class="settings-row" id="profileLinkedDevices">Linked devices <span>›</span></button>
+            <button class="settings-row" id="profileSecurity">Security notifications <span>›</span></button>
+            <button class="settings-row" id="profileChangePhone">Change linked phone number <span>›</span></button>
+        </div>
+
+        <div class="settings-section">
+            <h3>Privacy</h3>
+            <button class="settings-row" id="profileBlocked">Blocked users <span>›</span></button>
+            <button class="settings-row" id="profileDisappearing">Disappearing messages <span>›</span></button>
+        </div>
+
+        <div class="settings-section">
+            <h3>Chat management</h3>
+            <button class="settings-row" id="profileBackups">Local backups <span>›</span></button>
+            <button class="settings-row" id="profileExport">Export chat history <span>›</span></button>
+            <button class="settings-row" id="profileArchive">Archived chats <span>›</span></button>
+        </div>
+
+        <div class="settings-section">
+            <h3>Appearance</h3>
+            <button class="settings-row" id="profileDarkMode">Dark theme <span>☾</span></button>
+            <button class="settings-row" id="profileLightMode">Light theme <span>☀</span></button>
+        </div>
+
+    </div>
+</div>
+
+<!-- CONTACT PICKER -->
+
+<div class="modal-overlay" id="contactPicker">
+    <div class="modal-card">
+        <h3 id="contactPickerTitle">Select a contact</h3>
+        <input class="panel-input" id="contactPickerSearch" placeholder="Search contacts">
+        <div id="contactPickerList"></div>
+        <button class="panel-button" id="inviteContactButton">Add a contact</button>
+        <button class="panel-button danger-button" id="closeContactPicker">Close</button>
+    </div>
+</div>
+
+<!-- ADD CONTACT MODAL -->
+
+<div class="modal-overlay" id="addContactModal">
+    <div class="modal-card">
+        <h3>Add contact</h3>
+        <input class="panel-input" id="addContactUsername" placeholder="Enter username">
+        <button class="panel-button" id="saveContactButton">Add contact</button>
+        <button class="panel-button danger-button" id="cancelAddContact">Cancel</button>
+    </div>
+</div>
+
+<!-- CHAT OPTIONS -->
+
+<div class="modal-overlay" id="chatOptionsModal">
+    <div class="modal-card">
+        <h3>Chat options</h3>
+        <button class="settings-row" id="chatViewProfile">View contact profile</button>
+        <button class="settings-row" id="chatFavorite">Add to favorites</button>
+        <button class="settings-row" id="chatPin">Pin conversation</button>
+        <button class="settings-row" id="chatHide">Hide conversation</button>
+        <button class="settings-row" id="chatClear">Clear conversation</button>
+        <button class="settings-row" id="chatBlock">Block contact</button>
+        <button class="settings-row" id="chatReport">Report contact</button>
+        <button class="settings-row" id="chatViewOnce">View once information</button>
+        <button class="panel-button danger-button" id="closeChatOptions">Close</button>
+    </div>
+</div>
+
+<!-- ATTACHMENT OPTIONS -->
+
+<div class="modal-overlay" id="attachmentModal">
+    <div class="modal-card">
+        <h3>Attach</h3>
+        <button class="settings-row" id="chooseGallery">▧ Gallery</button>
+        <button class="settings-row" id="chooseDocument">▤ Documents</button>
+        <button class="settings-row" id="chooseLocation">⌖ Location</button>
+        <button class="settings-row" id="chooseContact">♙ Contact</button>
+        <button class="panel-button danger-button" id="closeAttachment">Close</button>
+    </div>
+</div>
+
+<input type="file" id="galleryInput" accept="image/*" hidden>
+<input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
+<input type="file" id="documentInput" hidden>
+
+<!-- PHOTO PREVIEW -->
+
+<div class="modal-overlay" id="photoPreviewModal">
+    <div class="modal-card">
+        <h3>Photo preview</h3>
+        <img id="photoPreview" style="width:100%;max-height:350px;object-fit:contain;border-radius:12px">
+        <input class="panel-input" id="photoCaption" placeholder="Add a caption">
+        <button class="panel-button" id="sendPhotoButton">Send photo</button>
+        <button class="panel-button danger-button" id="cancelPhotoButton">Cancel</button>
+    </div>
+</div>
 
 <script>
-/* KCHAT INBOX CONTROLS */
+"use strict";
 
-const kchatBody = document.body;
-const dropdown = document.getElementById("mainDropdown");
+/* ==========================================
+   KCHAT CONFIGURATION
+========================================== */
 
-function setKchatTheme(theme) {
-    kchatBody.setAttribute("data-theme", theme);
+const API = "";
+const TOKEN_KEY = "kchat_token";
+
+let authToken = localStorage.getItem(TOKEN_KEY) || "";
+let currentUser = "";
+let currentChat = "";
+let contacts = [];
+let inboxChats = [];
+let currentFilter = "all";
+let currentCallAction = "";
+let pendingPhoto = null;
+let socket = null;
+let reconnectTimer = null;
+
+const $ = id => document.getElementById(id);
+
+function showMessage(message, error = true) {
+    const box = $("authMessage");
+    box.textContent = message;
+    box.style.color = error ? "var(--danger)" : "var(--green)";
+}
+
+function setAuthMessage(message, success = false) {
+    showMessage(message, !success);
+}
+
+function setLoading(button, loading, label) {
+    button.disabled = loading;
+    button.textContent = loading ? "Please wait..." : label;
+}
+
+function showLogin() {
+    $("loginForm").classList.remove("hidden");
+    $("registerForm").classList.add("hidden");
+    setAuthMessage("");
+}
+
+function showRegister() {
+    $("registerForm").classList.remove("hidden");
+    $("loginForm").classList.add("hidden");
+    setAuthMessage("");
+}
+
+$("showRegisterButton").addEventListener("click", showRegister);
+$("showLoginButton").addEventListener("click", showLogin);
+
+
+/* ==========================================
+   API REQUEST HELPER
+========================================== */
+
+async function apiRequest(path, options = {}) {
+    const headers = {
+        ...(options.headers || {})
+    };
+
+    if (authToken) {
+        headers.Authorization = "Bearer " + authToken;
+    }
+
+    if (options.body && !(options.body instanceof FormData)) {
+        headers["Content-Type"] = "application/json";
+    }
+
+    const response = await fetch(API + path, {
+        ...options,
+        headers
+    });
+
+    const raw = await response.text();
+    let data = {};
+
+    try {
+        data = raw ? JSON.parse(raw) : {};
+    } catch {
+        data = { detail: raw };
+    }
+
+    if (!response.ok) {
+        throw new Error(
+            data.detail ||
+            data.message ||
+            "Request failed (" + response.status + ")"
+        );
+    }
+
+    return data;
+}
+
+function saveToken(data) {
+    const token =
+        data.token ||
+        data.access_token ||
+        data.session_token ||
+        (data.session && data.session.token);
+
+    if (token) {
+        authToken = token;
+        localStorage.setItem(TOKEN_KEY, token);
+    }
+
+    return Boolean(token);
+}
+
+
+/* ==========================================
+   LOGIN
+========================================== */
+
+$("loginForm").addEventListener("submit", async function(event) {
+    event.preventDefault();
+
+    const phone = $("loginPhone").value.trim();
+    const password = $("loginPassword").value;
+
+    if (!phone || !password) {
+        setAuthMessage("Enter your phone number and password.");
+        return;
+    }
+
+    const button = $("loginButton");
+    setLoading(button, true, "Login");
+
+    try {
+        const data = await apiRequest("/api/login", {
+            method: "POST",
+            body: JSON.stringify({
+                phone: phone,
+                phone_number: phone,
+                identity: phone,
+                password: password
+            })
+        });
+
+        if (!saveToken(data)) {
+            throw new Error(
+                "Login succeeded but the server did not return a session token."
+            );
+        }
+
+        await enterApplication(data);
+
+    } catch (error) {
+        setAuthMessage(error.message || "Login failed.");
+    } finally {
+        setLoading(button, false, "Login");
+    }
+});
+
+
+/* ==========================================
+   REGISTRATION
+========================================== */
+
+$("registerForm").addEventListener("submit", async function(event) {
+    event.preventDefault();
+
+    const username = $("registerUsername").value.trim();
+    const phone = $("registerPhone").value.trim();
+    const password = $("registerPassword").value;
+
+    if (username.length < 3 || username.length > 30) {
+        setAuthMessage("Username must be between 3 and 30 characters.");
+        return;
+    }
+
+    if (!phone || !password) {
+        setAuthMessage("Enter your phone number and password.");
+        return;
+    }
+
+    if (password.length < 6) {
+        setAuthMessage("Password must have at least 6 characters.");
+        return;
+    }
+
+    const button = $("registerButton");
+    setLoading(button, true, "Create My Account");
+
+    try {
+        const data = await apiRequest("/api/register", {
+            method: "POST",
+            body: JSON.stringify({
+                username: username,
+                phone: phone,
+                phone_number: phone,
+                password: password
+            })
+        });
+
+        if (saveToken(data)) {
+            await enterApplication(data);
+        } else {
+            setAuthMessage(
+                "Account created. Please log in using your phone number and password.",
+                true
+            );
+            $("loginPhone").value = phone;
+            $("loginPassword").value = "";
+            showLogin();
+        }
+
+    } catch (error) {
+        setAuthMessage(error.message || "Registration failed.");
+    } finally {
+        setLoading(button, false, "Create My Account");
+    }
+});
+
+
+/* ==========================================
+   APPLICATION ENTRY
+========================================== */
+
+async function enterApplication(data = {}) {
+    $("authScreen").style.display = "none";
+    $("chatApp").style.display = "block";
+
+    currentUser =
+        data.username ||
+        data.user?.username ||
+        data.account?.username ||
+        currentUser;
+
+    try {
+        await loadMyProfile();
+    } catch (error) {
+        console.warn("Profile loading:", error.message);
+    }
+
+    await loadContacts();
+    await loadInbox();
+
+    connectSocket();
+
+    $("welcomeScreen").style.display = "flex";
+    $("chatScreen").style.display = "none";
+}
+
+
+/* ==========================================
+   SESSION RESTORATION
+========================================== */
+
+async function restoreSession() {
+    if (!authToken) return;
+
+    $("authScreen").style.display = "none";
+    $("chatApp").style.display = "block";
+
+    try {
+        await loadMyProfile();
+        await loadContacts();
+        await loadInbox();
+        connectSocket();
+    } catch (error) {
+        console.warn("Session restoration failed:", error.message);
+
+        authToken = "";
+        localStorage.removeItem(TOKEN_KEY);
+
+        $("chatApp").style.display = "none";
+        $("authScreen").style.display = "flex";
+        showLogin();
+    }
+}
+
+
+/* ==========================================
+   LOAD PROFILE
+========================================== */
+
+async function loadMyProfile() {
+    const data = await apiRequest("/api/profile/me");
+
+    const user = data.user || data.profile || data;
+
+    currentUser =
+        user.username ||
+        user.name ||
+        currentUser;
+
+    if (user.username) {
+        $("profileName").textContent = user.username;
+        $("profileHandle").textContent = "@" + user.username.toLowerCase();
+    }
+
+    if (user.about) {
+        $("profileAbout").textContent = user.about;
+        $("profileMood").textContent = user.about;
+    }
+
+    $("editProfileName").value = user.username || "";
+    $("editProfileAbout").value = user.about || "";
+
+    if (user.profile_picture) {
+        $("profileAvatar").innerHTML =
+            '<img src="' + escapeAttribute(user.profile_picture) + '" alt="Profile">';
+    } else {
+        $("profileAvatar").textContent =
+            (currentUser || "K").charAt(0).toUpperCase();
+    }
+}
+
+
+/* ==========================================
+   CONTACTS
+========================================== */
+
+async function loadContacts() {
+    const data = await apiRequest("/api/contacts");
+
+    contacts = Array.isArray(data)
+        ? data
+        : (data.contacts || []);
+
+    renderContactPicker();
+}
+
+function getContactName(contact) {
+    return typeof contact === "string"
+        ? contact
+        : contact.username || contact.name || "";
+}
+
+function renderContactPicker() {
+    const list = $("contactPickerList");
+    const search = ($("contactPickerSearch").value || "").toLowerCase();
+
+    list.innerHTML = "";
+
+    contacts
+        .filter(contact => getContactName(contact).toLowerCase().includes(search))
+        .forEach(contact => {
+            const username = getContactName(contact);
+
+            const button = document.createElement("button");
+            button.className = "contact-choice";
+
+            button.innerHTML =
+                '<div class="avatar">' +
+                escapeHTML(username.charAt(0).toUpperCase()) +
+                '</div><span>' + escapeHTML(username) + '</span>';
+
+            button.addEventListener("click", () => {
+                if (currentCallAction === "voice") {
+                    startVoiceCall(username);
+                } else if (currentCallAction === "video") {
+                    startVideoCall(username);
+                } else {
+                    openChat(username);
+                }
+
+                $("contactPicker").classList.remove("show");
+            });
+
+            list.appendChild(button);
+        });
+
+    if (!list.children.length) {
+        list.innerHTML = '<div class="inbox-empty">No contacts found.</div>';
+    }
+}
+
+$("contactPickerSearch").addEventListener("input", renderContactPicker);
+
+function openContactPicker(action = "chat") {
+    currentCallAction = action;
+
+    $("contactPickerTitle").textContent =
+        action === "voice" ? "Choose who to call" :
+        action === "video" ? "Choose who to video call" :
+        "New chat";
+
+    $("contactPicker").classList.add("show");
+    renderContactPicker();
+}
+
+$("newChatButton").addEventListener("click", () => openContactPicker("chat"));
+
+$("closeContactPicker").addEventListener("click", () => {
+    $("contactPicker").classList.remove("show");
+});
+
+$("inviteContactButton").addEventListener("click", () => {
+    $("contactPicker").classList.remove("show");
+    $("addContactModal").classList.add("show");
+});
+
+
+/* ==========================================
+   ADD CONTACT
+========================================== */
+
+$("saveContactButton").addEventListener("click", async () => {
+    const username = $("addContactUsername").value.trim();
+
+    if (!username) {
+        alert("Enter a username.");
+        return;
+    }
+
+    try {
+        await apiRequest("/api/contacts", {
+            method: "POST",
+            body: JSON.stringify({ username })
+        });
+
+        $("addContactUsername").value = "";
+        $("addContactModal").classList.remove("show");
+
+        await loadContacts();
+        await loadInbox();
+
+        alert("Contact added.");
+
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+$("cancelAddContact").addEventListener("click", () => {
+    $("addContactModal").classList.remove("show");
+});
+
+
+/* ==========================================
+   LOAD INBOX
+========================================== */
+
+async function loadInbox() {
+    const data = await apiRequest("/api/inbox");
+
+    inboxChats = Array.isArray(data)
+        ? data
+        : (data.chats || data.inbox || []);
+
+    renderInbox();
+}
+
+function renderInbox() {
+    const list = $("inboxList");
+    const search = $("inboxSearch").value.toLowerCase();
+
+    list.innerHTML = "";
+
+    let filtered = inboxChats.filter(chat => {
+        const name = (chat.username || chat.name || "").toLowerCase();
+        const preview = (chat.last_message || "").toLowerCase();
+
+        if (search && !name.includes(search) && !preview.includes(search)) {
+            return false;
+        }
+
+        if (currentFilter === "unread" && !(chat.unread_count > 0)) {
+            return false;
+        }
+
+        if (currentFilter === "favorites" && !chat.favorite) {
+            return false;
+        }
+
+        if (currentFilter === "groups" && !chat.is_group && !chat.group_id) {
+            return false;
+        }
+
+        if (currentFilter === "archived" && !chat.archived) {
+            return false;
+        }
+
+        if (currentFilter !== "archived" && chat.archived) {
+            return false;
+        }
+
+        if (chat.hidden && currentFilter !== "archived") {
+            return false;
+        }
+
+        return true;
+    });
+
+    if (!filtered.length) {
+        list.innerHTML = '<div class="inbox-empty">No conversations found.</div>';
+        return;
+    }
+
+    filtered.forEach(chat => {
+        const username = chat.username || chat.name || "Unknown";
+        const preview = chat.last_message || "Start a conversation";
+        const time = chat.last_message_time || chat.created_at || "";
+
+        const item = document.createElement("div");
+        item.className = "chat-item";
+
+        const avatar = document.createElement("div");
+        avatar.className = "avatar";
+
+        if (chat.profile_picture) {
+            const img = document.createElement("img");
+            img.src = chat.profile_picture;
+            img.alt = "";
+            avatar.appendChild(img);
+        } else {
+            avatar.textContent = username.charAt(0).toUpperCase();
+        }
+
+        const content = document.createElement("div");
+        content.className = "chat-item-content";
+
+        const top = document.createElement("div");
+        top.className = "chat-item-top";
+
+        const name = document.createElement("div");
+        name.className = "chat-item-name";
+        name.textContent = username;
+
+        const timeLabel = document.createElement("div");
+        timeLabel.className = "chat-item-time";
+        timeLabel.textContent = formatTime(time);
+
+        top.append(name, timeLabel);
+
+        const bottom = document.createElement("div");
+        bottom.className = "chat-item-preview";
+        bottom.textContent = preview;
+
+        if (chat.unread_count > 0) {
+            const unread = document.createElement("span");
+            unread.className = "unread-count";
+            unread.textContent = chat.unread_count;
+            bottom.appendChild(unread);
+        }
+
+        content.append(top, bottom);
+        item.append(avatar, content);
+
+        item.addEventListener("click", () => openChat(username));
+
+        list.appendChild(item);
+    });
+}
+
+$("inboxSearch").addEventListener("input", renderInbox);
+
+document.querySelectorAll(".filter-button").forEach(button => {
+    button.addEventListener("click", () => {
+        document.querySelectorAll(".filter-button")
+            .forEach(item => item.classList.remove("active"));
+
+        button.classList.add("active");
+        currentFilter = button.dataset.filter;
+        renderInbox();
+    });
+});
+
+
+/* ==========================================
+   OPEN CHAT
+========================================== */
+
+async function openChat(username) {
+    currentChat = username;
+
+    $("appLayout").classList.add("chat-open");
+    $("welcomeScreen").style.display = "none";
+    $("chatScreen").style.display = "flex";
+
+    $("chatUsername").textContent = username;
+    $("chatAvatar").textContent = username.charAt(0).toUpperCase();
+    $("chatUserStatus").textContent = "Loading...";
+
+    const chat = inboxChats.find(item =>
+        (item.username || item.name) === username
+    );
+
+    if (chat && chat.profile_picture) {
+        $("chatAvatar").innerHTML =
+            '<img src="' + escapeAttribute(chat.profile_picture) + '" alt="">';
+    }
+
+    await loadMessages(username);
+}
+
+$("backButton").addEventListener("click", () => {
+    $("appLayout").classList.remove("chat-open");
+    currentChat = "";
+    $("welcomeScreen").style.display = "flex";
+    $("chatScreen").style.display = "none";
+});
+
+
+/* ==========================================
+   LOAD MESSAGES
+========================================== */
+
+async function loadMessages(username) {
+    const area = $("messagesArea");
+    area.innerHTML = "";
+
+    try {
+        const data = await apiRequest(
+            "/api/messages?with_user=" + encodeURIComponent(username)
+        );
+
+        const messages = Array.isArray(data)
+            ? data
+            : (data.messages || []);
+
+        messages.forEach(renderMessage);
+
+        area.scrollTop = area.scrollHeight;
+        $("chatUserStatus").textContent = "Conversation";
+
+    } catch (error) {
+        $("chatUserStatus").textContent = "Conversation";
+        console.warn("Message loading:", error.message);
+    }
+}
+
+function renderMessage(message) {
+    const area = $("messagesArea");
+
+    const sender = message.username || message.sender || "";
+    const mine = sender === currentUser;
+
+    const bubble = document.createElement("div");
+    bubble.className = "message " + (mine ? "outgoing" : "incoming");
+
+    const content = document.createElement("div");
+    content.textContent = message.text || message.content || "";
+
+    const time = document.createElement("span");
+    time.className = "message-time";
+    time.textContent = formatTime(message.created_at);
+
+    if (mine) {
+        const status = document.createElement("span");
+        status.className = "message-status";
+        status.textContent =
+            message.status === "read" ? " ●●" :
+            message.status === "delivered" ? " ●●" : " ●";
+
+        time.appendChild(status);
+    }
+
+    bubble.append(content, time);
+    area.appendChild(bubble);
+    area.scrollTop = area.scrollHeight;
+}
+
+
+/* ==========================================
+   SEND MESSAGE
+========================================== */
+
+async function sendMessage() {
+    const input = $("messageInput");
+    const message = input.value.trim();
+
+    if (!message || !currentChat) return;
+
+    const button = $("sendButton");
+    button.disabled = true;
+
+    try {
+        await apiRequest("/api/messages", {
+            method: "POST",
+            body: JSON.stringify({
+                recipient: currentChat,
+                username: currentUser,
+                text: message,
+                type: "private"
+            })
+        });
+
+        input.value = "";
+        await loadMessages(currentChat);
+        await loadInbox();
+
+    } catch (error) {
+        alert("Message could not be sent: " + error.message);
+    } finally {
+        button.disabled = false;
+        input.focus();
+    }
+}
+
+$("sendButton").addEventListener("click", sendMessage);
+
+$("messageInput").addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        sendMessage();
+    }
+});
+
+
+/* ==========================================
+   WEBSOCKET
+========================================== */
+
+function connectSocket() {
+    if (!authToken) return;
+
+    if (socket) {
+        socket.close();
+        socket = null;
+    }
+
+    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+
+    socket = new WebSocket(
+        protocol + "//" + location.host +
+        "/ws/general?token=" + encodeURIComponent(authToken)
+    );
+
+    socket.onmessage = async event => {
+        let message;
+
+        try {
+            message = JSON.parse(event.data);
+        } catch {
+            return;
+        }
+
+        if (message.type === "message" || message.text) {
+            if (
+                currentChat &&
+                (
+                    message.username === currentChat ||
+                    message.sender === currentChat ||
+                    message.recipient === currentUser
+                )
+            ) {
+                renderMessage(message);
+            }
+
+            try {
+                await loadInbox();
+            } catch (error) {
+                console.warn(error);
+            }
+        }
+    };
+
+    socket.onclose = () => {
+        if (authToken) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(connectSocket, 5000);
+        }
+    };
+
+    socket.onerror = () => {
+        console.warn("KCHAT connection interrupted.");
+    };
+}
+
+
+/* ==========================================
+   CALL SELECTION
+========================================== */
+
+$("mainVoiceButton")?.addEventListener("click", () => {
+    openContactPicker("voice");
+});
+
+$("mainVideoButton")?.addEventListener("click", () => {
+    openContactPicker("video");
+});
+
+$("chatVoiceButton").addEventListener("click", () => {
+    if (currentChat) startVoiceCall(currentChat);
+});
+
+$("chatVideoButton").addEventListener("click", () => {
+    if (currentChat) startVideoCall(currentChat);
+});
+
+function startVoiceCall(username) {
+    alert("Voice call with " + username +
+        " requires the KCHAT calling service to be connected.");
+}
+
+function startVideoCall(username) {
+    alert("Video call with " + username +
+        " requires the KCHAT calling service to be connected.");
+}
+
+
+/* ==========================================
+   CAMERA AND ATTACHMENTS
+========================================== */
+
+$("cameraButton").addEventListener("click", () => {
+    $("cameraInput").click();
+});
+
+$("attachmentButton").addEventListener("click", () => {
+    $("attachmentModal").classList.add("show");
+});
+
+$("closeAttachment").addEventListener("click", () => {
+    $("attachmentModal").classList.remove("show");
+});
+
+$("chooseGallery").addEventListener("click", () => {
+    $("attachmentModal").classList.remove("show");
+    $("galleryInput").click();
+});
+
+$("chooseDocument").addEventListener("click", () => {
+    $("attachmentModal").classList.remove("show");
+    $("documentInput").click();
+});
+
+$("chooseLocation").addEventListener("click", () => {
+    $("attachmentModal").classList.remove("show");
+
+    if (!navigator.geolocation) {
+        alert("Location is not supported by this browser.");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(position => {
+        const link = "https://maps.google.com/?q=" +
+            position.coords.latitude + "," +
+            position.coords.longitude;
+
+        $("messageInput").value = link;
+        $("messageInput").focus();
+    }, () => {
+        alert("Location permission was not granted.");
+    });
+});
+
+$("chooseContact").addEventListener("click", () => {
+    $("attachmentModal").classList.remove("show");
+    openContactPicker("chat");
+});
+
+
+/* ==========================================
+   PHOTO PREVIEW
+========================================== */
+
+function handlePhoto(file) {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+        alert("Please choose an image.");
+        return;
+    }
+
+    pendingPhoto = file;
+
+    const reader = new FileReader();
+
+    reader.onload = event => {
+        $("photoPreview").src = event.target.result;
+        $("photoPreviewModal").classList.add("show");
+    };
+
+    reader.readAsDataURL(file);
+}
+
+$("galleryInput").addEventListener("change", event => {
+    handlePhoto(event.target.files[0]);
+});
+
+$("cameraInput").addEventListener("change", event => {
+    handlePhoto(event.target.files[0]);
+});
+
+$("cancelPhotoButton").addEventListener("click", () => {
+    pendingPhoto = null;
+    $("photoPreviewModal").classList.remove("show");
+});
+
+$("sendPhotoButton").addEventListener("click", async () => {
+    if (!pendingPhoto || !currentChat) {
+        alert("Open a conversation first.");
+        return;
+    }
+
+    alert(
+        "Photo selected successfully. Photo upload requires a supported backend media endpoint."
+    );
+});
+
+
+/* ==========================================
+   CHAT MENU
+========================================== */
+
+$("chatMenuButton").addEventListener("click", () => {
+    if (!currentChat) return;
+    $("chatOptionsModal").classList.add("show");
+});
+
+$("closeChatOptions").addEventListener("click", () => {
+    $("chatOptionsModal").classList.remove("show");
+});
+
+$("chatViewProfile").addEventListener("click", () => {
+    $("chatOptionsModal").classList.remove("show");
+    openContactProfile();
+});
+
+$("openContactProfile").addEventListener("click", openContactProfile);
+
+async function openContactProfile() {
+    if (!currentChat) return;
+
+    $("contactProfilePanel").style.display = "block";
+
+    $("profileName").textContent = currentChat;
+    $("profileHandle").textContent = "@" + currentChat.toLowerCase();
+
+    try {
+        const data = await apiRequest(
+            "/api/profile/" + encodeURIComponent(currentChat)
+        );
+
+        const user = data.user || data.profile || data;
+
+        $("profileName").textContent = user.username || currentChat;
+        $("profileHandle").textContent =
+            "@" + (user.username || currentChat).toLowerCase();
+
+        $("profileAbout").textContent = user.about || "Available on KCHAT";
+
+        if (user.profile_picture) {
+            $("profileAvatar").innerHTML =
+                '<img src="' + escapeAttribute(user.profile_picture) + '" alt="">';
+        } else {
+            $("profileAvatar").textContent =
+                currentChat.charAt(0).toUpperCase();
+        }
+
+    } catch (error) {
+        console.warn(error.message);
+    }
+}
+
+$("closeContactProfile").addEventListener("click", () => {
+    $("contactProfilePanel").style.display = "none";
+});
+</script>
+
+<!-- PART 3 CONTINUES HERE -->
+ <script>
+/* ==========================================
+   SAFE TEXT HELPERS
+========================================== */
+
+function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, character => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    })[character]);
+}
+
+function escapeAttribute(value) {
+    return escapeHTML(value);
+}
+
+function formatTime(value) {
+    if (!value) return "";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return "";
+
+    return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+}
+
+
+/* ==========================================
+   THEME SETTINGS
+========================================== */
+
+function changeTheme(theme) {
+    document.body.classList.toggle("light-mode", theme === "light");
+
     try {
         localStorage.setItem("kchat-theme", theme);
-    } catch (error) {}
+    } catch (error) {
+        console.warn("Theme preference could not be saved.");
+    }
 }
+
+let initialTheme = "dark";
 
 try {
-    setKchatTheme(localStorage.getItem("kchat-theme") || "dark");
-} catch (error) {
-    setKchatTheme("dark");
-}
+    initialTheme = localStorage.getItem("kchat-theme") || "dark";
+} catch (error) {}
 
-document.getElementById("settingsButton")?.addEventListener("click", function(event) {
+changeTheme(initialTheme);
+
+$("settingsDarkMode").addEventListener("click", () => {
+    changeTheme("dark");
+});
+
+$("settingsLightMode").addEventListener("click", () => {
+    changeTheme("light");
+});
+
+$("profileDarkMode").addEventListener("click", () => {
+    changeTheme("dark");
+});
+
+$("profileLightMode").addEventListener("click", () => {
+    changeTheme("light");
+});
+
+
+/* ==========================================
+   INBOX PERSONAL THEME BUTTON
+========================================== */
+
+const inboxTopline = document.querySelector(".inbox-topline");
+
+const inboxThemeButton = document.createElement("button");
+inboxThemeButton.type = "button";
+inboxThemeButton.className = "icon-button";
+inboxThemeButton.id = "inboxThemeButton";
+inboxThemeButton.title = "Change inbox theme";
+inboxThemeButton.textContent = "☾";
+
+inboxTopline.insertBefore(inboxThemeButton, $("settingsButton"));
+
+inboxThemeButton.addEventListener("click", () => {
+    const currentlyLight =
+        document.body.classList.contains("light-mode");
+
+    changeTheme(currentlyLight ? "dark" : "light");
+
+    inboxThemeButton.textContent =
+        currentlyLight ? "☾" : "☀";
+});
+
+
+/* ==========================================
+   MAIN SCREEN CALL BUTTONS
+========================================== */
+
+const mainCallButtons = document.createElement("div");
+
+mainCallButtons.style.display = "flex";
+mainCallButtons.style.gap = "5px";
+
+const mainVoiceButton = document.createElement("button");
+mainVoiceButton.type = "button";
+mainVoiceButton.className = "icon-button";
+mainVoiceButton.textContent = "☎";
+mainVoiceButton.title = "Choose a contact to call";
+
+const mainVideoButton = document.createElement("button");
+mainVideoButton.type = "button";
+mainVideoButton.className = "icon-button";
+mainVideoButton.textContent = "▣";
+mainVideoButton.title = "Choose a contact for video call";
+
+mainCallButtons.append(mainVoiceButton, mainVideoButton);
+
+inboxTopline.insertBefore(mainCallButtons, $("settingsButton"));
+
+mainVoiceButton.addEventListener("click", () => {
+    openContactPicker("voice");
+});
+
+mainVideoButton.addEventListener("click", () => {
+    openContactPicker("video");
+});
+
+
+/* ==========================================
+   SETTINGS PANEL
+========================================== */
+
+$("settingsButton").addEventListener("click", event => {
     event.stopPropagation();
-    dropdown?.classList.toggle("hidden");
+    $("actionMenu").classList.toggle("open");
 });
 
-document.addEventListener("click", function(event) {
-    if (dropdown && !event.target.closest(".menu-wrapper")) {
-        dropdown.classList.add("hidden");
+document.addEventListener("click", event => {
+    if (
+        !$("actionMenu").contains(event.target) &&
+        event.target !== $("settingsButton")
+    ) {
+        $("actionMenu").classList.remove("open");
     }
 });
 
-function openSettings() {
-    dropdown?.classList.add("hidden");
+$("closeSettingsButton").addEventListener("click", () => {
+    $("settingsPanel").style.display = "none";
+});
 
-    if (typeof showSettings === "function") {
-        showSettings();
-    } else {
-        alert("Settings will open here.");
+$("myProfileButton").addEventListener("click", async () => {
+    $("settingsPanel").style.display = "none";
+
+    try {
+        await loadMyProfile();
+    } catch (error) {
+        console.warn(error.message);
     }
-}
 
-function openNewGroup() {
-    dropdown?.classList.add("hidden");
-    if (typeof createGroup === "function") {
-        createGroup();
-    } else {
-        alert("Open My Groups to create a group.");
+    $("contactProfilePanel").style.display = "block";
+});
+
+$("appearanceSettingsButton").addEventListener("click", () => {
+    document.querySelector("#settingsPanel .settings-section:nth-of-type(2)")
+        ?.scrollIntoView({ behavior: "smooth" });
+});
+
+$("accountSettingsButton").addEventListener("click", () => {
+    alert("Account security and phone-number changes need their own backend endpoints.");
+});
+
+$("privacySettingsButton").addEventListener("click", async () => {
+    try {
+        const data = await apiRequest("/api/blocks");
+        const blocked = data.blocked || [];
+
+        alert(
+            blocked.length
+                ? "Blocked contacts: " + blocked.map(item => item.username).join(", ")
+                : "You have no blocked contacts."
+        );
+    } catch (error) {
+        alert(error.message);
     }
-}
+});
 
-function openNewCommunity() {
-    alert("Communities will be added to KCHAT.");
-}
+$("chatSettingsButton").addEventListener("click", () => {
+    alert("Chat backup and history export settings.");
+});
 
-function openBroadcastLists() {
-    alert("Broadcast lists will be added to KCHAT.");
-}
+$("notificationSettingsButton").addEventListener("click", () => {
+    alert("Notification controls will be connected to the notification settings service.");
+});
 
-function openLinkedDevices() {
-    alert("Linked devices management requires device-session support in the backend.");
-}
 
-function openStarredMessages() {
-    alert("Your starred messages will appear here.");
-}
+/* ==========================================
+   SAVE PROFILE
+========================================== */
 
-function openScheduledCalls() {
-    alert("Scheduled calls will appear here.");
-}
+$("saveProfileButton").addEventListener("click", async () => {
+    const about = $("editProfileAbout").value.trim();
 
-function markAllRead() {
-    if (typeof markAllMessagesRead === "function") {
-        markAllMessagesRead();
-    } else {
-        fetch("/api/messages/read-all", {
-            method: "POST",
-            credentials: "include"
-        }).then(() => {
-            alert("Read-all request sent.");
-        }).catch(() => {
-            alert("Could not mark messages as read. Please try again.");
+    if (about.length > 500) {
+        alert("About must not exceed 500 characters.");
+        return;
+    }
+
+    try {
+        await apiRequest("/api/profile", {
+            method: "PUT",
+            body: JSON.stringify({
+                about: about
+            })
         });
-    }
-}
 
-document.getElementById("newChatButton")?.addEventListener("click", function() {
-    if (typeof openNewChat === "function") {
-        openNewChat();
-    } else if (typeof loadContacts === "function") {
-        loadContacts();
-    } else {
-        alert("Open your contacts to start a new chat.");
+        $("profileAbout").textContent = about || "Available on KCHAT";
+        $("profileMood").textContent = about || "Living my moment ✨";
+
+        alert("Profile updated.");
+
+    } catch (error) {
+        alert("Could not update profile: " + error.message);
     }
 });
 
-/* Bottom navigation */
-function activateBottomTab(tab) {
-    document.querySelectorAll(".bottom-nav-item").forEach(button => {
-        button.classList.remove("active");
+
+/* ==========================================
+   BLOCKED CONTACTS
+========================================== */
+
+$("blockedContactsButton").addEventListener("click", async () => {
+    try {
+        const data = await apiRequest("/api/blocks");
+        const blocked = data.blocked || [];
+
+        if (!blocked.length) {
+            alert("You have no blocked contacts.");
+            return;
+        }
+
+        const names = blocked.map(item => item.username).join("\n");
+
+        alert("Blocked contacts:\n\n" + names);
+
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+$("profileBlocked").addEventListener("click", () => {
+    $("contactProfilePanel").style.display = "none";
+    $("settingsPanel").style.display = "block";
+    $("blockedContactsButton").click();
+});
+
+
+/* ==========================================
+   LINKED DEVICES AND SECURITY
+========================================== */
+
+$("profileLinkedDevices").addEventListener("click", () => {
+    alert("Linked-device management requires backend session management for multiple devices.");
+});
+
+$("profileSecurity").addEventListener("click", () => {
+    alert("Security notifications require backend security-event support.");
+});
+
+$("profileChangePhone").addEventListener("click", () => {
+    alert("Phone-number changes require a secure backend verification process.");
+});
+
+
+/* ==========================================
+   PRIVACY AND CHAT MANAGEMENT
+========================================== */
+
+$("profileDisappearing").addEventListener("click", () => {
+    if (!currentChat) {
+        alert("Open a conversation first to configure disappearing messages.");
+        return;
+    }
+
+    const seconds = prompt(
+        "Enter disappearing message duration in seconds.\n0 = Off\n86400 = 24 hours\n604800 = 7 days\n7776000 = 90 days"
+    );
+
+    if (seconds === null) return;
+
+    const duration = Number(seconds);
+
+    if (!Number.isInteger(duration) || duration < 0) {
+        alert("Enter a valid duration.");
+        return;
+    }
+
+    updateCurrentChatSettings({
+        disappearing_seconds: duration
     });
-    tab.classList.add("active");
+});
+
+$("profileBackups").addEventListener("click", () => {
+    alert("Local backups are not yet connected to a backup service.");
+});
+
+$("profileExport").addEventListener("click", async () => {
+    if (!currentChat) {
+        alert("Open a conversation first.");
+        return;
+    }
+
+    try {
+        const data = await apiRequest(
+            "/api/messages?with_user=" + encodeURIComponent(currentChat)
+        );
+
+        const messages = Array.isArray(data)
+            ? data
+            : (data.messages || []);
+
+        const content = messages.map(message => {
+            const sender = message.username || message.sender || "Unknown";
+            const date = message.created_at || "";
+            const body = message.text || message.content || "";
+
+            return "[" + date + "] " + sender + ": " + body;
+        }).join("\n");
+
+        const file = new Blob([content], {
+            type: "text/plain;charset=utf-8"
+        });
+
+        const url = URL.createObjectURL(file);
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = "KCHAT-" + currentChat + "-history.txt";
+        link.click();
+
+        URL.revokeObjectURL(url);
+
+    } catch (error) {
+        alert("Could not export messages: " + error.message);
+    }
+});
+
+$("profileArchive").addEventListener("click", () => {
+    $("contactProfilePanel").style.display = "none";
+    currentFilter = "archived";
+
+    document.querySelectorAll(".filter-button").forEach(button => {
+        button.classList.toggle(
+            "active",
+            button.dataset.filter === "archived"
+        );
+    });
+
+    renderInbox();
+});
+
+
+/* ==========================================
+   UPDATE CHAT SETTINGS
+========================================== */
+
+async function updateCurrentChatSettings(settings) {
+    if (!currentChat) return;
+
+    try {
+        await apiRequest(
+            "/api/chats/" + encodeURIComponent(currentChat) + "/settings",
+            {
+                method: "PUT",
+                body: JSON.stringify(settings)
+            }
+        );
+
+        await loadInbox();
+        alert("Chat settings updated.");
+
+    } catch (error) {
+        alert("Could not update chat settings: " + error.message);
+    }
 }
 
-[
-    ["chatsTab", "Chats"],
-    ["updatesTab", "Updates"],
-    ["communitiesTab", "Communities"],
-    ["callsTab", "Calls"]
-].forEach(([id, label]) => {
-    document.getElementById(id)?.addEventListener("click", function() {
-        activateBottomTab(this);
-        if (label !== "Chats") {
-            alert(label + " will be connected in the next feature update.");
+
+/* ==========================================
+   PIN, HIDE AND FAVORITES
+========================================== */
+
+$("chatFavorite").addEventListener("click", async () => {
+    const chat = inboxChats.find(item =>
+        (item.username || item.name) === currentChat
+    );
+
+    await updateCurrentChatSettings({
+        pinned: Boolean(chat && chat.pinned) ? false : true
+    });
+
+    $("chatOptionsModal").classList.remove("show");
+});
+
+$("chatPin").addEventListener("click", async () => {
+    const chat = inboxChats.find(item =>
+        (item.username || item.name) === currentChat
+    );
+
+    await updateCurrentChatSettings({
+        pinned: !(chat && chat.pinned)
+    });
+
+    $("chatOptionsModal").classList.remove("show");
+});
+
+$("chatHide").addEventListener("click", async () => {
+    await updateCurrentChatSettings({ hidden: true });
+
+    $("chatOptionsModal").classList.remove("show");
+    $("appLayout").classList.remove("chat-open");
+
+    $("welcomeScreen").style.display = "flex";
+    $("chatScreen").style.display = "none";
+
+    currentChat = "";
+});
+
+
+/* ==========================================
+   CLEAR CHAT
+========================================== */
+
+$("chatClear").addEventListener("click", async () => {
+    if (!currentChat) return;
+
+    const confirmed = confirm(
+        "Clear this conversation from your view?"
+    );
+
+    if (!confirmed) return;
+
+    /*
+       This only clears the visible message area.
+       Server-side deletion requires a dedicated backend endpoint.
+    */
+
+    $("messagesArea").innerHTML = "";
+
+    $("chatOptionsModal").classList.remove("show");
+    alert("The visible conversation has been cleared.");
+});
+
+
+/* ==========================================
+   BLOCK CONTACT
+========================================== */
+
+$("chatBlock").addEventListener("click", async () => {
+    if (!currentChat) return;
+
+    if (!confirm("Block " + currentChat + "?")) return;
+
+    try {
+        await apiRequest("/api/blocks", {
+            method: "POST",
+            body: JSON.stringify({
+                username: currentChat
+            })
+        });
+
+        $("chatOptionsModal").classList.remove("show");
+
+        alert(currentChat + " has been blocked.");
+
+        currentChat = "";
+
+        $("appLayout").classList.remove("chat-open");
+        $("welcomeScreen").style.display = "flex";
+        $("chatScreen").style.display = "none";
+
+        await loadInbox();
+
+    } catch (error) {
+        alert("Could not block contact: " + error.message);
+    }
+});
+
+
+/* ==========================================
+   REPORT CONTACT
+========================================== */
+
+$("chatReport").addEventListener("click", () => {
+    if (!currentChat) return;
+
+    const reason = prompt(
+        "Why are you reporting this contact?"
+    );
+
+    if (reason === null) return;
+
+    alert(
+        "Your report has not been submitted because a report endpoint still needs to be added to the backend."
+    );
+});
+
+
+/* ==========================================
+   VIEW ONCE INFORMATION
+========================================== */
+
+$("chatViewOnce").addEventListener("click", () => {
+    alert(
+        "View Once messages must be enforced by the backend. This option is not active yet."
+    );
+});
+
+
+/* ==========================================
+   MARK ALL AS READ
+========================================== */
+
+async function markAllMessagesRead() {
+    try {
+        await apiRequest("/api/messages/read-all", {
+            method: "POST"
+        });
+
+        await loadInbox();
+
+        alert("Messages marked as read.");
+
+    } catch (error) {
+        alert("Could not mark messages as read: " + error.message);
+    }
+}
+
+
+/* ==========================================
+   ACTION MENU
+========================================== */
+
+document.querySelectorAll("#actionMenu [data-action]")
+    .forEach(button => {
+        button.addEventListener("click", async () => {
+            const action = button.dataset.action;
+
+            $("actionMenu").classList.remove("open");
+
+            if (action === "settings") {
+                $("settingsPanel").style.display = "block";
+            }
+
+            if (action === "read-all") {
+                await markAllMessagesRead();
+            }
+
+            if (action === "new-group") {
+                const name = prompt("Enter the new group name:");
+
+                if (!name || !name.trim()) return;
+
+                try {
+                    const data = await apiRequest("/api/groups", {
+                        method: "POST",
+                        body: JSON.stringify({
+                            name: name.trim()
+                        })
+                    });
+
+                    alert(
+                        "Group created: " +
+                        (data.name || name)
+                    );
+
+                } catch (error) {
+                    alert("Could not create group: " + error.message);
+                }
+            }
+
+            if (action === "linked-devices") {
+                alert("Linked devices require multi-session backend support.");
+            }
+
+            if (
+                action === "new-community" ||
+                action === "broadcast" ||
+                action === "starred" ||
+                action === "scheduled-calls"
+            ) {
+                alert("This feature requires additional backend support.");
+            }
+        });
+    });
+
+
+/* ==========================================
+   BOTTOM NAVIGATION
+========================================== */
+
+document.querySelectorAll(".bottom-nav button")
+    .forEach(button => {
+        button.addEventListener("click", () => {
+            document.querySelectorAll(".bottom-nav button")
+                .forEach(item => item.classList.remove("active"));
+
+            button.classList.add("active");
+
+            const section = button.dataset.nav;
+
+            if (section === "chats") {
+                return;
+            }
+
+            alert(
+                section.charAt(0).toUpperCase() +
+                section.slice(1) +
+                " will be connected in the next feature update."
+            );
+        });
+    });
+
+
+/* ==========================================
+   LOGOUT
+========================================== */
+
+$("logoutButton").addEventListener("click", () => {
+    if (!confirm("Are you sure you want to log out?")) return;
+
+    authToken = "";
+    currentUser = "";
+    currentChat = "";
+
+    localStorage.removeItem(TOKEN_KEY);
+
+    if (socket) {
+        socket.close();
+        socket = null;
+    }
+
+    clearTimeout(reconnectTimer);
+
+    $("chatApp").style.display = "none";
+    $("authScreen").style.display = "flex";
+
+    $("settingsPanel").style.display = "none";
+    $("contactProfilePanel").style.display = "none";
+
+    $("loginPassword").value = "";
+
+    showLogin();
+});
+
+
+/* ==========================================
+   MENU CLOSE BEHAVIOUR
+========================================== */
+
+document.querySelectorAll(".modal-overlay").forEach(modal => {
+    modal.addEventListener("click", event => {
+        if (event.target === modal) {
+            modal.classList.remove("show");
         }
     });
 });
 
-/* Inbox search */
-document.getElementById("inboxSearch")?.addEventListener("input", function() {
-    const query = this.value.toLowerCase().trim();
 
-    document.querySelectorAll(".inbox-item").forEach(item => {
-        item.style.display = item.innerText.toLowerCase().includes(query)
-            ? "flex" : "none";
-    });
+/* ==========================================
+   START KCHAT
+========================================== */
+
+document.addEventListener("DOMContentLoaded", () => {
+    restoreSession();
 });
 
-/* Inbox filters */
-document.querySelectorAll(".filter-btn").forEach(button => {
-    button.addEventListener("click", function() {
-        document.querySelectorAll(".filter-btn").forEach(item => {
-            item.classList.remove("active");
-        });
-        this.classList.add("active");
+if (document.readyState !== "loading") {
+    restoreSession();
+}
 
-        const filter = this.dataset.filter;
-
-        document.querySelectorAll(".inbox-item").forEach(item => {
-            const unread = item.dataset.unread === "true";
-            const favorite = item.dataset.favorite === "true";
-            const group = item.dataset.group === "true";
-
-            let visible = true;
-            if (filter === "unread") visible = unread;
-            if (filter === "favorites") visible = favorite;
-            if (filter === "groups") visible = group;
-
-            item.style.display = visible ? "flex" : "none";
-        });
-    });
-});
-
-/* Theme buttons can be used in inbox settings and general settings */
-window.kchatChooseTheme = function(theme) {
-    if (theme === "dark" || theme === "light") {
-        setKchatTheme(theme);
-    }
-};
-
-console.log("KCHAT redesigned inbox controls loaded.");
+console.log("KCHAT frontend loaded.");
 </script>
+
+</body>
+</html>
