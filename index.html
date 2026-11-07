@@ -8,6 +8,8 @@
 <style>
 * {
     box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
 :root {
@@ -15,17 +17,18 @@
     --green-dark: #008f70;
     --background: #10131a;
     --panel: #1b2230;
-    --panel-light: #252e3d;
-    --text: #f5f7fa;
-    --muted: #aab3c2;
-    --border: #303b4d;
+    --panel-light: #252e3e;
+    --text: #f5f6f7;
+    --muted: #a8b0bb;
+    --border: rgba(255,255,255,.10);
 }
 
 body {
-    margin: 0;
-    font-family: Arial, sans-serif;
     background: var(--background);
     color: var(--text);
+    font-family: Arial, sans-serif;
+    height: 100vh;
+    overflow: hidden;
 }
 
 button, input, textarea, select {
@@ -40,145 +43,146 @@ button {
     display: none !important;
 }
 
+/* AUTHENTICATION */
+
 #authScreen {
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
     padding: 20px;
+    background: var(--background);
 }
 
-.auth-box {
+.auth-card {
     width: 100%;
-    max-width: 410px;
+    max-width: 390px;
+    padding: 30px;
     background: var(--panel);
     border-radius: 15px;
-    padding: 28px;
 }
 
 .logo {
+    text-align: center;
     color: var(--green);
-    font-size: 32px;
+    font-size: 34px;
     font-weight: bold;
-    text-align: center;
-    margin-bottom: 8px;
+    margin-bottom: 25px;
 }
 
-.auth-box h2 {
+.auth-card h2 {
     text-align: center;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
 }
 
-.auth-box input,
-.form-input {
+.auth-card input {
     width: 100%;
     padding: 13px;
-    margin: 8px 0;
-    background: var(--background);
+    margin-bottom: 12px;
     border: 1px solid var(--border);
     border-radius: 8px;
+    background: var(--background);
     color: white;
-    outline: none;
 }
 
-.primary-button {
+.primary-btn {
     width: 100%;
-    padding: 13px;
-    border: 0;
+    border: none;
     border-radius: 8px;
+    padding: 13px;
     background: var(--green);
     color: white;
     font-weight: bold;
-    margin-top: 12px;
-}
-
-.primary-button:hover {
-    background: var(--green-dark);
+    margin-top: 8px;
 }
 
 .auth-switch {
     text-align: center;
+    margin-top: 18px;
     color: var(--muted);
-    margin-top: 20px;
 }
 
-.auth-switch button {
+.auth-switch span {
     color: var(--green);
-    border: 0;
-    background: none;
-    font-weight: bold;
+    cursor: pointer;
 }
 
 #authMessage {
+    margin-top: 12px;
     color: #ff7777;
     text-align: center;
-    margin-top: 12px;
 }
 
-.chat-app {
-    height: 100dvh;
+/* MAIN APP */
+
+#chatApp {
+    height: 100vh;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
 }
 
-.top-header {
-    height: 62px;
+.app-header {
+    height: 65px;
     background: var(--panel);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 16px;
+    padding: 0 17px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
 }
 
-.top-header h2 {
+.app-brand {
+    font-size: 25px;
+    font-weight: bold;
     color: var(--green);
-    margin: 0;
 }
 
 .header-actions {
     display: flex;
-    gap: 16px;
-    align-items: center;
+    gap: 12px;
 }
 
 .icon-button {
-    border: 0;
     background: transparent;
+    border: none;
     color: var(--text);
-    font-size: 23px;
-    padding: 7px;
+    font-size: 22px;
+    padding: 8px;
+    border-radius: 50%;
 }
 
-.main-content {
+.icon-button:hover {
+    background: var(--panel-light);
+}
+
+/* MAIN CONTENT */
+
+.app-content {
+    display: flex;
     flex: 1;
     min-height: 0;
-    display: flex;
-    overflow: hidden;
 }
 
-.inbox-screen {
+.sidebar {
     width: 360px;
-    max-width: 100%;
-    display: flex;
-    flex-direction: column;
     background: var(--panel);
     border-right: 1px solid var(--border);
-    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
-.search-box {
+.search-area {
     padding: 12px;
 }
 
-.search-box input {
+.search-area input {
     width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 9px;
     background: var(--background);
-    border: 0;
-    border-radius: 20px;
-    padding: 12px 16px;
     color: white;
 }
 
@@ -191,10 +195,10 @@ button {
 
 .filter-button {
     border: 1px solid var(--border);
-    background: transparent;
     color: var(--muted);
+    background: transparent;
     border-radius: 20px;
-    padding: 7px 13px;
+    padding: 8px 13px;
     white-space: nowrap;
 }
 
@@ -214,8 +218,8 @@ button {
     align-items: center;
     gap: 12px;
     padding: 13px;
-    border-bottom: 1px solid var(--border);
     cursor: pointer;
+    border-bottom: 1px solid var(--border);
 }
 
 .inbox-item:hover {
@@ -223,14 +227,14 @@ button {
 }
 
 .avatar {
-    width: 45px;
-    height: 45px;
+    width: 47px;
+    height: 47px;
     border-radius: 50%;
-    background: var(--green-dark);
+    background: #334253;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
+    font-size: 20px;
     overflow: hidden;
     flex-shrink: 0;
 }
@@ -242,307 +246,411 @@ button {
 }
 
 .inbox-details {
-    min-width: 0;
     flex: 1;
+    min-width: 0;
 }
 
-.inbox-details strong {
-    display: block;
+.inbox-name {
+    font-weight: bold;
     margin-bottom: 5px;
 }
 
-.inbox-details small {
+.inbox-preview {
+    font-size: 13px;
     color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-#activeChat {
+/* CHAT AREA */
+
+.chat-area {
     flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
     background: var(--background);
-}
-
-.active-chat-bar {
-    min-height: 65px;
-    padding: 10px 15px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: var(--panel);
-    border-bottom: 1px solid var(--border);
-}
-
-.chat-person {
-    flex: 1;
-    min-width: 0;
-}
-
-.chat-person strong,
-.chat-person small {
-    display: block;
-}
-
-.chat-person small {
-    color: var(--muted);
-    margin-top: 4px;
-}
-
-.chat-header-actions {
-    display: flex;
-    gap: 7px;
-}
-
-#messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.message {
-    max-width: 75%;
-    width: fit-content;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: var(--panel-light);
-    overflow-wrap: anywhere;
-}
-
-.message.mine {
-    align-self: flex-end;
-    background: #075e50;
-}
-
-.message-time {
-    color: #c5d1d0;
-    font-size: 11px;
-    text-align: right;
-    margin-top: 5px;
-}
-
-.status-dot {
-    margin-left: 4px;
-    color: #d0d0d0;
-}
-
-.send-area {
-    display: flex;
-    gap: 8px;
-    padding: 12px;
-    background: var(--panel);
-}
-
-.send-area input {
-    flex: 1;
-    min-width: 0;
-    border: 0;
-    outline: none;
-    border-radius: 22px;
-    padding: 12px 16px;
-    background: var(--panel-light);
-    color: white;
-}
-
-.send-area button {
-    border: 0;
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    background: var(--green);
-    color: white;
-    font-size: 19px;
 }
 
 .welcome-screen {
     flex: 1;
     display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
-    color: var(--muted);
     text-align: center;
+    color: var(--muted);
     padding: 20px;
 }
 
+.chat-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.chat-header {
+    height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.chat-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.chat-user-info {
+    min-width: 0;
+}
+
+.chat-user-name {
+    font-weight: bold;
+}
+
+.chat-user-status {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.chat-call-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.chat-call-actions button {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 22px;
+    padding: 8px;
+}
+
+/* MESSAGES */
+
+#messagesArea {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.message {
+    max-width: 75%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    position: relative;
+    overflow-wrap: anywhere;
+}
+
+.message.outgoing {
+    align-self: flex-end;
+    background: #075e54;
+}
+
+.message.incoming {
+    align-self: flex-start;
+    background: var(--panel-light);
+}
+
+.message-time {
+    display: block;
+    text-align: right;
+    color: rgba(255,255,255,.65);
+    font-size: 10px;
+    margin-top: 5px;
+}
+
+.message-menu-button {
+    background: transparent;
+    border: none;
+    color: inherit;
+    float: right;
+    margin-left: 10px;
+}
+
+/* MESSAGE COMPOSER */
+
+.kchat-composer {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 10px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.kchat-tool-btn {
+    border: none;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 22px;
+    padding: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.kchat-tool-btn:hover {
+    background: var(--panel-light);
+}
+
+.kchat-message-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    border-radius: 22px;
+    padding: 13px 16px;
+    background: var(--background);
+    color: white;
+}
+
+.kchat-send-btn {
+    background: var(--green);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 43px;
+    height: 43px;
+    font-size: 19px;
+    flex-shrink: 0;
+}
+
+.kchat-hidden-input {
+    display: none;
+}
+
+/* NEW CHAT BUTTON */
+
 .new-chat-button {
-    position: absolute;
-    right: 20px;
-    bottom: 22px;
+    position: fixed;
+    right: 25px;
+    bottom: 25px;
     width: 58px;
     height: 58px;
     border-radius: 50%;
-    border: 0;
+    border: none;
     background: var(--green);
     color: white;
-    font-size: 29px;
-    box-shadow: 0 4px 14px #0008;
-    z-index: 5;
+    font-size: 27px;
+    box-shadow: 0 4px 15px rgba(0,0,0,.3);
+    z-index: 20;
 }
 
-.popup-menu {
-    position: absolute;
-    right: 15px;
-    bottom: 90px;
-    width: 245px;
-    background: var(--panel-light);
+.new-chat-menu {
+    position: fixed;
+    right: 20px;
+    bottom: 95px;
+    width: 235px;
+    background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 7px;
-    z-index: 10;
-    box-shadow: 0 8px 25px #0008;
+    padding: 8px;
+    z-index: 30;
 }
 
-.popup-menu button {
+.new-chat-menu button {
     width: 100%;
-    display: block;
-    text-align: left;
     padding: 13px;
-    border: 0;
-    color: var(--text);
+    text-align: left;
     background: transparent;
+    color: var(--text);
+    border: none;
     border-radius: 7px;
 }
 
-.popup-menu button:hover {
-    background: #ffffff12;
+.new-chat-menu button:hover {
+    background: var(--panel-light);
 }
 
-.settings-page {
+/* MODALS */
+
+.modal {
     position: fixed;
     inset: 0;
-    z-index: 30;
-    background: var(--background);
-    overflow-y: auto;
-}
-
-.settings-header {
-    height: 62px;
+    background: rgba(0,0,0,.7);
     display: flex;
-    align-items: center;
-    gap: 18px;
-    padding: 0 18px;
-    background: var(--panel);
-    border-bottom: 1px solid var(--border);
-}
-
-.settings-header button {
-    background: none;
-    color: white;
-    border: 0;
-    font-size: 24px;
-}
-
-.settings-content {
-    max-width: 650px;
-    margin: auto;
-    padding: 15px 22px 50px;
-}
-
-.settings-section {
-    padding: 18px 0;
-    border-bottom: 1px solid var(--border);
-}
-
-.settings-section h3 {
-    color: var(--green);
-    font-size: 15px;
-}
-
-.settings-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 0;
-    cursor: pointer;
-}
-
-.settings-row button {
-    background: transparent;
-    color: white;
-    border: 0;
-    text-align: left;
-}
-
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: #000a;
-    z-index: 50;
-    display: flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
     padding: 15px;
+    z-index: 100;
 }
 
-.modal-box {
+.modal-content {
     background: var(--panel);
+    border-radius: 13px;
+    padding: 20px;
     width: 100%;
     max-width: 420px;
     max-height: 85vh;
     overflow-y: auto;
-    border-radius: 13px;
-    padding: 22px;
 }
 
-.modal-box h3 {
-    margin-top: 0;
+.modal-content h3 {
+    margin-bottom: 15px;
+}
+
+.modal-content input,
+.modal-content textarea {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 12px;
+    background: var(--background);
+    color: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
 }
 
 .modal-actions {
     display: flex;
     gap: 10px;
-    margin-top: 15px;
+    justify-content: flex-end;
 }
 
-.modal-actions button {
-    flex: 1;
-    padding: 11px;
-    border-radius: 7px;
-    border: 0;
+.secondary-btn {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    padding: 10px 15px;
+    border-radius: 8px;
 }
 
-.secondary-button {
+/* ATTACHMENTS */
+
+.attachment-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.attachment-option {
+    padding: 18px 8px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--background);
+    color: var(--text);
+    text-align: center;
+}
+
+.attachment-option span {
+    display: block;
+    font-size: 25px;
+    margin-bottom: 8px;
+}
+
+/* PHOTO EDITOR */
+
+.photo-editor {
+    width: 100%;
+    max-width: 650px;
+    background: #080a0d;
+    border-radius: 13px;
+    padding: 15px;
+}
+
+.photo-preview {
+    width: 100%;
+    max-height: 55vh;
+    object-fit: contain;
+}
+
+.photo-tools {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 15px 0;
+}
+
+.photo-tools button {
     background: var(--panel-light);
     color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
 }
 
-.contact-row {
+.photo-caption {
+    width: 100%;
+    padding: 12px;
+    background: var(--panel);
+    border: none;
+    color: white;
+    border-radius: 8px;
+}
+
+/* SETTINGS */
+
+#settingsPanel {
+    position: fixed;
+    inset: 0;
+    background: var(--background);
+    z-index: 50;
+    overflow-y: auto;
+}
+
+.settings-header {
+    height: 65px;
+    background: var(--panel);
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 0;
+    gap: 15px;
+    padding: 0 18px;
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    padding: 17px 20px;
     border-bottom: 1px solid var(--border);
+    cursor: pointer;
 }
 
-.contact-row-name {
-    flex: 1;
+.settings-row:hover {
+    background: var(--panel);
 }
 
-@media(max-width: 650px) {
-    .inbox-screen {
+/* RESPONSIVE */
+
+@media(max-width:700px) {
+    .sidebar {
         width: 100%;
-        border-right: 0;
     }
 
-    #activeChat {
-        position: fixed;
-        inset: 0;
-        z-index: 15;
-    }
-
-    #activeChat.hidden {
+    .chat-area {
         display: none;
+    }
+
+    #chatApp.chat-open .sidebar {
+        display: none;
+    }
+
+    #chatApp.chat-open .chat-area {
+        display: flex;
+        width: 100%;
     }
 
     .message {
         max-width: 88%;
     }
 
-    .chat-header-actions {
-        gap: 0;
+    .new-chat-button {
+        right: 18px;
+        bottom: 18px;
     }
 }
 </style>
@@ -552,456 +660,446 @@ button {
 
 <!-- LOGIN AND REGISTRATION -->
 
-<div id="authScreen">
-    <div class="auth-box">
+<section id="authScreen">
+    <div class="auth-card">
+
         <div class="logo">KCHAT</div>
 
-        <div id="loginForm">
+        <div id="loginBox">
             <h2>Welcome back</h2>
 
             <input id="loginIdentity"
-                   type="text"
-                   placeholder="Phone number or username"
-                   autocomplete="username">
+                   placeholder="Username or phone number">
 
             <input id="loginPassword"
                    type="password"
-                   placeholder="Password"
-                   autocomplete="current-password">
+                   placeholder="Password">
 
-            <button type="button"
-                    class="primary-button"
-                    onclick="login()">
+            <button class="primary-btn" onclick="login()">
                 Login
             </button>
 
             <div class="auth-switch">
-                New to KCHAT?
-                <button type="button" onclick="showRegister()">
-                    Register
-                </button>
+                Don't have an account?
+                <span onclick="showRegister()">Register</span>
             </div>
         </div>
 
-        <div id="registerForm" class="hidden">
+        <div id="registerBox" class="hidden">
             <h2>Create your account</h2>
 
             <input id="registerUsername"
-                   type="text"
-                   placeholder="Choose a username"
-                   autocomplete="username">
+                   placeholder="Choose a username">
 
             <input id="registerPhone"
-                   type="tel"
-                   placeholder="Phone number"
-                   autocomplete="tel">
+                   placeholder="Phone number">
 
             <input id="registerPassword"
                    type="password"
-                   placeholder="Create a password"
-                   autocomplete="new-password">
+                   placeholder="Create password">
 
-            <input id="registerPicture"
-                   type="file"
-                   accept="image/*">
-
-            <button type="button"
-                    class="primary-button"
-                    onclick="register()">
-                Create Account
+            <button class="primary-btn" onclick="register()">
+                Register
             </button>
 
             <div class="auth-switch">
                 Already registered?
-                <button type="button" onclick="showLogin()">
-                    Login
-                </button>
+                <span onclick="showLogin()">Login</span>
             </div>
         </div>
 
         <div id="authMessage"></div>
+
     </div>
-</div>
+</section>
 
-<!-- MAIN KCHAT APPLICATION -->
+<!-- MAIN APPLICATION -->
 
-<div id="chatApp" class="chat-app hidden">
+<main id="chatApp" class="hidden">
 
-    <header class="top-header">
-        <h2>KCHAT</h2>
+    <header class="app-header">
+        <div class="app-brand">KCHAT</div>
 
         <div class="header-actions">
             <button class="icon-button"
-                    type="button"
-                    onclick="toggleMainMenu()">
-                ⋮
-            </button>
-        </div>
+                    onclick="openMainCallPicker('voice')"
+                    title="Voice call">☎</button>
 
-        <div id="mainMenu" class="popup-menu hidden"
-             style="top:55px; bottom:auto;">
-            <button onclick="openSettings()">Settings</button>
-            <button onclick="showMyProfile()">My Profile</button>
-            <button onclick="openSettingsSection('contacts')">Contacts</button>
-            <button onclick="openSettingsSection('groups')">Groups</button>
-            <button onclick="openSettingsSection('blocked')">Blocked Contacts</button>
-            <button onclick="logout()">Logout</button>
+            <button class="icon-button"
+                    onclick="openMainCallPicker('video')"
+                    title="Video call">▣</button>
+
+            <button class="icon-button"
+                    onclick="openMainMenu()"
+                    title="More options">⋮</button>
         </div>
     </header>
 
-    <main class="main-content">
+    <div class="app-content">
 
-        <!-- INBOX -->
+        <!-- CONTACT AND CHAT LIST -->
 
-        <section id="inboxScreen" class="inbox-screen">
+        <aside class="sidebar">
 
-            <div class="search-box">
+            <div class="search-area">
                 <input id="inboxSearch"
-                       type="search"
                        placeholder="Search chats"
-                       oninput="renderInbox()">
+                       oninput="filterInbox()">
             </div>
 
             <div class="chat-filters">
                 <button class="filter-button active"
-                        onclick="setFilter('all',this)">All</button>
+                        onclick="filterChats('all',this)">All</button>
+
                 <button class="filter-button"
-                        onclick="setFilter('unread',this)">Unread</button>
+                        onclick="filterChats('unread',this)">Unread</button>
+
                 <button class="filter-button"
-                        onclick="setFilter('favorites',this)">Favorites</button>
+                        onclick="filterChats('favorites',this)">Favorites</button>
+
                 <button class="filter-button"
-                        onclick="setFilter('groups',this)">Groups</button>
+                        onclick="filterChats('groups',this)">Groups</button>
             </div>
 
             <div id="inboxList"></div>
 
-            <button class="new-chat-button"
-                    type="button"
-                    onclick="toggleNewChatMenu()">
-                +
+        </aside>
+
+        <!-- INDIVIDUAL CHAT -->
+
+        <section class="chat-area">
+
+            <div id="welcomeScreen" class="welcome-screen">
+                <div>
+                    <h2>Welcome to KCHAT</h2>
+                    <p>Select a conversation to start messaging.</p>
+                </div>
+            </div>
+
+            <div id="chatScreen" class="chat-screen hidden">
+
+                <header class="chat-header">
+
+                    <div class="chat-user">
+
+                        <button class="icon-button"
+                                onclick="backToInbox()">‹</button>
+
+                        <div class="avatar" id="chatAvatar">👤</div>
+
+                        <div class="chat-user-info">
+                            <div class="chat-user-name"
+                                 id="chatUsername">Contact</div>
+
+                            <div class="chat-user-status"
+                                 id="chatUserStatus">offline</div>
+                        </div>
+
+                    </div>
+
+                    <!-- CALLS TO THE OPEN CHAT CONTACT -->
+
+                    <div class="chat-call-actions">
+
+                        <button onclick="startVideoCall()"
+                                title="Video call">▣</button>
+
+                        <button onclick="startVoiceCall()"
+                                title="Voice call">☎</button>
+
+                        <button onclick="openChatMenu()"
+                                title="Chat options">⋮</button>
+
+                    </div>
+
+                </header>
+
+                <div id="messagesArea"></div>
+
+                <!-- MESSAGE COMPOSER -->
+
+                <div class="kchat-composer">
+
+                    <button class="kchat-tool-btn"
+                            onclick="openCamera()"
+                            title="Take a photo">📷</button>
+
+                    <button class="kchat-tool-btn"
+                            onclick="openAttachments()"
+                            title="Attach">📎</button>
+
+                    <input id="kchatMessageInput"
+                           class="kchat-message-input"
+                           placeholder="Type a message..."
+                           autocomplete="off"
+                           onkeydown="if(event.key==='Enter') sendKchatMessage()">
+
+                    <button class="kchat-send-btn"
+                            onclick="sendKchatMessage()">➤</button>
+
+                    <button class="kchat-tool-btn"
+                            onclick="recordVoiceMessage()"
+                            title="Voice message">🎤</button>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </div>
+
+    <button class="new-chat-button"
+            onclick="toggleNewChatMenu()">＋</button>
+
+    <div id="newChatMenu" class="new-chat-menu hidden">
+
+        <button onclick="openAddContact()">＋ Add contact</button>
+
+        <button onclick="openContactPicker()">✉ Select contact to message</button>
+
+        <button onclick="inviteKchatMembers()">👥 Invite KCHAT members</button>
+
+        <button onclick="inviteOutsideMembers()">🔗 Invite people to KCHAT</button>
+
+        <button onclick="openNewGroup()">👥 New group</button>
+
+        <button onclick="openNewEvent()">📅 New event</button>
+
+        <button onclick="loadInbox()">↻ Refresh</button>
+
+    </div>
+
+</main>
+
+<!-- SETTINGS -->
+
+<section id="settingsPanel" class="hidden">
+
+    <header class="settings-header">
+        <button class="icon-button"
+                onclick="closeSettings()">‹</button>
+
+        <h2>Settings</h2>
+    </header>
+
+    <div class="settings-row" onclick="showMyProfile()">
+        👤 &nbsp; Profile
+    </div>
+
+    <div class="settings-row" onclick="openSettingsSection('account')">
+        🔐 &nbsp; Account
+    </div>
+
+    <div class="settings-row" onclick="openSettingsSection('privacy')">
+        🛡 &nbsp; Privacy
+    </div>
+
+    <div class="settings-row" onclick="openSettingsSection('chats')">
+        💬 &nbsp; Chats
+    </div>
+
+    <div class="settings-row" onclick="openSettingsSection('notifications')">
+        🔔 &nbsp; Notifications
+    </div>
+
+    <div class="settings-row" onclick="openSettingsSection('blocked')">
+        🚫 &nbsp; Blocked contacts
+    </div>
+
+    <div class="settings-row" onclick="logout()">
+        ↪ &nbsp; Log out
+    </div>
+
+    <div id="settingsDetails"></div>
+
+</section>
+
+<!-- ATTACHMENT OPTIONS -->
+
+<div id="attachmentModal" class="modal hidden">
+    <div class="modal-content">
+
+        <h3>Attach</h3>
+
+        <div class="attachment-grid">
+
+            <button class="attachment-option"
+                    onclick="chooseGallery()">
+                <span>🖼</span>Gallery
             </button>
 
-            <div id="newChatMenu" class="popup-menu hidden">
-                <button onclick="openAddContact()">Add Contact</button>
-                <button onclick="openNewChat()">Select Contact to Message</button>
-                <button onclick="inviteUser()">Invite Members to KCHAT</button>
-                <button onclick="openNewEvent()">New Event</button>
-                <button onclick="openCreateGroup()">New Group</button>
-                <button onclick="refreshKchat()">Refresh</button>
-                <button onclick="openContactSettings()">Contact Settings</button>
-            </div>
-        </section>
+            <button class="attachment-option"
+                    onclick="chooseDocument()">
+                <span>📄</span>Document
+            </button>
 
-        <!-- ACTIVE CHAT -->
+            <button class="attachment-option"
+                    onclick="shareContact()">
+                <span>👤</span>Contact
+            </button>
 
-        <section id="activeChat" class="hidden">
+            <button class="attachment-option"
+                    onclick="shareLocation()">
+                <span>📍</span>Location
+            </button>
 
-            <div class="active-chat-bar">
-                <button class="icon-button"
-                        type="button"
-                        onclick="closeActiveChat()">‹</button>
-
-                <div class="avatar" id="chatAvatar">K</div>
-
-                <div class="chat-person">
-                    <strong id="chatName">KCHAT</strong>
-                    <small id="chatStatus">Select a conversation</small>
-                </div>
-
-                <div class="chat-header-actions">
-                    <button class="icon-button"
-                            onclick="openCallPicker('voice')">☎</button>
-                    <button class="icon-button"
-                            onclick="openCallPicker('video')">▣</button>
-                    <button class="icon-button"
-                            onclick="toggleChatMenu()">⋮</button>
-                </div>
-            </div>
-
-            <div id="chatMenu" class="popup-menu hidden"
-                 style="top:65px; bottom:auto;">
-                <button onclick="viewCurrentContact()">View Contact</button>
-                <button onclick="searchChatMessages()">Search Messages</button>
-                <button onclick="toggleFavourite()">Favourite</button>
-                <button onclick="createGroupFromChat()">Create Group with Contact</button>
-                <button onclick="openChatSettings()">Chat Settings</button>
-                <button onclick="blockCurrentContact()">Block Contact</button>
-            </div>
-
-            <div id="messages"></div>
-
-            <div class="send-area">
-                <input id="messageInput"
-                       type="text"
-                       placeholder="Type a message..."
-                       onkeydown="if(event.key==='Enter') sendMessage()">
-
-                <button type="button" onclick="sendMessage()">➤</button>
-            </div>
-
-        </section>
-
-        <section id="welcomeScreen" class="welcome-screen">
-            <h2>Welcome to KCHAT</h2>
-            <p>Select a contact to start chatting.</p>
-        </section>
-
-    </main>
-</div>
-
-<!-- FULL SCREEN SETTINGS -->
-
-<div id="settingsPanel" class="settings-page hidden">
-    <div class="settings-header">
-        <button onclick="closeSettings()">‹</button>
-        <strong>Settings</strong>
-    </div>
-
-    <div class="settings-content">
-
-        <div class="settings-section" id="profileSettings">
-            <h3>ACCOUNT</h3>
-            <div class="settings-row" onclick="showMyProfile()">
-                <button>My Profile</button>
-                <span>›</span>
-            </div>
         </div>
 
-        <div class="settings-section" id="contactsSettings">
-            <h3>CONTACTS</h3>
-            <div id="settingsContacts"></div>
-        </div>
-
-        <div class="settings-section" id="groupsSettings">
-            <h3>GROUPS</h3>
-            <div id="settingsGroups"></div>
-        </div>
-
-        <div class="settings-section" id="blockedSettings">
-            <h3>BLOCKED CONTACTS</h3>
-            <div id="blockedContacts"></div>
-        </div>
-
-        <div class="settings-section">
-            <div class="settings-row">
-                <button onclick="markAllRead()">Mark all messages as read</button>
-            </div>
-            <div class="settings-row">
-                <button onclick="logout()">Logout</button>
-            </div>
-        </div>
-
-    </div>
-</div>
-
-<!-- NEW CHAT MODAL -->
-
-<div id="newChatOverlay" class="modal-overlay hidden">
-    <div class="modal-box">
-        <h3>Select Contact</h3>
-        <input id="contactSearch"
-               class="form-input"
-               placeholder="Search contacts"
-               oninput="renderContactPicker()">
-        <div id="contactPickerList"></div>
         <div class="modal-actions">
-            <button class="secondary-button"
-                    onclick="closeModal('newChatOverlay')">Close</button>
+            <button class="secondary-btn"
+                    onclick="closeModal('attachmentModal')">
+                Close
+            </button>
         </div>
+
     </div>
 </div>
 
-<!-- ADD CONTACT MODAL -->
+<!-- FILE INPUTS -->
 
-<div id="addContactOverlay" class="modal-overlay hidden">
-    <div class="modal-box">
-        <h3>Add Contact</h3>
-        <input id="addContactUsername"
-               class="form-input"
-               placeholder="KCHAT username">
-        <div class="modal-actions">
-            <button class="secondary-button"
-                    onclick="closeModal('addContactOverlay')">Cancel</button>
-            <button class="primary-button"
-                    onclick="addContact()">Add</button>
+<input id="cameraInput"
+       class="kchat-hidden-input"
+       type="file"
+       accept="image/*"
+       capture="environment"
+       onchange="handleSelectedMedia(event)">
+
+<input id="galleryInput"
+       class="kchat-hidden-input"
+       type="file"
+       accept="image/*,video/*"
+       multiple
+       onchange="handleSelectedMedia(event)">
+
+<input id="documentInput"
+       class="kchat-hidden-input"
+       type="file"
+       accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+       onchange="handleSelectedDocument(event)">
+
+<!-- PHOTO EDITOR -->
+
+<div id="photoEditorModal" class="modal hidden">
+
+    <div class="photo-editor">
+
+        <h3>Preview and edit</h3>
+
+        <img id="photoPreview"
+             class="photo-preview"
+             alt="Selected photo">
+
+        <div class="photo-tools">
+
+            <button onclick="cropPhoto()">Crop</button>
+
+            <button onclick="addSticker()">Sticker</button>
+
+            <button onclick="addPhotoText()">Aa</button>
+
+            <button onclick="drawOnPhoto()">Writing</button>
+
+            <button onclick="applyFilter()">Filters</button>
+
         </div>
+
+        <input id="photoCaption"
+               class="photo-caption"
+               placeholder="Add a caption...">
+
+        <div class="modal-actions">
+
+            <button class="secondary-btn"
+                    onclick="closeModal('photoEditorModal')">
+                Cancel
+            </button>
+
+            <button class="primary-btn"
+                    onclick="sendEditedPhoto()">
+                Send
+            </button>
+
+        </div>
+
     </div>
+
 </div>
 
-<!-- NEW GROUP MODAL -->
+<!-- MESSAGE OPTIONS -->
 
-<div id="newGroupOverlay" class="modal-overlay hidden">
-    <div class="modal-box">
-        <h3>Create Group</h3>
-        <input id="newGroupName"
-               class="form-input"
-               placeholder="Group name">
-        <div class="modal-actions">
-            <button class="secondary-button"
-                    onclick="closeModal('newGroupOverlay')">Cancel</button>
-            <button class="primary-button"
-                    onclick="createGroup()">Create</button>
-        </div>
+<div id="messageOptionsModal" class="modal hidden">
+
+    <div class="modal-content">
+
+        <h3>Message options</h3>
+
+        <div id="messageOptionsList"></div>
+
+        <button class="secondary-btn"
+                onclick="closeModal('messageOptionsModal')">
+            Close
+        </button>
+
     </div>
-</div>
 
-<!-- NEW EVENT MODAL -->
-
-<div id="newEventOverlay" class="modal-overlay hidden">
-    <div class="modal-box">
-        <h3>New Event</h3>
-        <input id="eventName"
-               class="form-input"
-               placeholder="Event name">
-        <input id="eventDate"
-               class="form-input"
-               type="datetime-local">
-        <textarea id="eventDescription"
-                  class="form-input"
-                  placeholder="Event details"></textarea>
-        <div class="modal-actions">
-            <button class="secondary-button"
-                    onclick="closeModal('newEventOverlay')">Cancel</button>
-            <button class="primary-button"
-                    onclick="createEvent()">Save Event</button>
-        </div>
-    </div>
 </div>
 
 <!-- CALL CONTACT PICKER -->
 
-<div id="callPickerOverlay" class="modal-overlay hidden">
-    <div class="modal-box">
-        <h3 id="callPickerTitle">Select Contact</h3>
+<div id="callPickerModal" class="modal hidden">
+
+    <div class="modal-content">
+
+        <h3 id="callPickerTitle">Choose contact</h3>
+
         <div id="callPickerList"></div>
-        <div class="modal-actions">
-            <button class="secondary-button"
-                    onclick="closeModal('callPickerOverlay')">Close</button>
-        </div>
+
+        <button class="secondary-btn"
+                onclick="closeModal('callPickerModal')">
+            Cancel
+        </button>
+
     </div>
+
 </div>
-
-<!-- PROFILE MODAL -->
-
-<div id="profileOverlay" class="modal-overlay hidden">
-    <div class="modal-box">
-        <h3 id="profileTitle">Profile</h3>
-        <div id="profileDetails"></div>
-        <div class="modal-actions">
-            <button class="secondary-button"
-                    onclick="closeModal('profileOverlay')">Close</button>
-        </div>
-    </div>
-</div>
-
-<!-- CHAT SEARCH MODAL -->
-
-<div id="searchMessagesOverlay" class="modal-overlay hidden">
-    <div class="modal-box">
-        <h3>Search Messages</h3>
-        <input id="messageSearchInput"
-               class="form-input"
-               placeholder="Search messages">
-        <div id="messageSearchResults"></div>
-        <div class="modal-actions">
-            <button class="secondary-button"
-                    onclick="closeModal('searchMessagesOverlay')">Close</button>
-            <button class="primary-button"
-                    onclick="runMessageSearch()">Search</button>
-        </div>
-    </div>
-</div>
-
 <script>
-    // ===============================
-// KCHAT APPLICATION
-// PART 2: AUTHENTICATION AND CHATS
-// ===============================
+/* =====================================
+   KCHAT - PART 2
+   AUTHENTICATION, CONTACTS AND MESSAGES
+===================================== */
 
 const API = "";
 
 let token = localStorage.getItem("kchat_token") || "";
 let currentUser = localStorage.getItem("kchat_username") || "";
-
-let myProfile = null;
+let currentChat = "";
+let contacts = [];
+let inbox = [];
 let socket = null;
 let groupSocket = null;
-let currentPeer = null;
-let currentGroup = null;
-let currentChatType = "private";
+let pendingChat = "";
+let selectedMedia = null;
+let selectedMessageId = null;
+let currentFilter = "all";
 
-let contacts = [];
-let groups = [];
-let inbox = [];
-let onlineUsers = [];
+/* ---------- GENERAL HELPERS ---------- */
 
-let activeFilter = "all";
-let currentSettings = {};
-let currentCallType = "voice";
-let currentProfileUsername = null;
-let currentProfilePicture = null;
-
-let reconnectTimer = null;
-let pendingPrivateChat = null;
-
-
-// ===============================
-// BASIC HELPERS
-// ===============================
-
-function byId(id) {
+function $(id) {
     return document.getElementById(id);
 }
 
-function show(id) {
-    byId(id)?.classList.remove("hidden");
-}
-
-function hide(id) {
-    byId(id)?.classList.add("hidden");
+function showMessage(message, isError = true) {
+    const box = $("authMessage");
+    if (box) {
+        box.textContent = message;
+        box.style.color = isError ? "#ff7777" : "#00a884";
+    }
 }
 
 function closeModal(id) {
-    hide(id);
+    $(id)?.classList.add("hidden");
 }
-
-function escapeHTML(value) {
-    return String(value ?? "").replace(/[&<>"']/g, char => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;"
-    })[char]);
-}
-
-function showAuthMessage(message) {
-    const element = byId("authMessage");
-    if (element) element.textContent = message;
-}
-
-function showLogin() {
-    show("loginForm");
-    hide("registerForm");
-    showAuthMessage("");
-}
-
-function showRegister() {
-    hide("loginForm");
-    show("registerForm");
-    showAuthMessage("");
-}
-
-function setButtonLoading(button, loading, normalText) {
-    if (!button) return;
-    button.disabled = loading;
-    button.textContent = loading ? "Please wait..." : normalText;
-}
-
-
-// ===============================
-// API CONNECTION
-// ===============================
 
 async function apiRequest(path, options = {}) {
     const headers = {
@@ -1009,10 +1107,10 @@ async function apiRequest(path, options = {}) {
     };
 
     if (token) {
-        headers.Authorization = `Bearer ${token}`;
+        headers.Authorization = "Bearer " + token;
     }
 
-    if (!(options.body instanceof FormData) && options.body !== undefined) {
+    if (options.body && !(options.body instanceof FormData)) {
         headers["Content-Type"] = "application/json";
     }
 
@@ -1021,298 +1119,188 @@ async function apiRequest(path, options = {}) {
         headers
     });
 
-    let data = {};
-
-    try {
-        data = await response.json();
-    } catch {
-        data = {};
-    }
+    const data = await response.json().catch(() => ({}));
 
     if (response.status === 401) {
-        handleExpiredSession();
-        throw new Error(data.detail || "Your session has expired. Please log in again.");
+        logout(false);
+        throw new Error("Your session has expired. Please log in again.");
     }
 
     if (!response.ok) {
-        throw new Error(data.detail || data.message || "Request failed.");
+        throw new Error(data.detail || data.message || "Request failed: " + response.status);
     }
 
     return data;
 }
 
-function saveSession(newToken, username) {
-    token = newToken;
-    currentUser = username;
+/* ---------- LOGIN AND REGISTRATION ---------- */
 
-    localStorage.setItem("kchat_token", token);
-    localStorage.setItem("kchat_username", currentUser);
+function showRegister() {
+    $("loginBox").classList.add("hidden");
+    $("registerBox").classList.remove("hidden");
+    showMessage("");
 }
 
-function clearSession() {
-    token = "";
-    currentUser = "";
-
-    localStorage.removeItem("kchat_token");
-    localStorage.removeItem("kchat_username");
+function showLogin() {
+    $("registerBox").classList.add("hidden");
+    $("loginBox").classList.remove("hidden");
+    showMessage("");
 }
-
-function handleExpiredSession() {
-    clearSession();
-
-    if (socket) {
-        socket.close();
-        socket = null;
-    }
-
-    if (groupSocket) {
-        groupSocket.close();
-        groupSocket = null;
-    }
-
-    hide("chatApp");
-    hide("settingsPanel");
-    show("authScreen");
-    showLogin();
-
-    showAuthMessage("Your session expired. Please log in again.");
-}
-
-
-// ===============================
-// LOGIN
-// ===============================
 
 async function login() {
-    const identity = byId("loginIdentity").value.trim();
-    const password = byId("loginPassword").value;
+    const identity = $("loginIdentity").value.trim();
+    const password = $("loginPassword").value;
 
     if (!identity || !password) {
-        showAuthMessage("Enter your username or phone number and password.");
+        showMessage("Enter your username or phone number and password.");
         return;
     }
 
-    const button = byId("loginForm").querySelector(".primary-button");
-    setButtonLoading(button, true, "Login");
+    showMessage("Logging in...", false);
 
     try {
         const data = await apiRequest("/api/login", {
             method: "POST",
             body: JSON.stringify({
-                identity: identity,
+                identity,
                 username: identity,
                 phone: identity,
-                password: password
+                password
             })
         });
 
-        const newToken = data.token || data.access_token;
-        const username = data.username || data.user?.username;
-
-        if (!newToken || !username) {
-            throw new Error("The server did not return a valid login session.");
-        }
-
-        saveSession(newToken, username);
-        byId("loginPassword").value = "";
-
+        saveSession(data);
         await enterKchat();
 
     } catch (error) {
-        showAuthMessage(error.message);
-    } finally {
-        setButtonLoading(button, false, "Login");
+        showMessage(error.message);
     }
 }
 
-
-// ===============================
-// REGISTRATION
-// ===============================
-
 async function register() {
-    const username = byId("registerUsername").value.trim();
-    const phone = byId("registerPhone").value.trim();
-    const password = byId("registerPassword").value;
-    const pictureFile = byId("registerPicture").files[0];
+    const username = $("registerUsername").value.trim();
+    const phone = $("registerPhone").value.trim();
+    const password = $("registerPassword").value;
 
     if (!username || !phone || !password) {
-        showAuthMessage("Enter a username, phone number and password.");
+        showMessage("Fill in all registration fields.");
         return;
     }
 
     if (password.length < 6) {
-        showAuthMessage("Your password must have at least 6 characters.");
+        showMessage("Password must have at least 6 characters.");
         return;
     }
 
-    const button = byId("registerForm").querySelector(".primary-button");
-    setButtonLoading(button, true, "Create Account");
+    showMessage("Creating your account...", false);
 
     try {
-        let data;
+        const data = await apiRequest("/api/register", {
+            method: "POST",
+            body: JSON.stringify({
+                username,
+                phone,
+                password
+            })
+        });
 
-        if (pictureFile) {
-            const formData = new FormData();
-            formData.append("username", username);
-            formData.append("phone", phone);
-            formData.append("password", password);
-            formData.append("profile_picture", pictureFile);
-
-            data = await apiRequest("/api/register", {
-                method: "POST",
-                body: formData
-            });
-        } else {
-            data = await apiRequest("/api/register", {
-                method: "POST",
-                body: JSON.stringify({
-                    username: username,
-                    phone: phone,
-                    password: password
-                })
-            });
-        }
-
-        const newToken = data.token || data.access_token;
-        const registeredUsername = data.username || data.user?.username || username;
-
-        if (newToken) {
-            saveSession(newToken, registeredUsername);
-            byId("registerPassword").value = "";
+        if (data.token || data.access_token) {
+            saveSession(data);
             await enterKchat();
         } else {
+            showMessage("Account created. Please log in.", false);
             showLogin();
-            byId("loginIdentity").value = phone;
-            showAuthMessage("Account created. Please log in once.");
+            $("loginIdentity").value = username;
         }
 
     } catch (error) {
-        showAuthMessage(error.message);
-    } finally {
-        setButtonLoading(button, false, "Create Account");
+        showMessage(error.message);
     }
 }
 
+function saveSession(data) {
+    token = data.token || data.access_token || "";
+    currentUser =
+        data.username ||
+        data.user?.username ||
+        $("loginIdentity")?.value.trim() ||
+        $("registerUsername")?.value.trim() ||
+        "";
 
-// ===============================
-// RESTORE SAVED LOGIN
-// ===============================
+    if (token) {
+        localStorage.setItem("kchat_token", token);
+    }
+
+    if (currentUser) {
+        localStorage.setItem("kchat_username", currentUser);
+    }
+}
 
 async function restoreSession() {
     if (!token || !currentUser) {
-        show("authScreen");
-        showLogin();
+        $("authScreen").classList.remove("hidden");
+        $("chatApp").classList.add("hidden");
         return;
     }
 
     try {
         await enterKchat();
     } catch (error) {
-        console.error("Session restoration failed:", error);
+        console.error("Session restore failed:", error);
     }
 }
-
-window.addEventListener("load", restoreSession);
-
-
-// ===============================
-// ENTER KCHAT
-// ===============================
 
 async function enterKchat() {
-    if (!token || !currentUser) {
-        show("authScreen");
-        return;
-    }
+    $("authScreen").classList.add("hidden");
+    $("chatApp").classList.remove("hidden");
+    $("settingsPanel").classList.add("hidden");
 
-    hide("authScreen");
-    show("chatApp");
-    hide("settingsPanel");
-
-    byId("welcomeScreen").classList.remove("hidden");
-    hide("activeChat");
+    $("welcomeScreen").classList.remove("hidden");
+    $("chatScreen").classList.add("hidden");
 
     try {
-        await loadMyProfile();
         await Promise.all([
             loadContacts(),
-            loadGroups(),
             loadInbox()
         ]);
-
-        connectGeneralSocket();
-
     } catch (error) {
-        console.error("Could not load KCHAT:", error);
-        throw error;
+        console.error(error);
     }
+
+    connectGeneralSocket();
 }
 
-
-// ===============================
-// PROFILE
-// ===============================
-
-async function loadMyProfile() {
-    myProfile = await apiRequest(
-        "/api/profile/" + encodeURIComponent(currentUser)
-    );
-
-    return myProfile;
-}
-
-
-// ===============================
-// CONTACTS
-// ===============================
+/* ---------- CONTACTS ---------- */
 
 async function loadContacts() {
-    const data = await apiRequest("/api/contacts");
-    contacts = data.contacts || [];
+    try {
+        const data = await apiRequest("/api/contacts");
 
-    renderContactPicker();
-    renderSettingsContacts();
+        contacts = Array.isArray(data.contacts)
+            ? data.contacts
+            : [];
 
-    return contacts;
+        renderInbox();
+
+    } catch (error) {
+        console.error("Contacts:", error.message);
+    }
 }
 
 async function addContact() {
-    const username = byId("addContactUsername").value.trim();
+    const username = prompt("Enter the KCHAT username:");
 
-    if (!username) {
-        alert("Enter a KCHAT username.");
-        return;
-    }
+    if (!username || !username.trim()) return;
 
     try {
         await apiRequest("/api/contacts", {
             method: "POST",
-            body: JSON.stringify({ username })
+            body: JSON.stringify({
+                username: username.trim()
+            })
         });
 
-        byId("addContactUsername").value = "";
-        closeModal("addContactOverlay");
-
-        await loadContacts();
-        await loadInbox();
-
         alert("Contact added.");
-
-    } catch (error) {
-        alert(error.message);
-    }
-}
-
-async function removeContact(username) {
-    if (!confirm("Remove " + username + " from your contacts?")) return;
-
-    try {
-        await apiRequest(
-            "/api/contacts/" + encodeURIComponent(username),
-            { method: "DELETE" }
-        );
-
         await loadContacts();
         await loadInbox();
 
@@ -1322,140 +1310,298 @@ async function removeContact(username) {
 }
 
 function openAddContact() {
-    hide("newChatMenu");
-    show("addContactOverlay");
+    toggleNewChatMenu(false);
+    addContact();
 }
 
-function openNewChat() {
-    hide("newChatMenu");
-    show("newChatOverlay");
-    renderContactPicker();
-}
+function openContactPicker() {
+    toggleNewChatMenu(false);
 
-function renderContactPicker() {
-    const list = byId("contactPickerList");
-    if (!list) return;
-
-    const query = (byId("contactSearch")?.value || "").toLowerCase();
-
-    const filtered = contacts.filter(name =>
-        name.toLowerCase().includes(query)
-    );
-
-    if (!filtered.length) {
-        list.innerHTML = "<p>No contacts found.</p>";
+    if (!contacts.length) {
+        alert("Your contacts list is empty.");
         return;
     }
 
-    list.innerHTML = filtered.map(name => `
-        <div class="contact-row"
-             onclick="openPrivateChat('${escapeHTML(name).replace(/'/g, "\\'")}')">
-            <div class="avatar">${escapeHTML(name.charAt(0).toUpperCase())}</div>
-            <div class="contact-row-name">${escapeHTML(name)}</div>
-        </div>
-    `).join("");
+    const username = prompt(
+        "Enter the username of the contact you want to message:\n\n" +
+        contacts.join("\n")
+    );
+
+    if (username) {
+        openPrivateChat(username.trim());
+    }
 }
 
-
-// ===============================
-// INBOX
-// ===============================
+/* ---------- INBOX ---------- */
 
 async function loadInbox() {
-    const data = await apiRequest("/api/inbox");
-    inbox = data.inbox || [];
-    renderInbox();
+    try {
+        const data = await apiRequest("/api/inbox");
 
-    return inbox;
+        inbox = Array.isArray(data.inbox)
+            ? data.inbox
+            : [];
+
+        renderInbox();
+
+    } catch (error) {
+        console.error("Inbox:", error.message);
+    }
 }
 
-function setFilter(filter, button) {
-    activeFilter = filter;
+function renderInbox() {
+    const list = $("inboxList");
+    if (!list) return;
+
+    list.innerHTML = "";
+
+    let items = inbox.slice();
+
+    if (currentFilter === "unread") {
+        items = items.filter(item => Number(item.unread_count) > 0);
+    }
+
+    if (currentFilter === "favorites") {
+        items = items.filter(item => item.favorite);
+    }
+
+    if (currentFilter === "groups") {
+        items = items.filter(item => item.group_id || item.type === "group");
+    }
+
+    const search = $("inboxSearch")?.value.toLowerCase() || "";
+
+    if (search) {
+        items = items.filter(item =>
+            (item.username || item.name || "")
+                .toLowerCase()
+                .includes(search)
+        );
+    }
+
+    if (!items.length) {
+        list.innerHTML =
+            '<p style="padding:20px;color:#a8b0bb;">No conversations found.</p>';
+        return;
+    }
+
+    items.forEach(item => {
+        const username = item.username || item.name || "Unknown";
+        const row = document.createElement("div");
+
+        row.className = "inbox-item";
+        row.onclick = () => {
+            if (item.group_id) {
+                openGroup(item.group_id, username);
+            } else {
+                openPrivateChat(username);
+            }
+        };
+
+        const avatar = document.createElement("div");
+        avatar.className = "avatar";
+
+        if (item.profile_picture) {
+            const img = document.createElement("img");
+            img.src = item.profile_picture;
+            img.alt = "";
+            avatar.appendChild(img);
+        } else {
+            avatar.textContent = "👤";
+        }
+
+        const details = document.createElement("div");
+        details.className = "inbox-details";
+
+        const name = document.createElement("div");
+        name.className = "inbox-name";
+        name.textContent = username;
+
+        const preview = document.createElement("div");
+        preview.className = "inbox-preview";
+        preview.textContent = item.last_message || "Start a conversation";
+
+        details.append(name, preview);
+        row.append(avatar, details);
+
+        if (Number(item.unread_count) > 0) {
+            const unread = document.createElement("span");
+            unread.textContent = item.unread_count;
+            unread.style.color = "#00a884";
+            row.appendChild(unread);
+        }
+
+        list.appendChild(row);
+    });
+}
+
+function filterInbox() {
+    renderInbox();
+}
+
+function filterChats(filter, button) {
+    currentFilter = filter;
 
     document.querySelectorAll(".filter-button").forEach(item => {
         item.classList.remove("active");
     });
 
-    button.classList.add("active");
+    button?.classList.add("active");
     renderInbox();
 }
 
-function renderInbox() {
-    const list = byId("inboxList");
-    if (!list) return;
+/* ---------- PRIVATE CHAT ---------- */
 
-    const query = (byId("inboxSearch")?.value || "").toLowerCase();
+async function openPrivateChat(username) {
+    if (!username) return;
 
-    let filtered = inbox.filter(item => {
-        const name = (item.username || item.name || "").toLowerCase();
+    currentChat = username;
 
-        if (!name.includes(query)) return false;
+    $("chatApp").classList.add("chat-open");
+    $("welcomeScreen").classList.add("hidden");
+    $("chatScreen").classList.remove("hidden");
 
-        if (activeFilter === "unread") {
-            return Number(item.unread_count || 0) > 0;
-        }
+    $("chatUsername").textContent = username;
+    $("chatUserStatus").textContent = "Connecting...";
+    $("messagesArea").innerHTML = "";
 
-        if (activeFilter === "favorites") {
-            return item.pinned === true || item.favorite === true;
-        }
+    closeModal("callPickerModal");
 
-        if (activeFilter === "groups") {
-            return item.type === "group" || item.group_id;
-        }
-
-        return true;
-    });
-
-    if (!filtered.length) {
-        list.innerHTML = '<p style="padding:18px;color:#aab3c2;">No conversations yet.</p>';
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+        pendingChat = username;
+        connectGeneralSocket();
         return;
     }
 
-    list.innerHTML = filtered.map(item => {
-        const name = item.username || item.name || "Chat";
-        const unread = Number(item.unread_count || 0);
+    socket.send(JSON.stringify({
+        type: "open_private",
+        to: username
+    }));
 
-        return `
-            <div class="inbox-item"
-                 onclick="${item.group_id
-                    ? `openGroup('${String(item.group_id).replace(/'/g, "")}')`
-                    : `openPrivateChat('${escapeHTML(name).replace(/'/g, "\\'")}')`}">
-                <div class="avatar">${escapeHTML(name.charAt(0).toUpperCase())}</div>
-                <div class="inbox-details">
-                    <strong>${escapeHTML(name)}</strong>
-                    <small>${escapeHTML(item.last_message || "Start chatting")}</small>
-                </div>
-                ${unread ? `<strong>${unread}</strong>` : ""}
-            </div>
-        `;
-    }).join("");
+    await markChatRead();
 }
 
+function backToInbox() {
+    $("chatApp").classList.remove("chat-open");
+    currentChat = "";
 
-// ===============================
-// GENERAL WEBSOCKET
-// ===============================
+    $("chatScreen").classList.add("hidden");
+    $("welcomeScreen").classList.remove("hidden");
+}
+
+async function markChatRead() {
+    if (!currentChat) return;
+
+    try {
+        await apiRequest("/api/messages/read-all", {
+            method: "POST",
+            body: JSON.stringify({})
+        });
+    } catch (error) {
+        console.error("Read status:", error.message);
+    }
+}
+
+/* ---------- MESSAGE DISPLAY ---------- */
+
+function addMessage(message, outgoing = false) {
+    const area = $("messagesArea");
+    if (!area) return;
+
+    const bubble = document.createElement("div");
+    bubble.className = "message " +
+        (outgoing ? "outgoing" : "incoming");
+
+    const text = document.createElement("span");
+    text.textContent =
+        typeof message === "string"
+            ? message
+            : message.text || message.message || "";
+
+    const time = document.createElement("span");
+    time.className = "message-time";
+
+    const date = message.time
+        ? new Date(message.time)
+        : new Date();
+
+    time.textContent = date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+
+    const menu = document.createElement("button");
+    menu.className = "message-menu-button";
+    menu.textContent = "⋮";
+    menu.title = "Message options";
+
+    menu.onclick = () => {
+        selectedMessageId = message.id || null;
+        openMessageOptions(message);
+    };
+
+    bubble.append(menu, text, time);
+    area.appendChild(bubble);
+
+    area.scrollTop = area.scrollHeight;
+}
+
+/* ---------- SEND TEXT MESSAGE ---------- */
+
+function sendKchatMessage() {
+    const input = $("kchatMessageInput");
+    const text = input.value.trim();
+
+    if (!text) return;
+
+    if (!currentChat) {
+        alert("Open a contact first.");
+        return;
+    }
+
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+        alert("Connecting. Please try again in a moment.");
+        return;
+    }
+
+    socket.send(JSON.stringify({
+        type: "private",
+        to: currentChat,
+        text: text
+    }));
+
+    addMessage(text, true);
+    input.value = "";
+}
+
+/* ---------- GENERAL WEBSOCKET ---------- */
 
 function connectGeneralSocket() {
     if (!token) return;
 
-    if (socket && (
-        socket.readyState === WebSocket.OPEN ||
-        socket.readyState === WebSocket.CONNECTING
-    )) {
+    if (socket &&
+        (socket.readyState === WebSocket.OPEN ||
+         socket.readyState === WebSocket.CONNECTING)) {
         return;
     }
 
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    socket = new WebSocket(
-        `${protocol}//${location.host}/ws/general?token=${encodeURIComponent(token)}`
-    );
+    const url = protocol + "//" + location.host +
+        "/ws/general?token=" + encodeURIComponent(token);
+
+    socket = new WebSocket(url);
 
     socket.onopen = () => {
-        if (pendingPrivateChat) {
-            const username = pendingPrivateChat;
-            pendingPrivateChat = null;
-            openPrivateChat(username);
+        console.log("KCHAT connected.");
+
+        if (pendingChat) {
+            const username = pendingChat;
+            pendingChat = "";
+
+            socket.send(JSON.stringify({
+                type: "open_private",
+                to: username
+            }));
         }
     };
 
@@ -1472,918 +1618,1003 @@ function connectGeneralSocket() {
     };
 
     socket.onclose = () => {
-        if (token) {
-            clearTimeout(reconnectTimer);
-            reconnectTimer = setTimeout(connectGeneralSocket, 3000);
-        }
+        console.log("KCHAT connection closed.");
     };
 
     socket.onerror = error => {
-        console.error("KCHAT connection error:", error);
+        console.error("KCHAT socket error:", error);
     };
 }
 
 function handleSocketMessage(data) {
-    if (data.type === "users") {
-        onlineUsers = data.users || [];
-        updateChatStatus();
-        return;
-    }
-
-    if (data.type === "system") {
-        loadInbox().catch(console.error);
-        return;
-    }
-
     if (data.type === "private_history") {
-        if (
-            currentChatType === "private" &&
-            currentPeer &&
-            data.with?.toLowerCase() === currentPeer.toLowerCase()
-        ) {
-            renderMessages(data.history || []);
-        }
+        $("messagesArea").innerHTML = "";
 
-        loadInbox().catch(console.error);
+        const messages = data.messages || data.history || [];
+
+        messages.forEach(message => {
+            const outgoing =
+                message.sender === currentUser ||
+                message.from === currentUser;
+
+            addMessage(message, outgoing);
+        });
+
         return;
     }
 
     if (data.type === "private") {
-        loadInbox().catch(console.error);
+        const sender = data.from || data.sender || "";
 
-        if (
-            currentChatType === "private" &&
-            currentPeer &&
-            data.from?.toLowerCase() === currentPeer.toLowerCase()
-        ) {
-            appendMessage(data, false);
+        if (sender.toLowerCase() === currentChat.toLowerCase()) {
+            addMessage(data, false);
         }
+
+        loadInbox();
         return;
     }
 
     if (data.type === "private_status") {
-        updateMessageStatus(data.id, data.status);
+        console.log("Message status:", data);
         return;
     }
 
-    if (data.type === "welcome") {
-        onlineUsers = data.users || [];
-        updateChatStatus();
+    if (data.type === "users") {
+        console.log("Online users:", data.users);
+        return;
+    }
+
+    if (data.type === "system") {
+        console.log(data.message || data.text);
+        return;
+    }
+
+    console.log("KCHAT event:", data);
+}
+
+/* ---------- NEW CHAT MENU ---------- */
+
+function toggleNewChatMenu(force) {
+    const menu = $("newChatMenu");
+
+    if (typeof force === "boolean") {
+        menu.classList.toggle("hidden", !force);
+    } else {
+        menu.classList.toggle("hidden");
     }
 }
 
+function openMainMenu() {
+    const choice = prompt(
+        "KCHAT MENU\n\n" +
+        "1. Settings\n" +
+        "2. My profile\n" +
+        "3. Refresh chats\n" +
+        "4. Log out"
+    );
 
-// ===============================
-// PRIVATE CHAT
-// ===============================
+    if (choice === "1") openSettings();
+    if (choice === "2") showMyProfile();
+    if (choice === "3") {
+        loadContacts();
+        loadInbox();
+    }
+    if (choice === "4") logout();
+}
 
-function openPrivateChat(username) {
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-        pendingPrivateChat = username;
-        connectGeneralSocket();
+/* ---------- ATTACHMENTS ---------- */
+
+function openAttachments() {
+    if (!currentChat) {
+        alert("Open a conversation first.");
         return;
     }
 
-    currentPeer = username;
-    currentGroup = null;
-    currentChatType = "private";
+    $("attachmentModal").classList.remove("hidden");
+}
 
-    hide("welcomeScreen");
-    show("activeChat");
-    closeModal("newChatOverlay");
+function openCamera() {
+    if (!currentChat) {
+        alert("Open a conversation first.");
+        return;
+    }
 
-    byId("chatName").textContent = username;
-    byId("chatAvatar").textContent = username.charAt(0).toUpperCase();
-    byId("messages").innerHTML = "";
+    $("cameraInput").click();
+}
 
-    updateChatStatus();
+function chooseGallery() {
+    closeModal("attachmentModal");
+    $("galleryInput").click();
+}
+
+function chooseDocument() {
+    closeModal("attachmentModal");
+    $("documentInput").click();
+}
+
+function handleSelectedMedia(event) {
+    const files = Array.from(event.target.files || []);
+
+    if (!files.length) return;
+
+    const file = files[0];
+
+    if (file.type.startsWith("image/")) {
+        selectedMedia = file;
+
+        $("photoPreview").src = URL.createObjectURL(file);
+        $("photoEditorModal").classList.remove("hidden");
+
+    } else if (file.type.startsWith("video/")) {
+        selectedMedia = file;
+        alert("Video selected. Video preview and sending will be connected in Part 3.");
+    }
+
+    event.target.value = "";
+}
+
+function handleSelectedDocument(event) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    alert(
+        "Document selected: " + file.name +
+        "\nDocument upload will be connected in Part 3."
+    );
+
+    event.target.value = "";
+}
+
+/* ---------- CONTACT AND LOCATION SHARING ---------- */
+
+function shareContact() {
+    closeModal("attachmentModal");
+
+    const username = prompt(
+        "Enter the KCHAT contact username to share:"
+    );
+
+    if (!username) return;
+
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+        alert("Connection is not ready.");
+        return;
+    }
 
     socket.send(JSON.stringify({
-        type: "open_private",
-        to: username
+        type: "private",
+        to: currentChat,
+        text: "Contact: " + username
     }));
-
-    if (window.innerWidth <= 650) {
-        hide("inboxScreen");
-    }
 }
 
-function updateChatStatus() {
-    if (!currentPeer) return;
+function shareLocation() {
+    closeModal("attachmentModal");
 
-    const online = onlineUsers.some(user =>
-        String(user).toLowerCase() === currentPeer.toLowerCase()
+    if (!navigator.geolocation) {
+        alert("Location sharing is not supported by this browser.");
+        return;
+    }
+
+    if (!confirm("Allow KCHAT to access your location?")) return;
+
+    navigator.geolocation.getCurrentPosition(
+        position => {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
+            const locationText =
+                "My location: https://maps.google.com/?q=" +
+                latitude + "," + longitude;
+
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: "private",
+                    to: currentChat,
+                    text: locationText
+                }));
+            } else {
+                alert("Connection is not ready.");
+            }
+        },
+        () => alert("Could not access your location.")
     );
-
-    byId("chatStatus").textContent = online ? "online" : "offline";
 }
 
-function closeActiveChat() {
-    hide("activeChat");
-    show("inboxScreen");
-    show("welcomeScreen");
+/* ---------- INVITATIONS ---------- */
 
-    currentPeer = null;
-    currentGroup = null;
-}
+function inviteKchatMembers() {
+    toggleNewChatMenu(false);
 
-
-// ===============================
-// SEND MESSAGE
-// ===============================
-
-function sendMessage() {
-    const input = byId("messageInput");
-    const text = input.value.trim();
-
-    if (!text) return;
-
-    if (currentChatType === "private") {
-        if (!currentPeer) {
-            alert("Select a contact first.");
-            return;
-        }
-
-        if (!socket || socket.readyState !== WebSocket.OPEN) {
-            alert("Connecting. Please try again.");
-            connectGeneralSocket();
-            return;
-        }
-
-        socket.send(JSON.stringify({
-            type: "private",
-            to: currentPeer,
-            text: text
-        }));
-
-    } else if (currentChatType === "group") {
-        if (!groupSocket || groupSocket.readyState !== WebSocket.OPEN) {
-            alert("Group connection is not ready.");
-            return;
-        }
-
-        groupSocket.send(JSON.stringify({
-            type: "chat",
-            text: text
-        }));
-    }
-
-    input.value = "";
-}
-
-
-// ===============================
-// MESSAGE DISPLAY
-// ===============================
-
-function renderMessages(messages) {
-    const container = byId("messages");
-    container.innerHTML = "";
-
-    (messages || []).forEach(message => {
-        const mine =
-            String(message.from || message.sender || "").toLowerCase() ===
-            currentUser.toLowerCase();
-
-        appendMessage(message, mine);
-    });
-
-    container.scrollTop = container.scrollHeight;
-}
-
-function appendMessage(message, mine) {
-    const container = byId("messages");
-    if (!container) return;
-
-    const bubble = document.createElement("div");
-    bubble.className = "message" + (mine ? " mine" : "");
-
-    if (message.id !== undefined) {
-        bubble.dataset.messageId = message.id;
-    }
-
-    const text = document.createElement("div");
-    text.textContent = message.text || "";
-    bubble.appendChild(text);
-
-    const time = document.createElement("div");
-    time.className = "message-time";
-
-    const timestamp = message.created_at
-        ? new Date(message.created_at)
-        : new Date();
-
-    const timeText = isNaN(timestamp.getTime())
-        ? ""
-        : timestamp.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit"
-        });
-
-    time.textContent = timeText;
-
-    if (mine) {
-        const status = document.createElement("span");
-        status.className = "status-dot";
-        status.textContent =
-            message.status === "delivered" || message.status === "read"
-                ? "••"
-                : "•";
-
-        time.appendChild(status);
-    }
-
-    bubble.appendChild(time);
-    container.appendChild(bubble);
-    container.scrollTop = container.scrollHeight;
-}
-
-function updateMessageStatus(id, status) {
-    const message = document.querySelector(
-        `[data-message-id="${CSS.escape(String(id))}"]`
-    );
-
-    if (!message) return;
-
-    const dot = message.querySelector(".status-dot");
-    if (dot) {
-        dot.textContent =
-            status === "delivered" || status === "read"
-                ? "••"
-                : "•";
-    }
-}
-
-
-// ===============================
-// NEW CHAT MENU
-// ===============================
-
-function toggleNewChatMenu() {
-    byId("newChatMenu").classList.toggle("hidden");
-}
-
-function toggleMainMenu() {
-    byId("mainMenu").classList.toggle("hidden");
-}
-
-function toggleChatMenu() {
-    byId("chatMenu").classList.toggle("hidden");
-}
-
-function refreshKchat() {
-    hide("newChatMenu");
-
-    Promise.all([
-        loadContacts(),
-        loadGroups(),
-        loadInbox()
-    ]).catch(error => alert(error.message));
-}
-
-function inviteUser() {
-    hide("newChatMenu");
-
-    const inviteLink = location.origin;
+    const link = location.origin;
 
     if (navigator.share) {
         navigator.share({
-            title: "Join me on KCHAT",
-            text: "Join me on KCHAT and let's chat!",
-            url: inviteLink
+            title: "Join KCHAT",
+            text: "Connect with me on KCHAT.",
+            url: link
         }).catch(() => {});
-    } else if (navigator.clipboard) {
-        navigator.clipboard.writeText(inviteLink)
-            .then(() => alert("KCHAT invitation link copied."))
-            .catch(() => alert("Share this link: " + inviteLink));
     } else {
-        prompt("Copy this KCHAT invitation link:", inviteLink);
+        prompt("Copy this KCHAT link:", link);
     }
 }
-    // ===============================
-// KCHAT APPLICATION
-// PART 3: GROUPS, PROFILES AND SETTINGS
-// ===============================
 
-
-// ===============================
-// GROUPS
-// ===============================
-
-async function loadGroups() {
-    const data = await apiRequest("/api/groups");
-    groups = data.groups || [];
-
-    renderSettingsGroups();
-
-    return groups;
+function inviteOutsideMembers() {
+    inviteKchatMembers();
 }
 
-function openCreateGroup() {
-    hide("newChatMenu");
-    show("newGroupOverlay");
+/* ---------- INITIAL START ---------- */
+
+window.addEventListener("load", () => {
+    restoreSession();
+});
+    <script>
+/* KCHAT - PART 3 */
+
+/* ==============================
+   MAIN SCREEN CALL CONTACT PICKER
+============================== */
+
+function openMainCallPicker(type) {
+    pendingChat = type;
+
+    const modal = $("callPickerModal");
+    if (!modal) return;
+
+    modal.innerHTML = `
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Select contact to ${type === "video" ? "video call" : "call"}</h3>
+                <button onclick="closeModal('callPickerModal')">✕</button>
+            </div>
+            <div id="callPickerList"></div>
+        </div>
+    `;
+
+    modal.classList.add("show");
+
+    const list = $("callPickerList");
+
+    if (!contacts.length) {
+        list.innerHTML = "<p>No contacts available.</p>";
+        return;
+    }
+
+    list.innerHTML = contacts.map(name => `
+        <button class="contact-picker-item"
+            onclick="callSelectedContact('${String(name).replace(/'/g, "\\'")}')">
+            <span class="avatar">${name.charAt(0).toUpperCase()}</span>
+            <span>${name}</span>
+        </button>
+    `).join("");
 }
 
-async function createGroup() {
-    const name = byId("newGroupName").value.trim();
+function callSelectedContact(username) {
+    closeModal("callPickerModal");
 
-    if (!name) {
-        alert("Enter a group name.");
+    currentChat = username;
+
+    if (pendingChat === "video") {
+        startVideoCall();
+    } else {
+        startVoiceCall();
+    }
+}
+
+/* ==============================
+   INDIVIDUAL CHAT CALL BUTTONS
+============================== */
+
+function startVoiceCall() {
+    if (!currentChat) {
+        showMessage("Open a chat first.");
+        return;
+    }
+
+    alert(
+        "Voice calling " + currentChat +
+        "\n\nThe call screen is ready for integration, but live calls require WebRTC and a calling/signalling backend."
+    );
+}
+
+function startVideoCall() {
+    if (!currentChat) {
+        showMessage("Open a chat first.");
+        return;
+    }
+
+    alert(
+        "Video calling " + currentChat +
+        "\n\nLive video calls require WebRTC and a calling/signalling backend."
+    );
+}
+
+/* ==============================
+   CHAT MENU
+============================== */
+
+function openChatMenu() {
+    if (!currentChat) return;
+
+    const options = [
+        "View profile",
+        "Search in chat",
+        "Add to favourites",
+        "Mute notifications",
+        "Clear chat",
+        "Block contact",
+        "Report contact"
+    ];
+
+    const choice = prompt(
+        "CHAT OPTIONS\n\n" +
+        options.map((item, index) => `${index + 1}. ${item}`).join("\n") +
+        "\n\nEnter option number:"
+    );
+
+    switch (choice) {
+        case "1":
+            showProfile(currentChat);
+            break;
+        case "2":
+            searchInChat();
+            break;
+        case "3":
+            updateChatSetting("pinned", true);
+            break;
+        case "4":
+            updateChatSetting("muted", true);
+            break;
+        case "5":
+            clearChat();
+            break;
+        case "6":
+            blockContact();
+            break;
+        case "7":
+            reportContact();
+            break;
+    }
+}
+
+/* ==============================
+   MESSAGE OPTIONS / VIEW ONCE
+============================== */
+
+function openMessageOptions(messageId) {
+    selectedMessageId = messageId;
+
+    const choice = prompt(
+        "MESSAGE OPTIONS\n\n" +
+        "1. View once\n" +
+        "2. Copy message\n" +
+        "3. Delete message\n" +
+        "4. Cancel\n\n" +
+        "Enter option:"
+    );
+
+    if (choice === "1") {
+        alert(
+            "View Once is intended for photos and videos.\n\n" +
+            "Your current backend does not yet enforce one-time media viewing."
+        );
+    }
+
+    if (choice === "2") {
+        const message = document.getElementById(messageId);
+        if (message) {
+            navigator.clipboard.writeText(message.innerText)
+                .then(() => showMessage("Message copied."));
+        }
+    }
+
+    if (choice === "3") {
+        const message = document.getElementById(messageId);
+        if (message && confirm("Delete this message from this screen?")) {
+            message.remove();
+        }
+    }
+}
+
+/* ==============================
+   PHOTO EDITOR
+============================== */
+
+let photoCanvas = null;
+let photoContext = null;
+let photoImage = null;
+let photoFilter = "none";
+
+function handleSelectedMedia(file) {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+        showMessage("Photo editing currently supports images.");
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+        photoImage = new Image();
+
+        photoImage.onload = function() {
+            const preview = $("photoPreview");
+
+            if (!preview) return;
+
+            preview.innerHTML = `
+                <canvas id="photoCanvas"
+                    style="max-width:100%;max-height:55vh;border-radius:12px;">
+                </canvas>
+            `;
+
+            photoCanvas = $("photoCanvas");
+            photoContext = photoCanvas.getContext("2d");
+
+            const scale = Math.min(
+                900 / photoImage.width,
+                700 / photoImage.height,
+                1
+            );
+
+            photoCanvas.width = Math.round(photoImage.width * scale);
+            photoCanvas.height = Math.round(photoImage.height * scale);
+
+            photoContext.drawImage(
+                photoImage,
+                0,
+                0,
+                photoCanvas.width,
+                photoCanvas.height
+            );
+
+            $("photoEditorModal").classList.add("show");
+        };
+
+        photoImage.src = event.target.result;
+    };
+
+    reader.readAsDataURL(file);
+}
+
+function cropPhoto() {
+    if (!photoCanvas || !photoContext) return;
+
+    const width = photoCanvas.width;
+    const height = photoCanvas.height;
+
+    const cropWidth = Math.round(width * 0.8);
+    const cropHeight = Math.round(height * 0.8);
+
+    const x = Math.round((width - cropWidth) / 2);
+    const y = Math.round((height - cropHeight) / 2);
+
+    const cropped = document.createElement("canvas");
+    cropped.width = cropWidth;
+    cropped.height = cropHeight;
+
+    cropped.getContext("2d").drawImage(
+        photoCanvas,
+        x, y, cropWidth, cropHeight,
+        0, 0, cropWidth, cropHeight
+    );
+
+    photoCanvas.width = cropWidth;
+    photoCanvas.height = cropHeight;
+
+    photoContext.drawImage(cropped, 0, 0);
+
+    showMessage("Photo cropped.");
+}
+
+function addSticker() {
+    if (!photoContext || !photoCanvas) return;
+
+    const sticker = prompt(
+        "Choose a sticker:\n" +
+        "1. ❤️\n" +
+        "2. 😂\n" +
+        "3. 🔥\n" +
+        "4. 👍\n" +
+        "5. 😍"
+    );
+
+    const stickers = {
+        "1": "❤️",
+        "2": "😂",
+        "3": "🔥",
+        "4": "👍",
+        "5": "😍"
+    };
+
+    if (!stickers[sticker]) return;
+
+    photoContext.font = "48px Arial";
+    photoContext.fillText(
+        stickers[sticker],
+        photoCanvas.width / 2 - 20,
+        photoCanvas.height / 2
+    );
+}
+
+function addPhotoText() {
+    if (!photoContext || !photoCanvas) return;
+
+    const text = prompt("Enter text to add to your photo:");
+    if (!text) return;
+
+    photoContext.font = "bold 30px Arial";
+    photoContext.textAlign = "center";
+    photoContext.lineWidth = 3;
+    photoContext.strokeStyle = "black";
+    photoContext.fillStyle = "white";
+
+    photoContext.strokeText(
+        text,
+        photoCanvas.width / 2,
+        photoCanvas.height / 2
+    );
+
+    photoContext.fillText(
+        text,
+        photoCanvas.width / 2,
+        photoCanvas.height / 2
+    );
+}
+
+function drawOnPhoto() {
+    if (!photoCanvas || !photoContext) return;
+
+    const drawing = prompt(
+        "Drawing mode:\n" +
+        "1. Add a red line\n" +
+        "2. Add a blue line\n" +
+        "3. Add a green line"
+    );
+
+    const colors = {
+        "1": "red",
+        "2": "blue",
+        "3": "green"
+    };
+
+    if (!colors[drawing]) return;
+
+    photoContext.beginPath();
+    photoContext.moveTo(
+        photoCanvas.width * 0.2,
+        photoCanvas.height * 0.5
+    );
+    photoContext.lineTo(
+        photoCanvas.width * 0.8,
+        photoCanvas.height * 0.5
+    );
+    photoContext.strokeStyle = colors[drawing];
+    photoContext.lineWidth = 8;
+    photoContext.stroke();
+}
+
+function applyFilter() {
+    if (!photoCanvas || !photoContext) return;
+
+    const filter = prompt(
+        "PHOTO FILTERS\n\n" +
+        "1. Normal\n" +
+        "2. Black and white\n" +
+        "3. Vintage\n" +
+        "4. Bright\n\n" +
+        "Choose filter:"
+    );
+
+    const filters = {
+        "1": "none",
+        "2": "grayscale(100%)",
+        "3": "sepia(80%)",
+        "4": "brightness(1.25)"
+    };
+
+    if (!filters[filter]) return;
+
+    const temporary = document.createElement("canvas");
+    temporary.width = photoCanvas.width;
+    temporary.height = photoCanvas.height;
+
+    const tempContext = temporary.getContext("2d");
+    tempContext.filter = filters[filter];
+
+    tempContext.drawImage(
+        photoCanvas,
+        0,
+        0
+    );
+
+    photoContext.clearRect(
+        0,
+        0,
+        photoCanvas.width,
+        photoCanvas.height
+    );
+
+    photoContext.drawImage(temporary, 0, 0);
+
+    showMessage("Filter applied.");
+}
+
+/* ==============================
+   SEND EDITED PHOTO
+============================== */
+
+function sendEditedPhoto() {
+    if (!photoCanvas) return;
+
+    if (!currentChat) {
+        showMessage("Open a chat before sending a photo.");
+        return;
+    }
+
+    const caption = $("photoCaption")
+        ? $("photoCaption").value.trim()
+        : "";
+
+    const imageData = photoCanvas.toDataURL("image/jpeg", 0.85);
+
+    const preview = document.createElement("img");
+    preview.src = imageData;
+    preview.style.maxWidth = "220px";
+    preview.style.borderRadius = "12px";
+
+    const message = document.createElement("div");
+    message.className = "message outgoing";
+    message.appendChild(preview);
+
+    if (caption) {
+        const captionElement = document.createElement("p");
+        captionElement.textContent = caption;
+        message.appendChild(captionElement);
+    }
+
+    $("messagesArea").appendChild(message);
+    $("messagesArea").scrollTop = $("messagesArea").scrollHeight;
+
+    closeModal("photoEditorModal");
+
+    if ($("photoCaption")) {
+        $("photoCaption").value = "";
+    }
+
+    showMessage(
+        "Photo preview added. Actual delivery requires a media-upload endpoint in the backend."
+    );
+
+    photoCanvas = null;
+    photoContext = null;
+    photoImage = null;
+}
+
+/* ==============================
+   VOICE MESSAGE PLACEHOLDER
+============================== */
+
+let voiceRecorder = null;
+let voiceChunks = [];
+
+async function recordVoiceMessage() {
+    if (!navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia) {
+        showMessage("Microphone access is not available.");
         return;
     }
 
     try {
-        const data = await apiRequest("/api/groups", {
-            method: "POST",
-            body: JSON.stringify({ name })
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true
         });
 
-        byId("newGroupName").value = "";
-        closeModal("newGroupOverlay");
+        voiceRecorder = new MediaRecorder(stream);
+        voiceChunks = [];
 
-        await loadGroups();
-        await loadInbox();
+        voiceRecorder.ondataavailable = event => {
+            if (event.data.size > 0) {
+                voiceChunks.push(event.data);
+            }
+        };
 
-        if (data.id) {
-            openGroup(data.id);
-        } else if (data.group?.id) {
-            openGroup(data.group.id);
+        voiceRecorder.onstop = () => {
+            const audioBlob = new Blob(voiceChunks, {
+                type: "audio/webm"
+            });
+
+            const audioUrl = URL.createObjectURL(audioBlob);
+
+            const audio = document.createElement("audio");
+            audio.controls = true;
+            audio.src = audioUrl;
+
+            $("messagesArea").appendChild(audio);
+
+            stream.getTracks().forEach(track => track.stop());
+
+            showMessage(
+                "Voice recording created. Sending it to another user requires backend media support."
+            );
+        };
+
+        voiceRecorder.start();
+
+        if (confirm("Recording started. Press OK to stop recording.")) {
+            voiceRecorder.stop();
+        } else {
+            voiceRecorder.stop();
         }
 
     } catch (error) {
-        alert(error.message);
+        showMessage("Microphone permission was denied or unavailable.");
     }
 }
 
-function openGroup(groupId) {
-    const group = groups.find(item =>
-        String(item.id) === String(groupId)
+/* ==============================
+   CHAT SETTINGS
+============================== */
+
+async function updateChatSetting(setting, value) {
+    if (!currentChat) return;
+
+    try {
+        await apiRequest(
+            `/api/chats/${encodeURIComponent(currentChat)}/settings`,
+            {
+                method: "PUT",
+                body: JSON.stringify({
+                    [setting]: value
+                })
+            }
+        );
+
+        showMessage("Chat setting updated.");
+        loadInbox();
+
+    } catch (error) {
+        showMessage("Could not update chat setting.");
+    }
+}
+
+async function clearChat() {
+    if (!currentChat) return;
+
+    if (!confirm("Clear this chat from your screen?")) return;
+
+    if ($("messagesArea")) {
+        $("messagesArea").innerHTML = "";
+    }
+
+    showMessage(
+        "Messages cleared from this screen. Server-side deletion is not configured."
     );
-
-    if (!group) {
-        alert("Group not found.");
-        return;
-    }
-
-    if (groupSocket) {
-        groupSocket.close();
-        groupSocket = null;
-    }
-
-    currentGroup = group;
-    currentPeer = null;
-    currentChatType = "group";
-
-    hide("welcomeScreen");
-    show("activeChat");
-    hide("newChatOverlay");
-
-    byId("chatName").textContent = group.name;
-    byId("chatAvatar").textContent =
-        (group.name || "G").charAt(0).toUpperCase();
-
-    byId("chatStatus").textContent =
-        (group.member_count || 0) + " members";
-
-    byId("messages").innerHTML = "";
-
-    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-
-    groupSocket = new WebSocket(
-        `${protocol}//${location.host}/ws/group_${group.id}?token=${encodeURIComponent(token)}`
-    );
-
-    groupSocket.onmessage = event => {
-        let data;
-
-        try {
-            data = JSON.parse(event.data);
-        } catch {
-            return;
-        }
-
-        if (data.type === "welcome") {
-            renderMessages(data.history || []);
-        }
-
-        if (data.type === "chat") {
-            appendMessage(data, false);
-        }
-
-        if (data.type === "system") {
-            byId("chatStatus").textContent = data.text || "Group";
-        }
-    };
-
-    groupSocket.onerror = () => {
-        console.error("Group connection error.");
-    };
-
-    if (window.innerWidth <= 650) {
-        hide("inboxScreen");
-    }
 }
 
-function createGroupFromChat() {
-    if (!currentPeer) {
-        alert("Open a private chat first.");
-        return;
-    }
+async function blockContact() {
+    if (!currentChat) return;
 
-    byId("newGroupName").value = currentPeer + "'s Group";
-    openCreateGroup();
-}
-
-
-// ===============================
-// GROUP SETTINGS
-// ===============================
-
-function renderSettingsGroups() {
-    const container = byId("settingsGroups");
-    if (!container) return;
-
-    if (!groups.length) {
-        container.innerHTML = "<p>No groups yet.</p>";
-        return;
-    }
-
-    container.innerHTML = groups.map(group => `
-        <div class="settings-row">
-            <button onclick="openGroup('${String(group.id).replace(/'/g, "")}')">
-                ${escapeHTML(group.name)}
-                <small>(${Number(group.member_count || 0)} members)</small>
-            </button>
-            <span>›</span>
-        </div>
-    `).join("");
-}
-
-
-// ===============================
-// CONTACT SETTINGS
-// ===============================
-
-function renderSettingsContacts() {
-    const container = byId("settingsContacts");
-    if (!container) return;
-
-    if (!contacts.length) {
-        container.innerHTML = "<p>No contacts added.</p>";
-        return;
-    }
-
-    container.innerHTML = contacts.map(name => `
-        <div class="settings-row">
-            <button onclick="openPrivateChat('${escapeHTML(name).replace(/'/g, "\\'")}')">
-                ${escapeHTML(name)}
-            </button>
-            <button onclick="removeContact('${escapeHTML(name).replace(/'/g, "\\'")}')">
-                Remove
-            </button>
-        </div>
-    `).join("");
-}
-
-function openContactSettings() {
-    hide("newChatMenu");
-    openSettingsSection("contacts");
-}
-
-
-// ===============================
-// FULL SCREEN SETTINGS
-// ===============================
-
-function openSettings() {
-    hide("mainMenu");
-    show("settingsPanel");
-    hide("chatApp");
-
-    loadContacts().catch(console.error);
-    loadGroups().catch(console.error);
-    loadBlockedContacts().catch(console.error);
-}
-
-function closeSettings() {
-    hide("settingsPanel");
-    show("chatApp");
-
-    if (currentPeer || currentGroup) {
-        show("activeChat");
-        hide("welcomeScreen");
-    } else {
-        hide("activeChat");
-        show("welcomeScreen");
-    }
-}
-
-function openSettingsSection(section) {
-    openSettings();
-
-    setTimeout(() => {
-        const sections = {
-            contacts: "contactsSettings",
-            groups: "groupsSettings",
-            blocked: "blockedSettings",
-            profile: "profileSettings"
-        };
-
-        const target = byId(sections[section]);
-
-        if (target) {
-            target.scrollIntoView({
-                behavior: "smooth",
-                block: "start"
-            });
-        }
-    }, 200);
-}
-
-
-// ===============================
-// BLOCKED CONTACTS
-// ===============================
-
-async function loadBlockedContacts() {
-    const data = await apiRequest("/api/blocks");
-    const blocked = data.blocked || [];
-
-    const container = byId("blockedContacts");
-    if (!container) return;
-
-    if (!blocked.length) {
-        container.innerHTML = "<p>No blocked contacts.</p>";
-        return;
-    }
-
-    container.innerHTML = blocked.map(item => `
-        <div class="settings-row">
-            <span>${escapeHTML(item.username)}</span>
-            <button onclick="unblockContact('${escapeHTML(item.username).replace(/'/g, "\\'")}')">
-                Unblock
-            </button>
-        </div>
-    `).join("");
-}
-
-async function blockCurrentContact() {
-    if (!currentPeer) {
-        alert("Open a private chat first.");
-        return;
-    }
-
-    if (!confirm("Block " + currentPeer + "?")) return;
+    if (!confirm("Block " + currentChat + "?")) return;
 
     try {
         await apiRequest("/api/blocks", {
             method: "POST",
             body: JSON.stringify({
-                username: currentPeer
+                username: currentChat
             })
         });
 
-        alert("Contact blocked.");
-        closeActiveChat();
-        await loadBlockedContacts();
-        await loadInbox();
+        showMessage(currentChat + " blocked.");
+        loadInbox();
 
     } catch (error) {
-        alert(error.message);
+        showMessage("Could not block this contact.");
     }
 }
 
-async function unblockContact(username) {
+async function reportContact() {
+    if (!currentChat) return;
+
+    const reason = prompt("Why are you reporting this contact?");
+    if (!reason) return;
+
+    showMessage(
+        "Report recorded on this screen. A server-side reporting endpoint is still required."
+    );
+}
+
+/* ==============================
+   SEARCH IN CHAT
+============================== */
+
+async function searchInChat() {
+    if (!currentChat) return;
+
+    const query = prompt("Search messages with " + currentChat + ":");
+    if (!query) return;
+
     try {
-        await apiRequest(
-            "/api/blocks/" + encodeURIComponent(username),
-            { method: "DELETE" }
+        const result = await apiRequest(
+            `/api/messages/search?q=${encodeURIComponent(query)}&with_user=${encodeURIComponent(currentChat)}`
         );
 
-        await loadBlockedContacts();
-        alert("Contact unblocked.");
+        const messages = result.messages || [];
+
+        alert(
+            messages.length
+                ? messages.map(item => item.text || "").join("\n\n")
+                : "No matching messages found."
+        );
 
     } catch (error) {
-        alert(error.message);
+        showMessage("Message search failed.");
     }
 }
 
+/* ==============================
+   PROFILE
+============================== */
 
-// ===============================
-// PROFILE
-// ===============================
-
-async function showMyProfile() {
-    hide("mainMenu");
-
-    try {
-        const profile = await loadMyProfile();
-
-        byId("profileTitle").textContent = "My Profile";
-
-        byId("profileDetails").innerHTML = `
-            <p><strong>Username:</strong> ${escapeHTML(profile.username)}</p>
-            <p><strong>About:</strong> ${escapeHTML(profile.about || "Hey there! I am using KCHAT.")}</p>
-            <input id="editAbout"
-                   class="form-input"
-                   value="${escapeHTML(profile.about || "")}"
-                   placeholder="Write something about yourself">
-
-            <button class="primary-button"
-                    onclick="saveProfile()">
-                Save About
-            </button>
-        `;
-
-        show("profileOverlay");
-
-    } catch (error) {
-        alert(error.message);
-    }
-}
-
-async function viewCurrentContact() {
-    if (!currentPeer) return;
+async function showProfile(username) {
+    if (!username) return;
 
     try {
         const profile = await apiRequest(
-            "/api/profile/" + encodeURIComponent(currentPeer)
+            `/api/profile/${encodeURIComponent(username)}`
         );
 
-        byId("profileTitle").textContent = currentPeer;
-
-        byId("profileDetails").innerHTML = `
-            <p><strong>Username:</strong> ${escapeHTML(profile.username)}</p>
-            <p><strong>About:</strong> ${escapeHTML(profile.about || "No About information.")}</p>
-        `;
-
-        show("profileOverlay");
+        alert(
+            "PROFILE\n\n" +
+            "Username: " + (profile.username || username) + "\n" +
+            "About: " + (profile.about || "Hey there! I am using KCHAT.")
+        );
 
     } catch (error) {
-        alert(error.message);
+        alert("Contact: " + username);
     }
 }
 
-async function saveProfile() {
-    const about = byId("editAbout").value.trim();
+function showMyProfile() {
+    showProfile(currentUser);
+}
+
+/* ==============================
+   SETTINGS
+============================== */
+
+function openSettings() {
+    const panel = $("settingsPanel");
+
+    if (panel) {
+        panel.classList.add("show");
+        panel.style.display = "block";
+    }
+}
+
+function closeSettings() {
+    const panel = $("settingsPanel");
+
+    if (panel) {
+        panel.classList.remove("show");
+        panel.style.display = "none";
+    }
+}
+
+function openSettingsSection(section) {
+    if (section === "profile") {
+        showMyProfile();
+    } else if (section === "blocked") {
+        showBlockedContacts();
+    } else {
+        alert(
+            section.toUpperCase() +
+            "\n\nThis settings section needs its own settings screen and backend options."
+        );
+    }
+}
+
+async function showBlockedContacts() {
+    try {
+        const data = await apiRequest("/api/blocks");
+        const blocked = data.blocked || [];
+
+        alert(
+            blocked.length
+                ? "BLOCKED CONTACTS\n\n" +
+                  blocked.map(item => item.username).join("\n")
+                : "You have no blocked contacts."
+        );
+
+    } catch (error) {
+        showMessage("Could not load blocked contacts.");
+    }
+}
+
+/* ==============================
+   GROUPS
+============================== */
+
+async function openNewGroup() {
+    const name = prompt("Enter your new group name:");
+    if (!name || !name.trim()) return;
 
     try {
-        await apiRequest("/api/profile", {
-            method: "PUT",
-            body: JSON.stringify({ about })
+        const result = await apiRequest("/api/groups", {
+            method: "POST",
+            body: JSON.stringify({
+                name: name.trim()
+            })
         });
 
-        myProfile.about = about;
-        closeModal("profileOverlay");
+        showMessage("Group created: " + name);
 
-        alert("Profile updated.");
-
-    } catch (error) {
-        alert(error.message);
-    }
-}
-
-
-// ===============================
-// CHAT SETTINGS
-// ===============================
-
-async function openChatSettings() {
-    if (!currentPeer) {
-        alert("Open a private chat first.");
-        return;
-    }
-
-    const action = prompt(
-        "Chat Settings:\n" +
-        "1. Favourite / Pin\n" +
-        "2. Hide Chat\n" +
-        "3. Mute Chat\n" +
-        "4. Disappearing Messages\n" +
-        "5. Light Theme\n" +
-        "6. Dark Theme"
-    );
-
-    if (!action) return;
-
-    const settings = {};
-
-    if (action === "1") {
-        settings.pinned = true;
-    } else if (action === "2") {
-        settings.hidden = true;
-    } else if (action === "3") {
-        settings.muted = true;
-    } else if (action === "4") {
-        settings.disappearing_seconds = 86400;
-    } else if (action === "5") {
-        settings.theme = "light";
-    } else if (action === "6") {
-        settings.theme = "dark";
-    } else {
-        alert("Invalid option.");
-        return;
-    }
-
-    try {
-        await apiRequest(
-            "/api/chats/" + encodeURIComponent(currentPeer) + "/settings",
-            {
-                method: "PUT",
-                body: JSON.stringify(settings)
-            }
-        );
-
-        await loadInbox();
-        alert("Chat settings updated.");
-
-    } catch (error) {
-        alert(error.message);
-    }
-}
-
-async function toggleFavourite() {
-    if (!currentPeer) return;
-
-    try {
-        await apiRequest(
-            "/api/chats/" + encodeURIComponent(currentPeer) + "/settings",
-            {
-                method: "PUT",
-                body: JSON.stringify({ pinned: true })
-            }
-        );
-
-        await loadInbox();
-        hide("chatMenu");
-
-    } catch (error) {
-        alert(error.message);
-    }
-}
-
-
-// ===============================
-// MESSAGE SEARCH
-// ===============================
-
-function searchChatMessages() {
-    hide("chatMenu");
-    show("searchMessagesOverlay");
-}
-
-async function runMessageSearch() {
-    const query = byId("messageSearchInput").value.trim();
-
-    if (query.length < 2) {
-        alert("Enter at least two characters.");
-        return;
-    }
-
-    try {
-        const params = new URLSearchParams({ q: query });
-
-        if (currentPeer) {
-            params.set("with_user", currentPeer);
+        if (result.id) {
+            openGroup(result.id, name);
         }
 
-        const data = await apiRequest(
-            "/api/messages/search?" + params.toString()
-        );
-
-        const results = data.results || [];
-
-        byId("messageSearchResults").innerHTML = results.length
-            ? results.map(item => `
-                <div class="settings-row">
-                    <span>${escapeHTML(item.text)}</span>
-                </div>
-            `).join("")
-            : "<p>No matching messages.</p>";
-
     } catch (error) {
-        alert(error.message);
+        showMessage("Could not create group.");
     }
 }
 
-
-// ===============================
-// MARK MESSAGES AS READ
-// ===============================
-
-async function markAllRead() {
-    try {
-        await apiRequest("/api/messages/read-all", {
-            method: "POST"
-        });
-
-        await loadInbox();
-        alert("All messages marked as read.");
-
-    } catch (error) {
-        alert(error.message);
+async function openGroup(groupId, groupName) {
+    if (groupSocket) {
+        groupSocket.close();
+        groupSocket = null;
     }
-}
 
-
-// ===============================
-// CALL CONTACT PICKER
-// ===============================
-
-function openCallPicker(type) {
-    currentCallType = type;
-
-    byId("callPickerTitle").textContent =
-        type === "video"
-            ? "Choose a Contact for Video Call"
-            : "Choose a Contact for Voice Call";
-
-    const container = byId("callPickerList");
-
-    container.innerHTML = contacts.map(name => `
-        <div class="contact-row"
-             onclick="selectCallContact('${escapeHTML(name).replace(/'/g, "\\'")}')">
-            <div class="avatar">${escapeHTML(name.charAt(0).toUpperCase())}</div>
-            <div class="contact-row-name">${escapeHTML(name)}</div>
-        </div>
-    `).join("");
-
-    show("callPickerOverlay");
-}
-
-function selectCallContact(username) {
-    closeModal("callPickerOverlay");
     alert(
-        currentCallType === "video"
-            ? "Video calling is not yet connected. Selected: " + username
-            : "Voice calling is not yet connected. Selected: " + username
+        "Group: " + groupName +
+        "\n\nGroup creation is connected to the backend. " +
+        "A complete group chat screen still needs to be added."
     );
 }
-
-
-// ===============================
-// CAMERA
-// ===============================
-
-function openCamera() {
-    alert("Camera sending is not yet connected to the KCHAT backend.");
-}
-
-
-// ===============================
-// EVENTS
-// ===============================
 
 function openNewEvent() {
-    hide("newChatMenu");
-    show("newEventOverlay");
+    const eventName = prompt("Enter event name:");
+    if (!eventName) return;
+
+    const eventDate = prompt("Enter event date and time:");
+    if (!eventDate) return;
+
+    showMessage(
+        "Event details: " + eventName + " — " + eventDate
+    );
 }
 
-function createEvent() {
-    const name = byId("eventName").value.trim();
-    const date = byId("eventDate").value;
-    const description = byId("eventDescription").value.trim();
+/* ==============================
+   CONTACT INVITATION
+============================== */
 
-    if (!name || !date) {
-        alert("Enter an event name and date.");
+function inviteOutsideMembers() {
+    const phone = prompt("Enter the phone number to invite:");
+
+    if (!phone) return;
+
+    const message =
+        "Join me on KCHAT! I would like to connect with you.";
+
+    const url =
+        "https://wa.me/" +
+        phone.replace(/[^0-9]/g, "") +
+        "?text=" +
+        encodeURIComponent(message);
+
+    window.open(url, "_blank");
+}
+
+/* ==============================
+   LOGOUT
+============================== */
+
+function logout(confirmLogout = true) {
+    if (confirmLogout &&
+        !confirm("Are you sure you want to log out?")) {
         return;
     }
-
-    const event = {
-        name,
-        date,
-        description
-    };
-
-    const savedEvents = JSON.parse(
-        localStorage.getItem("kchat_events") || "[]"
-    );
-
-    savedEvents.push(event);
-
-    localStorage.setItem(
-        "kchat_events",
-        JSON.stringify(savedEvents)
-    );
-
-    byId("eventName").value = "";
-    byId("eventDate").value = "";
-    byId("eventDescription").value = "";
-
-    closeModal("newEventOverlay");
-
-    alert("Event saved on this device.");
-}
-
-
-// ===============================
-// LOGOUT
-// ===============================
-
-async function logout() {
-    if (!confirm("Are you sure you want to log out?")) return;
-
-    clearTimeout(reconnectTimer);
 
     if (socket) {
         socket.close();
@@ -2395,42 +2626,78 @@ async function logout() {
         groupSocket = null;
     }
 
-    clearSession();
+    localStorage.removeItem("kchat_token");
+    localStorage.removeItem("kchat_username");
 
-    currentPeer = null;
-    currentGroup = null;
-    myProfile = null;
+    token = "";
+    currentUser = "";
+    currentChat = "";
 
-    hide("chatApp");
-    hide("settingsPanel");
-    show("authScreen");
+    const app = $("chatApp");
+    const auth = $("authScreen");
+
+    if (app) app.style.display = "none";
+    if (auth) auth.style.display = "flex";
 
     showLogin();
-    showAuthMessage("You have logged out.");
 }
 
+/* ==============================
+   ATTACHMENT INPUT HELPERS
+============================== */
 
-// ===============================
-// CLOSE MENUS WHEN CLICKING AWAY
-// ===============================
+function chooseGallery() {
+    const input = $("galleryInput");
+    if (input) input.click();
+    closeModal("attachmentModal");
+}
 
-document.addEventListener("click", event => {
-    const newChatMenu = byId("newChatMenu");
-    const newChatButton = document.querySelector(".new-chat-button");
+function chooseDocument() {
+    const input = $("documentInput");
+    if (input) input.click();
+    closeModal("attachmentModal");
+}
 
-    if (
-        newChatMenu &&
-        !newChatMenu.contains(event.target) &&
-        !newChatButton?.contains(event.target)
-    ) {
-        hide("newChatMenu");
+/* ==============================
+   MEDIA INPUT EVENTS
+============================== */
+
+window.addEventListener("DOMContentLoaded", () => {
+    const camera = $("cameraInput");
+    const gallery = $("galleryInput");
+    const documents = $("documentInput");
+
+    if (camera) {
+        camera.addEventListener("change", event => {
+            const file = event.target.files[0];
+            if (file) handleSelectedMedia(file);
+            event.target.value = "";
+        });
+    }
+
+    if (gallery) {
+        gallery.addEventListener("change", event => {
+            const file = event.target.files[0];
+            if (file) handleSelectedMedia(file);
+            event.target.value = "";
+        });
+    }
+
+    if (documents) {
+        documents.addEventListener("change", event => {
+            const file = event.target.files[0];
+            if (file) handleSelectedDocument(file);
+            event.target.value = "";
+        });
     }
 });
 
+/* ==============================
+   FINISH KCHAT
+============================== */
 
-// ===============================
-// END OF KCHAT
-// ===============================
+console.log("KCHAT interface loaded.");
+
 </script>
 </body>
 </html>
