@@ -7,120 +7,663 @@
 
 <style>
 *{box-sizing:border-box}
+
 :root{
- --green:#00a884;--green2:#008f70;--bg:#101820;
- --panel:#18232d;--panel2:#202d38;--text:#edf3f6;
- --muted:#9aabb7;--border:#30404c;--white:#fff;
+ --green:#00ed64;
+ --green2:#00c853;
+ --cyan:#00e5ff;
+ --bg:#0b0f19;
+ --panel:#0b0f19;
+ --panel2:#161f30;
+ --text:#ffffff;
+ --muted:#8f9cae;
+ --border:#263244;
+ --chatbg:#080d16;
+ --bubble-in:#182638;
+ --bubble-out:#075e50;
+ --white:#fff;
 }
-body{margin:0;background:var(--bg);color:var(--text);
- font-family:Arial,Helvetica,sans-serif}
+
+body.light-mode{
+ --bg:#f0f2f5;
+ --panel:#ffffff;
+ --panel2:#e7edf4;
+ --text:#0f172a;
+ --muted:#64748b;
+ --border:#d5dde7;
+ --chatbg:#f5f7fa;
+ --bubble-in:#e4eaf1;
+ --bubble-out:#d8f8e6;
+ --green:#3b82f6;
+ --green2:#2563eb;
+ --cyan:#3b82f6;
+ --white:#0f172a;
+}
+
+body{
+ margin:0;
+ background:var(--bg);
+ color:var(--text);
+ font-family:"Trebuchet MS",Arial,Helvetica,sans-serif;
+ transition:background .2s,color .2s;
+}
 button,input,textarea{font:inherit}
 button{cursor:pointer;border:0}
 .hidden{display:none!important}
-#authScreen{min-height:100vh;display:flex;align-items:center;
- justify-content:center;padding:20px;background:var(--bg)}
-.auth-card{width:100%;max-width:420px;background:var(--panel);
- border:1px solid var(--border);border-radius:16px;padding:28px;
- box-shadow:0 12px 40px #0005}
-.logo{font-size:36px;font-weight:bold;color:var(--green);
- text-align:center;margin-bottom:6px}
-.subtitle{text-align:center;color:var(--muted);margin-bottom:25px}
+
+#authScreen{
+ min-height:100vh;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ padding:20px;
+ background:var(--bg);
+}
+.auth-card{
+ width:100%;
+ max-width:420px;
+ background:var(--panel);
+ border:1px solid var(--border);
+ border-radius:20px;
+ padding:28px;
+ box-shadow:0 12px 40px #0005;
+}
+.logo{
+ font-size:36px;
+ font-weight:bold;
+ color:var(--green);
+ text-align:center;
+ margin-bottom:6px;
+}
+.subtitle{
+ text-align:center;
+ color:var(--muted);
+ margin-bottom:25px;
+}
 .auth-card h2{margin:0 0 18px;text-align:center}
-.field{display:block;width:100%;padding:14px;margin:10px 0;
- background:var(--bg);border:1px solid var(--border);
- border-radius:9px;color:var(--text);outline:none}
-.field:focus{border-color:var(--green)}
-.primary{width:100%;padding:14px;background:var(--green);
- color:#fff;border-radius:9px;font-weight:bold;margin-top:12px}
+.field{
+ display:block;
+ width:100%;
+ padding:14px;
+ margin:10px 0;
+ background:var(--bg);
+ border:1px solid var(--border);
+ border-radius:12px;
+ color:var(--text);
+ outline:none;
+}
+.field:focus{border-color:var(--cyan)}
+.primary{
+ width:100%;
+ padding:14px;
+ background:var(--green);
+ color:#fff;
+ border-radius:12px;
+ font-weight:bold;
+ margin-top:12px;
+}
 .primary:hover{background:var(--green2)}
 .auth-switch{text-align:center;color:var(--muted);margin-top:18px}
 .link-button{background:none;color:var(--green);padding:5px}
-#authMessage{min-height:22px;color:#ffb5a8;text-align:center;
- margin-top:12px;font-size:14px}
-#chatApp{height:100vh;display:none;overflow:hidden}
-.topbar{height:62px;background:var(--panel);display:flex;
- align-items:center;justify-content:space-between;padding:0 18px;
- border-bottom:1px solid var(--border)}
-.brand{font-size:25px;font-weight:bold;color:var(--green)}
-.top-actions{display:flex;gap:8px}
-.icon-button{background:var(--panel2);color:var(--text);
- padding:10px 13px;border-radius:9px}
-.app-layout{height:calc(100vh - 62px);display:flex}
-.sidebar{width:350px;max-width:40%;background:var(--panel);
- border-right:1px solid var(--border);display:flex;flex-direction:column}
-.sidebar-head{padding:14px;border-bottom:1px solid var(--border)}
-.search{width:100%;padding:12px;background:var(--bg);
- color:var(--text);border:1px solid var(--border);border-radius:9px}
-.filters{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-.filter-btn{background:var(--panel2);color:var(--muted);
- border-radius:20px;padding:7px 12px;font-size:13px}
-.filter-btn.active{background:var(--green);color:white}
-#inboxList{overflow-y:auto;flex:1}
-.inbox-item{display:flex;align-items:center;gap:12px;
- padding:14px;border-bottom:1px solid var(--border);
- cursor:pointer}
+#authMessage{
+ min-height:22px;
+ color:#ffb5a8;
+ text-align:center;
+ margin-top:12px;
+ font-size:14px;
+}
+
+/* MAIN APPLICATION */
+#chatApp{
+ height:100vh;
+ display:none;
+ overflow:hidden;
+ background:var(--bg);
+}
+.topbar{
+ height:70px;
+ background:var(--panel);
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ padding:0 20px;
+ border-bottom:1px solid var(--border);
+}
+.brand{
+ font-size:27px;
+ font-weight:bold;
+ color:var(--green);
+ letter-spacing:1px;
+ font-style:italic;
+}
+.top-actions{display:flex;gap:9px;align-items:center}
+.icon-button{
+ background:var(--panel2);
+ color:var(--text);
+ border:1px solid var(--border);
+ min-width:42px;
+ min-height:42px;
+ padding:9px 12px;
+ border-radius:50%;
+}
+.icon-button:hover{border-color:var(--cyan);color:var(--cyan)}
+.app-layout{
+ height:calc(100vh - 70px);
+ display:flex;
+}
+.sidebar{
+ width:100%;
+ max-width:100%;
+ background:var(--panel);
+ display:flex;
+ flex-direction:column;
+ min-width:0;
+}
+.sidebar-head{
+ padding:14px 18px 12px;
+ border-bottom:1px solid var(--border);
+}
+.search{
+ width:100%;
+ padding:15px 19px;
+ background:var(--panel2);
+ color:var(--text);
+ border:1px solid var(--border);
+ border-radius:28px;
+ outline:none;
+ font-size:15px;
+}
+.search:focus{border-color:var(--cyan)}
+.filters{
+ display:flex;
+ gap:9px;
+ margin-top:13px;
+ flex-wrap:nowrap;
+ overflow-x:auto;
+ padding-bottom:3px;
+}
+.filter-btn{
+ background:var(--panel2);
+ color:var(--muted);
+ border:1px solid var(--border);
+ border-radius:22px;
+ padding:9px 16px;
+ font-size:13px;
+ white-space:nowrap;
+}
+.filter-btn.active{
+ background:var(--green);
+ color:#001b0b;
+ border-color:var(--green);
+ font-weight:bold;
+}
+#inboxList{
+ overflow-y:auto;
+ flex:1;
+ padding-bottom:100px;
+}
+.inbox-item{
+ display:flex;
+ align-items:center;
+ gap:14px;
+ min-height:83px;
+ padding:13px 20px;
+ border-bottom:1px solid var(--border);
+ cursor:pointer;
+}
 .inbox-item:hover,.inbox-item.selected{background:var(--panel2)}
-.avatar{width:43px;height:43px;flex-shrink:0;border-radius:50%;
- background:var(--green);display:flex;align-items:center;
- justify-content:center;color:white;font-weight:bold}
+.avatar{
+ width:56px;
+ height:56px;
+ flex-shrink:0;
+ border-radius:50%;
+ background:var(--panel2);
+ border:2px solid var(--cyan);
+ box-shadow:0 0 9px #00e5ff35;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ color:var(--text);
+ font-weight:bold;
+ font-size:19px;
+ overflow:hidden;
+}
 .inbox-info{min-width:0;flex:1}
-.inbox-name{font-weight:bold;margin-bottom:5px}
-.inbox-last{font-size:13px;color:var(--muted);
- white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chat-area{flex:1;min-width:0;display:flex;flex-direction:column}
-.welcome{flex:1;display:flex;align-items:center;
- justify-content:center;text-align:center;color:var(--muted);padding:25px}
-#chatScreen{height:100%;display:flex;flex-direction:column}
-.chat-header{height:66px;display:flex;align-items:center;
- gap:12px;padding:10px 16px;background:var(--panel);
- border-bottom:1px solid var(--border)}
-.chat-person{flex:1;min-width:0}
-#chatUsername{font-weight:bold}
+.inbox-name{
+ font-weight:bold;
+ font-size:16px;
+ margin-bottom:7px;
+ color:var(--text);
+}
+.inbox-last{
+ font-size:13px;
+ color:var(--muted);
+ white-space:nowrap;
+ overflow:hidden;
+ text-overflow:ellipsis;
+}
+.inbox-meta{
+ display:flex;
+ flex-direction:column;
+ align-items:flex-end;
+ gap:8px;
+ min-width:48px;
+ color:var(--muted);
+ font-size:11px;
+}
+.unread-badge{
+ background:var(--green);
+ color:#001b0b;
+ border-radius:20px;
+ min-width:22px;
+ height:22px;
+ padding:0 6px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ font-weight:bold;
+}
+.mention-tag{color:var(--cyan);font-weight:bold}
+
+/* CHAT WINDOW */
+.chat-area{
+ flex:1;
+ min-width:0;
+ display:flex;
+ flex-direction:column;
+}
+.welcome{
+ flex:1;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ text-align:center;
+ color:var(--muted);
+ padding:25px;
+}
+#chatScreen{
+ height:100%;
+ display:flex;
+ flex-direction:column;
+}
+.chat-header{
+ min-height:70px;
+ display:flex;
+ align-items:center;
+ gap:12px;
+ padding:10px 16px;
+ background:var(--panel);
+ border-bottom:1px solid var(--border);
+}
+.chat-person{
+ flex:1;
+ min-width:0;
+ cursor:pointer;
+}
+#chatUsername{font-weight:bold;font-size:16px}
 #chatUserStatus{font-size:12px;color:var(--muted);margin-top:4px}
 .chat-actions{display:flex;gap:6px}
-#messagesArea{flex:1;overflow-y:auto;padding:20px;
- display:flex;flex-direction:column;gap:10px;
- background-color:#0d171e}
-.message{max-width:75%;padding:10px 13px;border-radius:12px;
- overflow-wrap:anywhere;background:#263642;align-self:flex-start}
-.message.outgoing{background:#075e50;align-self:flex-end}
-.message-time{font-size:10px;color:#c2d4d1;text-align:right;margin-top:5px}
-.composer{display:flex;align-items:center;gap:8px;
- padding:12px;background:var(--panel);border-top:1px solid var(--border)}
-.composer input{flex:1;min-width:0;padding:13px;
- border:0;border-radius:22px;background:var(--bg);color:var(--text)}
-.send-btn{background:var(--green);color:white;border-radius:50%;
- width:43px;height:43px;font-size:18px}
-.new-chat{position:fixed;bottom:24px;left:285px;
- width:54px;height:54px;border-radius:50%;background:var(--green);
- color:white;font-size:27px;box-shadow:0 5px 18px #0006}
-#settingsPanel{position:fixed;inset:0;background:var(--bg);
- z-index:20;display:none;overflow:auto}
-.settings-head{display:flex;align-items:center;gap:15px;
- padding:18px;background:var(--panel)}
-.settings-row{padding:18px;border-bottom:1px solid var(--border);
- cursor:pointer}
+#messagesArea{
+ flex:1;
+ overflow-y:auto;
+ padding:20px;
+ display:flex;
+ flex-direction:column;
+ gap:10px;
+ background:var(--chatbg);
+}
+.message{
+ max-width:75%;
+ padding:10px 13px;
+ border-radius:14px;
+ overflow-wrap:anywhere;
+ background:var(--bubble-in);
+ align-self:flex-start;
+ color:var(--text);
+}
+.message.outgoing{
+ background:var(--bubble-out);
+ align-self:flex-end;
+ color:var(--text);
+}
+.message-time{
+ font-size:10px;
+ color:var(--muted);
+ text-align:right;
+ margin-top:5px;
+}
+.composer{
+ display:flex;
+ align-items:center;
+ gap:8px;
+ padding:12px;
+ background:var(--panel);
+ border-top:1px solid var(--border);
+}
+.composer input{
+ flex:1;
+ min-width:0;
+ padding:13px 16px;
+ border:1px solid var(--border);
+ border-radius:24px;
+ background:var(--panel2);
+ color:var(--text);
+ outline:none;
+}
+.send-btn{
+ background:var(--green);
+ color:#001b0b;
+ border-radius:50%;
+ width:44px;
+ height:44px;
+ font-size:18px;
+}
+
+/* FLOATING ACTION BUTTON */
+.new-chat{
+ position:fixed;
+ bottom:91px;
+ right:22px;
+ width:62px;
+ height:62px;
+ border-radius:18px;
+ background:#00ed64;
+ color:#001b0b;
+ font-size:34px;
+ box-shadow:0 0 22px #00ed6466;
+ z-index:8;
+}
+
+/* BOTTOM NAVIGATION */
+.bottom-nav{
+ height:76px;
+ position:fixed;
+ bottom:0;
+ left:0;
+ right:0;
+ z-index:7;
+ background:var(--panel);
+ border-top:1px solid var(--border);
+ display:grid;
+ grid-template-columns:repeat(4,1fr);
+ padding:6px 8px;
+}
+.bottom-nav button{
+ background:transparent;
+ color:var(--muted);
+ border-radius:15px;
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:4px;
+ font-size:12px;
+}
+.bottom-nav button.active{
+ background:var(--green);
+ color:#001b0b;
+ font-weight:bold;
+}
+.nav-icon{font-size:22px;line-height:1}
+
+/* TOP-RIGHT DROPDOWN MENU */
+.action-menu{
+ position:fixed;
+ z-index:25;
+ right:12px;
+ top:62px;
+ width:min(290px,calc(100vw - 24px));
+ padding:8px;
+ background:var(--panel);
+ border:1px solid var(--border);
+ border-radius:18px;
+ box-shadow:0 18px 50px #0009;
+ display:none;
+}
+.action-menu.open{display:block}
+.action-menu button{
+ width:100%;
+ display:flex;
+ align-items:center;
+ gap:14px;
+ padding:13px 12px;
+ background:transparent;
+ color:var(--text);
+ text-align:left;
+ border-radius:11px;
+ font-size:14px;
+}
+.action-menu button:hover{background:var(--panel2)}
+.menu-icon{
+ width:25px;
+ text-align:center;
+ color:var(--cyan);
+ font-size:19px;
+}
+
+/* GENERAL SETTINGS */
+#settingsPanel{
+ position:fixed;
+ inset:0;
+ background:var(--bg);
+ z-index:20;
+ display:none;
+ overflow:auto;
+}
+.settings-head{
+ display:flex;
+ align-items:center;
+ gap:15px;
+ padding:18px;
+ background:var(--panel);
+ border-bottom:1px solid var(--border);
+}
+.settings-head h2{margin:0}
+.settings-row{
+ display:flex;
+ align-items:center;
+ gap:15px;
+ padding:18px;
+ border-bottom:1px solid var(--border);
+ cursor:pointer;
+}
 .settings-row:hover{background:var(--panel2)}
-.modal{display:none;position:fixed;inset:0;background:#0009;
- z-index:30;align-items:center;justify-content:center;padding:15px}
+.settings-icon{
+ width:28px;
+ color:var(--cyan);
+ font-size:20px;
+ text-align:center;
+}
+.settings-description{
+ display:block;
+ font-size:12px;
+ color:var(--muted);
+ margin-top:4px;
+}
+
+/* CONTACT PROFILE */
+#contactProfilePanel{
+ position:fixed;
+ inset:0;
+ z-index:22;
+ display:none;
+ overflow-y:auto;
+ background:var(--bg);
+}
+.profile-top{
+ display:flex;
+ align-items:center;
+ gap:14px;
+ padding:17px;
+ background:var(--panel);
+ border-bottom:1px solid var(--border);
+}
+.profile-top h2{font-size:18px;margin:0}
+.profile-content{
+ max-width:650px;
+ margin:0 auto;
+ padding:25px 18px 50px;
+}
+.profile-hero{
+ text-align:center;
+ padding:28px 15px 25px;
+ background:var(--panel);
+ border:1px solid var(--border);
+ border-radius:22px;
+}
+.profile-mood{
+ color:var(--cyan);
+ font-size:14px;
+ margin-bottom:18px;
+}
+.profile-avatar{
+ width:126px;
+ height:126px;
+ margin:0 auto 17px;
+ border-radius:50%;
+ border:3px solid var(--cyan);
+ box-shadow:0 0 22px #00e5ff55;
+ background:var(--panel2);
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ overflow:hidden;
+ font-size:42px;
+ font-weight:bold;
+}
+.profile-avatar img{width:100%;height:100%;object-fit:cover}
+.profile-name{
+ font-size:25px;
+ font-weight:bold;
+ margin-bottom:5px;
+}
+.profile-handle{
+ color:var(--muted);
+ font-size:14px;
+}
+.profile-about{
+ color:var(--muted);
+ font-size:14px;
+ margin-top:15px;
+}
+.profile-actions{
+ display:flex;
+ justify-content:center;
+ gap:12px;
+ margin-top:20px;
+ flex-wrap:wrap;
+}
+.profile-action{
+ min-width:85px;
+ padding:11px 15px;
+ border-radius:13px;
+ background:var(--panel2);
+ color:var(--text);
+ border:1px solid var(--border);
+}
+.profile-section{
+ margin-top:18px;
+ padding:18px;
+ background:var(--panel);
+ border:1px solid var(--border);
+ border-radius:17px;
+}
+.profile-section h3{font-size:15px;margin:0 0 14px}
+.profile-detail{
+ display:flex;
+ justify-content:space-between;
+ gap:15px;
+ padding:11px 0;
+ border-bottom:1px solid var(--border);
+ font-size:14px;
+}
+.profile-detail:last-child{border-bottom:0}
+.profile-detail span:last-child{color:var(--muted);text-align:right}
+.profile-setting{
+ width:100%;
+ display:flex;
+ align-items:center;
+ gap:13px;
+ padding:14px 0;
+ text-align:left;
+ color:var(--text);
+ background:transparent;
+ border-bottom:1px solid var(--border);
+}
+.profile-setting:last-child{border-bottom:0}
+.profile-setting .settings-icon{flex-shrink:0}
+
+/* MODALS */
+.modal{
+ display:none;
+ position:fixed;
+ inset:0;
+ background:#000b;
+ z-index:30;
+ align-items:center;
+ justify-content:center;
+ padding:15px;
+}
 .modal.show{display:flex}
-.modal-card{width:100%;max-width:430px;max-height:90vh;
- overflow:auto;background:var(--panel);border-radius:14px;padding:20px}
-.modal-head{display:flex;justify-content:space-between;
- align-items:center;margin-bottom:15px}
-.modal-head button{background:transparent;color:var(--text);font-size:20px}
-.modal-option{width:100%;padding:14px;margin:5px 0;text-align:left;
- background:var(--panel2);color:var(--text);border-radius:8px}
+.modal-card{
+ width:100%;
+ max-width:430px;
+ max-height:90vh;
+ overflow:auto;
+ background:var(--panel);
+ border:1px solid var(--border);
+ border-radius:18px;
+ padding:20px;
+}
+.modal-head{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ margin-bottom:15px;
+}
+.modal-head button{
+ background:transparent;
+ color:var(--text);
+ font-size:20px;
+}
+.modal-option{
+ width:100%;
+ padding:14px;
+ margin:5px 0;
+ text-align:left;
+ background:var(--panel2);
+ color:var(--text);
+ border-radius:10px;
+}
 #photoPreview canvas{max-width:100%;max-height:55vh}
+.theme-choice{
+ display:flex;
+ gap:10px;
+ margin:12px 0;
+}
+.theme-choice button{
+ flex:1;
+ padding:13px;
+ border-radius:12px;
+ background:var(--panel2);
+ color:var(--text);
+ border:1px solid var(--border);
+}
+.theme-choice button.active{border:2px solid var(--cyan)}
+
+/* RESPONSIVE */
 @media(max-width:700px){
  .sidebar{width:100%;max-width:100%}
  .chat-area{display:none}
  #chatApp.chat-open .sidebar{display:none}
  #chatApp.chat-open .chat-area{display:flex;width:100%}
- .new-chat{left:auto;right:20px}
- .topbar{padding:0 10px}
- .top-actions{gap:3px}
- .icon-button{padding:9px}
+ .new-chat{right:18px;bottom:91px}
+ .topbar{padding:0 12px}
+ .top-actions{gap:4px}
+ .icon-button{min-width:39px;min-height:39px;padding:8px}
+ .inbox-item{padding:12px 14px}
+ .bottom-nav{height:72px}
+ .profile-content{padding:15px 12px 35px}
 }
 </style>
 </head>
@@ -175,11 +718,11 @@ button{cursor:pointer;border:0}
 <!-- MAIN KCHAT APPLICATION -->
 <main id="chatApp">
  <header class="topbar">
-  <div class="brand">KCHAT</div>
+  <div class="brand">KCHAT <span style="color:var(--cyan)">●</span></div>
   <div class="top-actions">
-   <button class="icon-button" id="mainVoiceButton" title="Call">☎</button>
-   <button class="icon-button" id="mainVideoButton" title="Video call">▣</button>
-   <button class="icon-button" id="settingsButton" title="Menu">⋮</button>
+   <button class="icon-button" id="mainVoiceButton" title="Call" aria-label="Call">☎</button>
+   <button class="icon-button" id="mainVideoButton" title="Video call" aria-label="Video call">▣</button>
+   <button class="icon-button" id="settingsButton" title="Menu" aria-label="Open menu">⋮</button>
   </div>
  </header>
 
@@ -187,12 +730,17 @@ button{cursor:pointer;border:0}
   <aside class="sidebar">
    <div class="sidebar-head">
     <input id="inboxSearch" class="search"
-     placeholder="Search contacts or chats">
+     placeholder="Search chats and messages">
     <div class="filters">
-     <button class="filter-btn active" data-filter="all">All</button>
+     <button class="filter-btn active" data-filter="all">All Chats</button>
      <button class="filter-btn" data-filter="unread">Unread</button>
      <button class="filter-btn" data-filter="favorites">Favorites</button>
      <button class="filter-btn" data-filter="groups">Groups</button>
+     <button class="filter-btn" data-filter="archived">Archived</button>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:13px">
+     <span style="font-size:13px;color:var(--muted)">Your conversations</span>
+     <button id="inboxThemeButton" class="link-button" type="button">☾ Dark mode</button>
     </div>
    </div>
    <div id="inboxList"></div>
@@ -209,48 +757,154 @@ button{cursor:pointer;border:0}
 
    <div id="chatScreen" class="hidden">
     <header class="chat-header">
-     <button class="icon-button" id="backButton">←</button>
+     <button class="icon-button" id="backButton" type="button">←</button>
      <div class="avatar" id="chatAvatar">K</div>
-     <div class="chat-person">
+     <div class="chat-person" id="openContactProfile" title="View profile">
       <div id="chatUsername">Contact</div>
       <div id="chatUserStatus">Offline</div>
      </div>
      <div class="chat-actions">
-      <button class="icon-button" id="chatVoiceButton">☎</button>
-      <button class="icon-button" id="chatVideoButton">▣</button>
-      <button class="icon-button" id="chatMenuButton">⋮</button>
+      <button class="icon-button" id="chatVoiceButton" title="Voice call">☎</button>
+      <button class="icon-button" id="chatVideoButton" title="Video call">▣</button>
+      <button class="icon-button" id="chatMenuButton" title="Chat options">⋮</button>
      </div>
     </header>
 
     <div id="messagesArea"></div>
 
     <div class="composer">
-     <button class="icon-button" id="attachmentButton">＋</button>
-     <button class="icon-button" id="cameraButton">📷</button>
+     <button class="icon-button" id="attachmentButton" title="Attach">＋</button>
+     <button class="icon-button" id="cameraButton" title="Camera">📷</button>
      <input id="messageInput" type="text" placeholder="Message">
-     <button class="send-btn" id="sendButton">➤</button>
-     <button class="icon-button" id="voiceMessageButton">🎙</button>
+     <button class="send-btn" id="sendButton" title="Send">➤</button>
+     <button class="icon-button" id="voiceMessageButton" title="Voice message">🎙</button>
     </div>
    </div>
   </section>
  </div>
 
- <button class="new-chat" id="newChatButton" title="New chat">＋</button>
+ <button class="new-chat" id="newChatButton" title="New action" aria-label="New action">＋</button>
+
+ <nav class="bottom-nav" aria-label="Main navigation">
+  <button class="active" data-nav="chats">
+   <span class="nav-icon">▤</span><span>Chats</span>
+  </button>
+  <button data-nav="updates">
+   <span class="nav-icon">◉</span><span>Updates</span>
+  </button>
+  <button data-nav="communities">
+   <span class="nav-icon">♧</span><span>Communities</span>
+  </button>
+  <button data-nav="calls">
+   <span class="nav-icon">☎</span><span>Calls</span>
+  </button>
+ </nav>
 </main>
 
-<!-- SETTINGS -->
+<!-- TOP-RIGHT DROPDOWN -->
+<div class="action-menu" id="actionMenu" role="menu">
+ <button data-action="new-group"><span class="menu-icon">♧</span>New group</button>
+ <button data-action="new-community"><span class="menu-icon">♙</span>New community</button>
+ <button data-action="broadcast"><span class="menu-icon">◖</span>Broadcast lists</button>
+ <button data-action="linked-devices"><span class="menu-icon">▣</span>Linked devices</button>
+ <button data-action="starred"><span class="menu-icon">☆</span>Starred messages</button>
+ <button data-action="read-all"><span class="menu-icon">✓</span>Read all</button>
+ <button data-action="scheduled-calls"><span class="menu-icon">◷</span>Scheduled calls</button>
+ <button data-action="settings"><span class="menu-icon">⚙</span>Settings</button>
+</div>
+
+<!-- GENERAL SETTINGS -->
 <section id="settingsPanel">
  <header class="settings-head">
-  <button class="icon-button" id="closeSettingsButton">←</button>
+  <button class="icon-button" id="closeSettingsButton" type="button">←</button>
   <h2>Settings</h2>
  </header>
- <div class="settings-row" id="myProfileButton">👤 My profile</div>
- <div class="settings-row" id="accountSettingsButton">🔐 Account</div>
- <div class="settings-row" id="privacySettingsButton">🔒 Privacy</div>
- <div class="settings-row" id="chatSettingsButton">💬 Chats</div>
- <div class="settings-row" id="notificationSettingsButton">🔔 Notifications</div>
- <div class="settings-row" id="blockedContactsButton">🚫 Blocked contacts</div>
- <div class="settings-row" id="logoutButton">↪ Log out</div>
+
+ <div class="settings-row" id="myProfileButton">
+  <span class="settings-icon">◉</span>
+  <span>My profile<span class="settings-description">Name, photo and current mood</span></span>
+ </div>
+ <div class="settings-row" id="accountSettingsButton">
+  <span class="settings-icon">♙</span>
+  <span>Account<span class="settings-description">Phone number, security and linked devices</span></span>
+ </div>
+ <div class="settings-row" id="privacySettingsButton">
+  <span class="settings-icon">♧</span>
+  <span>Privacy<span class="settings-description">Blocked contacts and disappearing messages</span></span>
+ </div>
+ <div class="settings-row" id="chatSettingsButton">
+  <span class="settings-icon">▤</span>
+  <span>Chats<span class="settings-description">Lists, backups, exports and archives</span></span>
+ </div>
+ <div class="settings-row" id="appearanceSettingsButton">
+  <span class="settings-icon">◐</span>
+  <span>Appearance<span class="settings-description">Dark mode, light mode, wallpaper and accent</span></span>
+ </div>
+ <div class="settings-row" id="notificationSettingsButton">
+  <span class="settings-icon">♬</span>
+  <span>Notifications<span class="settings-description">Security and message alerts</span></span>
+ </div>
+ <div class="settings-row" id="blockedContactsButton">
+  <span class="settings-icon">⊘</span>
+  <span>Blocked contacts<span class="settings-description">Manage blocked accounts</span></span>
+ </div>
+ <div class="settings-row" id="logoutButton">
+  <span class="settings-icon">↪</span>
+  <span>Log out</span>
+ </div>
+</section>
+
+<!-- CONTACT PROFILE: OPENS FROM THE CHAT HEADER -->
+<section id="contactProfilePanel">
+ <header class="profile-top">
+  <button class="icon-button" id="closeContactProfile" type="button">←</button>
+  <h2>Contact info</h2>
+ </header>
+
+ <div class="profile-content">
+  <div class="profile-hero">
+   <div class="profile-mood" id="profileMood">Current Mood · Available</div>
+   <div class="profile-avatar" id="profileAvatar">K</div>
+   <div class="profile-name" id="profileName">Contact name</div>
+   <div class="profile-handle" id="profileHandle">@contact</div>
+   <div class="profile-about" id="profileAbout">Using KCHAT</div>
+
+   <div class="profile-actions">
+    <button class="profile-action" id="profileMessageButton">▤<br>Message</button>
+    <button class="profile-action" id="profileVoiceButton">☎<br>Call</button>
+    <button class="profile-action" id="profileVideoButton">▣<br>Video</button>
+   </div>
+  </div>
+
+  <div class="profile-section">
+   <h3>Contact details</h3>
+   <div class="profile-detail"><span>Username</span><span id="profileUsernameDetail">—</span></div>
+   <div class="profile-detail"><span>About</span><span id="profileAboutDetail">—</span></div>
+   <div class="profile-detail"><span>Groups in common</span><span id="profileGroupsCommon">—</span></div>
+  </div>
+
+  <div class="profile-section">
+   <h3>Personal chat settings</h3>
+   <button class="profile-setting" id="profileFavoriteButton">
+    <span class="settings-icon">☆</span><span>Add to favorites</span>
+   </button>
+   <button class="profile-setting" id="profilePinButton">
+    <span class="settings-icon">⌖</span><span>Pin conversation</span>
+   </button>
+   <button class="profile-setting" id="profileHideButton">
+    <span class="settings-icon">◉</span><span>Hide conversation</span>
+   </button>
+   <button class="profile-setting" id="profileDisappearingButton">
+    <span class="settings-icon">◷</span><span>Disappearing messages</span>
+   </button>
+   <button class="profile-setting" id="profileMuteButton">
+    <span class="settings-icon">♩</span><span>Mute notifications</span>
+   </button>
+   <button class="profile-setting" id="profileBlockButton">
+    <span class="settings-icon">⊘</span><span>Block contact</span>
+   </button>
+  </div>
+ </div>
 </section>
 
 <!-- ATTACHMENTS -->
@@ -258,7 +912,7 @@ button{cursor:pointer;border:0}
  <div class="modal-card">
   <div class="modal-head">
    <h3>Attach</h3>
-   <button data-close="attachmentModal">✕</button>
+   <button data-close="attachmentModal" type="button">✕</button>
   </div>
   <button class="modal-option" id="galleryButton">🖼 Gallery — Photos and videos</button>
   <button class="modal-option" id="documentButton">📄 Document</button>
@@ -272,7 +926,7 @@ button{cursor:pointer;border:0}
  <div class="modal-card">
   <div class="modal-head">
    <h3>Edit photo</h3>
-   <button data-close="photoEditorModal">✕</button>
+   <button data-close="photoEditorModal" type="button">✕</button>
   </div>
   <div id="photoPreview"></div>
   <div class="filters">
@@ -291,1251 +945,723 @@ button{cursor:pointer;border:0}
 <input type="file" id="galleryInput" accept="image/*,video/*" hidden>
 <input type="file" id="documentInput" hidden>
 
-<!-- PART 2 CONTINUES BELOW -->
-    <script>
-"use strict";
+<!-- PART 2 STARTS HERE -->
+ <!-- NEW KCHAT INBOX HEADER -->
+<header class="topbar inbox-topbar">
+    <div class="brand">KCHAT</div>
 
-/* =========================
-   KCHAT CORE
-========================= */
+    <div class="top-actions">
+        <button class="icon-button" id="mainVoiceButton" title="Calls">☎</button>
+        <button class="icon-button" id="mainVideoButton" title="Video calls">▣</button>
 
-const API = "";
-const $ = id => document.getElementById(id);
+        <div class="menu-wrapper">
+            <button class="icon-button" id="settingsButton"
+                    title="More options">⋮</button>
 
-let token = localStorage.getItem("kchat_token") || "";
-let currentUser = localStorage.getItem("kchat_username") || "";
-let currentChat = "";
-let contacts = [];
-let inbox = [];
-let socket = null;
-let currentFilter = "all";
-let pendingCallType = "voice";
-let photoCanvas = null;
-let photoContext = null;
-let photoImage = null;
+            <div class="dropdown-menu hidden" id="mainDropdown">
+                <button onclick="openNewGroup()">👥 New group</button>
+                <button onclick="openNewCommunity()">🌐 New community</button>
+                <button onclick="openBroadcastLists()">📢 Broadcast lists</button>
+                <button onclick="openLinkedDevices()">💻 Linked devices</button>
+                <button onclick="openStarredMessages()">⭐ Starred messages</button>
+                <button onclick="markAllRead()">✓ Read all</button>
+                <button onclick="openScheduledCalls()">📅 Scheduled calls</button>
+                <button onclick="openSettings()">⚙ Settings</button>
+            </div>
+        </div>
+    </div>
+</header>
 
-function authMessage(message, error = true) {
-    const box = $("authMessage");
-    if (!box) return;
-    box.textContent = message;
-    box.style.color = error ? "#ff9d91" : "#65e6a5";
+<div class="app-layout">
+
+    <!-- INBOX SIDEBAR -->
+    <aside class="sidebar">
+
+        <div class="sidebar-head">
+            <input id="inboxSearch" class="search"
+                   placeholder="Search contacts or chats">
+
+            <div class="filters">
+                <button class="filter-btn active"
+                        data-filter="all">All</button>
+                <button class="filter-btn"
+                        data-filter="unread">Unread</button>
+                <button class="filter-btn"
+                        data-filter="favorites">Favorites</button>
+                <button class="filter-btn"
+                        data-filter="groups">Groups</button>
+            </div>
+        </div>
+
+        <div id="inboxList"></div>
+
+        <!-- FLOATING NEW CHAT BUTTON -->
+        <button class="new-chat" id="newChatButton"
+                title="Start a new chat">＋</button>
+
+        <!-- BOTTOM NAVIGATION -->
+        <nav class="bottom-navigation">
+            <button class="bottom-nav-item active"
+                    id="chatsTab">
+                <span>💬</span>
+                <small>Chats</small>
+            </button>
+
+            <button class="bottom-nav-item"
+                    id="updatesTab">
+                <span>◉</span>
+                <small>Updates</small>
+            </button>
+
+            <button class="bottom-nav-item"
+                    id="communitiesTab">
+                <span>♧</span>
+                <small>Communities</small>
+            </button>
+
+            <button class="bottom-nav-item"
+                    id="callsTab">
+                <span>☎</span>
+                <small>Calls</small>
+            </button>
+        </nav>
+    </aside>
+
+    <!-- CHAT AREA -->
+    <section class="chat-area">
+
+        <div id="welcomeScreen" class="welcome">
+            <div>
+                <div style="font-size:55px">💬</div>
+                <h2>Welcome to KCHAT</h2>
+                <p>Select a conversation to start chatting.</p>
+            </div>
+        </div>
+
+        <div id="chatScreen" class="hidden">
+            <header class="chat-header">
+                <button class="icon-button" id="backButton">←</button>
+
+                <div class="avatar" id="chatAvatar">K</div>
+
+                <div class="chat-person">
+                    <div id="chatUsername">Contact</div>
+                    <div id="chatUserStatus">Offline</div>
+                </div>
+
+                <div class="chat-actions">
+                    <button class="icon-button"
+                            id="chatVoiceButton">☎</button>
+                    <button class="icon-button"
+                            id="chatVideoButton">▣</button>
+                    <button class="icon-button"
+                            id="chatMenuButton">⋮</button>
+                </div>
+            </header>
+
+            <div id="messagesArea"></div>
+
+            <div class="composer">
+                <button class="icon-button"
+                        id="attachmentButton">＋</button>
+                <button class="icon-button"
+                        id="cameraButton">📷</button>
+                <input id="messageInput"
+                       type="text" placeholder="Message">
+                <button class="send-btn"
+                        id="sendButton">➤</button>
+                <button class="icon-button"
+                        id="voiceMessageButton">🎙</button>
+            </div>
+        </div>
+
+    </section>
+</div>
+<style>
+:root {
+    --bg: #0B0F19;
+    --card: #161F30;
+    --primary: #ffffff;
+    --secondary: #8F9CAE;
+    --accent: #00E5FF;
+    --green: #00a884;
+    --border: rgba(255,255,255,.08);
 }
 
-function showMessage(message) {
-    alert(message);
+body[data-theme="light"] {
+    --bg: #F0F2F5;
+    --card: #ffffff;
+    --primary: #0F172A;
+    --secondary: #64748B;
+    --accent: #3B82F6;
+    --border: rgba(15,23,42,.1);
 }
 
-async function apiRequest(path, options = {}) {
-    const headers = {
-        "Content-Type": "application/json",
-        ...(options.headers || {})
-    };
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--primary);
+    font-family: "Segoe Print", "Comic Sans MS", cursive;
+}
 
-    if (token) headers.Authorization = "Bearer " + token;
+button, input {
+    font: inherit;
+}
 
-    const response = await fetch(API + path, {
-        ...options,
-        headers
-    });
+button {
+    cursor: pointer;
+}
 
-    const text = await response.text();
-    let data = {};
+.hidden {
+    display: none !important;
+}
 
-    try {
-        data = text ? JSON.parse(text) : {};
-    } catch {
-        data = {detail: text};
+.topbar {
+    height: 65px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+}
+
+.brand {
+    font-size: 25px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: var(--accent);
+}
+
+.top-actions, .chat-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.icon-button {
+    border: 0;
+    background: transparent;
+    color: var(--primary);
+    font-size: 22px;
+    padding: 9px;
+    border-radius: 50%;
+}
+
+.icon-button:hover {
+    background: rgba(128,128,128,.15);
+}
+
+.app-layout {
+    display: flex;
+    height: calc(100vh - 66px);
+    min-height: 400px;
+}
+
+.sidebar {
+    width: 360px;
+    min-width: 280px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border-right: 1px solid var(--border);
+}
+
+.sidebar-head {
+    padding: 16px;
+}
+
+.search {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--border);
+    border-radius: 25px;
+    background: var(--bg);
+    color: var(--primary);
+    padding: 14px 18px;
+    outline: none;
+}
+
+.search:focus {
+    border-color: var(--accent);
+}
+
+.filters {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-top: 14px;
+}
+
+.filter-btn {
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 7px 13px;
+    background: transparent;
+    color: var(--secondary);
+    white-space: nowrap;
+}
+
+.filter-btn.active {
+    background: var(--green);
+    color: white;
+    border-color: var(--green);
+}
+
+#inboxList {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 75px;
+}
+
+.inbox-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+}
+
+.inbox-item:hover {
+    background: rgba(128,128,128,.1);
+}
+
+.avatar {
+    width: 47px;
+    height: 47px;
+    min-width: 47px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--green), var(--accent));
+    color: white;
+    font-size: 20px;
+    overflow: hidden;
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.inbox-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.inbox-name {
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.inbox-preview {
+    color: var(--secondary);
+    font-size: 13px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    margin-top: 5px;
+}
+
+.inbox-meta {
+    text-align: right;
+    color: var(--secondary);
+    font-size: 11px;
+}
+
+.unread-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 4px;
+    margin-top: 6px;
+    border-radius: 20px;
+    background: var(--green);
+    color: white;
+}
+
+.new-chat {
+    position: absolute;
+    right: 20px;
+    bottom: 83px;
+    width: 58px;
+    height: 58px;
+    border: none;
+    border-radius: 20px;
+    background: #00d47b;
+    color: white;
+    font-size: 34px;
+    box-shadow: 0 0 18px rgba(0,212,123,.35);
+    z-index: 5;
+}
+
+.bottom-navigation {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 65px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: var(--card);
+    border-top: 1px solid var(--border);
+}
+
+.bottom-nav-item {
+    border: 0;
+    background: transparent;
+    color: var(--secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+}
+
+.bottom-nav-item span {
+    font-size: 20px;
+}
+
+.bottom-nav-item small {
+    font-size: 11px;
+}
+
+.bottom-nav-item.active {
+    color: var(--green);
+    background: rgba(0,168,132,.12);
+}
+
+.chat-area {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.welcome {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--secondary);
+}
+
+.welcome h2 {
+    color: var(--primary);
+}
+
+#chatScreen {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-header {
+    min-height: 65px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+}
+
+.chat-person {
+    flex: 1;
+    min-width: 0;
+}
+
+#chatUsername {
+    font-weight: bold;
+}
+
+#chatUserStatus {
+    color: var(--secondary);
+    font-size: 12px;
+}
+
+#messagesArea {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.composer {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px;
+    background: var(--card);
+}
+
+.composer input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 25px;
+    padding: 13px 16px;
+    outline: none;
+    background: var(--bg);
+    color: var(--primary);
+}
+
+.send-btn {
+    border: 0;
+    border-radius: 50%;
+    width: 43px;
+    height: 43px;
+    background: var(--green);
+    color: white;
+    font-size: 20px;
+}
+
+.menu-wrapper {
+    position: relative;
+}
+
+.dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: 48px;
+    z-index: 20;
+    width: 230px;
+    padding: 7px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 12px 35px rgba(0,0,0,.3);
+}
+
+.dropdown-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    padding: 12px;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--primary);
+}
+
+.dropdown-menu button:hover {
+    background: rgba(128,128,128,.15);
+}
+
+/* Personal appearance controls */
+.theme-control {
+    display: flex;
+    gap: 10px;
+    padding: 12px;
+}
+
+.theme-control button {
+    flex: 1;
+    padding: 11px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--card);
+    color: var(--primary);
+}
+
+.theme-control button.selected {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+@media(max-width:700px) {
+    .app-layout {
+        height: calc(100vh - 66px);
     }
 
-    if (!response.ok) {
-        throw new Error(data.detail || data.message || `Request failed (${response.status})`);
+    .sidebar {
+        width: 100%;
+        min-width: 0;
     }
 
-    return data;
-}
-
-/* =========================
-   AUTH SCREEN SWITCHING
-========================= */
-
-function showLogin() {
-    $("loginForm").classList.remove("hidden");
-    $("registerForm").classList.add("hidden");
-    authMessage("");
-}
-
-function showRegister() {
-    $("loginForm").classList.add("hidden");
-    $("registerForm").classList.remove("hidden");
-    authMessage("");
-}
-
-/* =========================
-   LOGIN
-========================= */
-
-async function login(event) {
-    if (event) event.preventDefault();
-
-    const phone = $("loginPhone").value.trim();
-    const password = $("loginPassword").value;
-
-    if (!phone || !password) {
-        authMessage("Enter your phone number and password.");
-        return;
+    .chat-area {
+        display: none;
+        width: 100%;
     }
 
-    const button = $("loginButton");
-    button.disabled = true;
-    button.textContent = "Logging in...";
-    authMessage("Checking your account...", false);
-
-    try {
-        const data = await apiRequest("/api/login", {
-            method: "POST",
-            body: JSON.stringify({
-                phone: phone,
-                identity: phone,
-                password: password
-            })
-        });
-
-        saveSession(data, phone);
-
-        authMessage("Login successful.", false);
-        await enterKchat();
-
-    } catch (error) {
-        authMessage(error.message || "Login failed.");
-    } finally {
-        button.disabled = false;
-        button.textContent = "Login";
-    }
-}
-
-/* =========================
-   REGISTER
-========================= */
-
-async function register(event) {
-    if (event) event.preventDefault();
-
-    const username = $("registerUsername").value.trim();
-    const phone = $("registerPhone").value.trim();
-    const password = $("registerPassword").value;
-
-    if (username.length < 3 || username.length > 30) {
-        authMessage("Username must be between 3 and 30 characters.");
-        return;
+    body.chat-open .sidebar {
+        display: none;
     }
 
-    if (!phone || !password) {
-        authMessage("Enter your phone number and password.");
-        return;
+    body.chat-open .chat-area {
+        display: flex;
     }
 
-    if (password.length < 6) {
-        authMessage("Password must contain at least 6 characters.");
-        return;
-    }
-
-    const button = $("registerButton");
-    button.disabled = true;
-    button.textContent = "Creating account...";
-    authMessage("Creating your account...", false);
-
-    try {
-        const data = await apiRequest("/api/register", {
-            method: "POST",
-            body: JSON.stringify({
-                username: username,
-                phone: phone,
-                password: password
-            })
-        });
-
-        saveSession(data, username);
-        authMessage("Account created successfully.", false);
-        await enterKchat();
-
-    } catch (error) {
-        authMessage(error.message || "Registration failed.");
-    } finally {
-        button.disabled = false;
-        button.textContent = "Create My Account";
+    .topbar {
+        padding: 0 12px;
     }
 }
+</style>
 
-/* =========================
-   SAVE LOGIN SESSION
-========================= */
-
-function saveSession(data, fallbackUser) {
-    const newToken =
-        data.token ||
-        data.access_token ||
-        (data.session && data.session.token);
-
-    const newUsername =
-        data.username ||
-        (data.user && data.user.username) ||
-        fallbackUser;
-
-    if (!newToken) {
-        throw new Error("Server did not return a login token. Check the backend response.");
-    }
-
-    token = newToken;
-    currentUser = newUsername;
-
-    localStorage.setItem("kchat_token", token);
-    localStorage.setItem("kchat_username", currentUser);
-}
-
-/* =========================
-   ENTER KCHAT
-========================= */
-
-async function enterKchat() {
-    $("authScreen").style.display = "none";
-    $("chatApp").style.display = "block";
-
-    try {
-        await loadContacts();
-        await loadInbox();
-        connectGeneralSocket();
-    } catch (error) {
-        console.error("KCHAT loading error:", error);
-        showMessage("KCHAT opened, but some information could not load: " + error.message);
-    }
-}
-
-/* =========================
-   RESTORE SESSION
-========================= */
-
-async function restoreSession() {
-    if (!token || !currentUser) {
-        showLogin();
-        return;
-    }
-
-    try {
-        await enterKchat();
-    } catch (error) {
-        console.error(error);
-        logout(false);
-    }
-}
-
-/* =========================
-   CONTACTS
-========================= */
-
-async function loadContacts() {
-    const data = await apiRequest("/api/contacts");
-    contacts = data.contacts || [];
-}
-
-async function addContact() {
-    const username = prompt("Enter the contact username:");
-    if (!username) return;
-
-    try {
-        await apiRequest("/api/contacts", {
-            method: "POST",
-            body: JSON.stringify({username: username.trim()})
-        });
-
-        await loadContacts();
-        await loadInbox();
-        showMessage("Contact added.");
-    } catch (error) {
-        showMessage(error.message);
-    }
-}
-
-/* =========================
-   INBOX
-========================= */
-
-async function loadInbox() {
-    const data = await apiRequest("/api/inbox");
-    inbox = data.inbox || [];
-    renderInbox();
-}
-
-function renderInbox() {
-    const list = $("inboxList");
-    if (!list) return;
-
-    const search = $("inboxSearch").value.toLowerCase();
-
-    let items = inbox.filter(item => {
-        const name = (item.username || "").toLowerCase();
-        return name.includes(search);
-    });
-
-    if (currentFilter === "unread") {
-        items = items.filter(item => Number(item.unread_count || 0) > 0);
-    }
-
-    if (currentFilter === "favorites") {
-        items = items.filter(item => item.pinned);
-    }
-
-    if (currentFilter === "groups") {
-        items = [];
-    }
-
-    list.innerHTML = "";
-
-    if (!items.length) {
-        list.innerHTML = `
-            <div style="padding:20px;color:#9aabb7;text-align:center">
-                No conversations found.
-            </div>`;
-        return;
-    }
-
-    items.forEach(item => {
-        const username = item.username || "Unknown";
-        const row = document.createElement("div");
-        row.className = "inbox-item";
-
-        const avatar = document.createElement("div");
-        avatar.className = "avatar";
-        avatar.textContent = username.charAt(0).toUpperCase();
-
-        const info = document.createElement("div");
-        info.className = "inbox-info";
-
-        const name = document.createElement("div");
-        name.className = "inbox-name";
-        name.textContent = username;
-
-        const last = document.createElement("div");
-        last.className = "inbox-last";
-        last.textContent = item.last_message || "Start a conversation";
-
-        info.append(name, last);
-        row.append(avatar, info);
-
-        row.addEventListener("click", () => openPrivateChat(username));
-        list.appendChild(row);
-    });
-}
-
-function filterChats(filter) {
-    currentFilter = filter;
-
-    document.querySelectorAll(".filter-btn[data-filter]").forEach(button => {
-        button.classList.toggle("active", button.dataset.filter === filter);
-    });
-
-    renderInbox();
-}
-
-/* =========================
-   OPEN PRIVATE CHAT
-========================= */
-
-function openPrivateChat(username) {
-    currentChat = username;
-
-    $("chatApp").classList.add("chat-open");
-    $("welcomeScreen").classList.add("hidden");
-    $("chatScreen").classList.remove("hidden");
-
-    $("chatUsername").textContent = username;
-    $("chatAvatar").textContent = username.charAt(0).toUpperCase();
-    $("chatUserStatus").textContent = "Connecting...";
-
-    $("messagesArea").innerHTML = "";
-
-    if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({
-            type: "open_private",
-            username: username
-        }));
-    }
-}
-
-function backToInbox() {
-    $("chatApp").classList.remove("chat-open");
-    currentChat = "";
-}
-
-/* =========================
-   SEND TEXT MESSAGE
-========================= */
-
-function sendKchatMessage() {
-    const input = $("messageInput");
-    const text = input.value.trim();
-
-    if (!text || !currentChat) return;
-
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-        showMessage("Not connected. Please wait and try again.");
-        return;
-    }
-
-    socket.send(JSON.stringify({
-        type: "private",
-        recipient: currentChat,
-        text: text
-    }));
-
-    input.value = "";
-}
-
-/* =========================
-   DISPLAY MESSAGE
-========================= */
-
-function addMessage(message) {
-    const area = $("messagesArea");
-    if (!area) return;
-
-    const bubble = document.createElement("div");
-    bubble.className =
-        "message " +
-        (message.sender === currentUser || message.username === currentUser
-            ? "outgoing"
-            : "");
-
-    const content = document.createElement("div");
-    content.textContent = message.text || "";
-    bubble.appendChild(content);
-
-    const time = document.createElement("div");
-    time.className = "message-time";
-    time.textContent = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit"
-    });
-
-    bubble.appendChild(time);
-    area.appendChild(bubble);
-    area.scrollTop = area.scrollHeight;
-}
-
-/* =========================
-   WEBSOCKET CONNECTION
-========================= */
-
-function connectGeneralSocket() {
-    if (!token) return;
-
-    if (socket) {
-        socket.close();
-        socket = null;
-    }
-
-    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    const url = `${protocol}//${location.host}/ws/general?token=${encodeURIComponent(token)}`;
-
-    socket = new WebSocket(url);
-
-    socket.onopen = () => {
-        $("chatUserStatus").textContent = currentChat ? "Connected" : "";
-    };
-
-    socket.onmessage = event => {
-        let data;
-
-        try {
-            data = JSON.parse(event.data);
-        } catch {
-            return;
-        }
-
-        if (data.type === "private_history") {
-            $("messagesArea").innerHTML = "";
-            (data.messages || []).forEach(addMessage);
-            return;
-        }
-
-        if (data.type === "private") {
-            if (
-                data.sender === currentChat ||
-                data.username === currentChat ||
-                data.recipient === currentChat
-            ) {
-                addMessage(data);
-            }
-            loadInbox().catch(console.error);
-            return;
-        }
-
-        if (data.type === "private_status") {
-            loadInbox().catch(console.error);
-        }
-    };
-
-    socket.onclose = () => {
-        if ($("chatUserStatus") && currentChat) {
-            $("chatUserStatus").textContent = "Disconnected";
-        }
-    };
-
-    socket.onerror = error => {
-        console.error("KCHAT WebSocket error:", error);
-    };
-}
-
-/* =========================
-   NEW CHAT / CONTACT PICKER
-========================= */
-
-function openContactPicker() {
-    if (!contacts.length) {
-        showMessage("You have no contacts yet. Add a contact first.");
-        return;
-    }
-
-    const choice = prompt(
-        "Choose a contact:\n\n" +
-        contacts.map((name, index) => `${index + 1}. ${name}`).join("\n")
-    );
-
-    const index = Number(choice) - 1;
-
-    if (Number.isInteger(index) && contacts[index]) {
-        openPrivateChat(contacts[index]);
-    }
-}
-
-/* =========================
-   ATTACHMENTS
-========================= */
-
-function openAttachments() {
-    $("attachmentModal").classList.add("show");
-}
-
-function openCamera() {
-    $("cameraInput").click();
-}
-
-function chooseGallery() {
-    $("galleryInput").click();
-    closeModal("attachmentModal");
-}
-
-function chooseDocument() {
-    $("documentInput").click();
-    closeModal("attachmentModal");
-}
-
-function closeModal(id) {
-    const modal = $(id);
-    if (modal) modal.classList.remove("show");
-}
-
-/* =========================
-   SELECT MEDIA
-========================= */
-
-function handleSelectedMedia(file) {
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-        showMessage("Video preview and sending need media support in the backend.");
-        return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = event => {
-        photoImage = new Image();
-
-        photoImage.onload = () => {
-            $("photoPreview").innerHTML = '<canvas id="photoCanvas"></canvas>';
-
-            photoCanvas = $("photoCanvas");
-            const scale = Math.min(
-                900 / photoImage.width,
-                600 / photoImage.height,
-                1
-            );
-
-            photoCanvas.width = photoImage.width * scale;
-            photoCanvas.height = photoImage.height * scale;
-
-            photoContext = photoCanvas.getContext("2d");
-            photoContext.drawImage(
-                photoImage, 0, 0,
-                photoCanvas.width, photoCanvas.height
-            );
-
-            $("photoEditorModal").classList.add("show");
-        };
-
-        photoImage.src = event.target.result;
-    };
-
-    reader.readAsDataURL(file);
-}
-
-function handleSelectedDocument(file) {
-    if (!file) return;
-    showMessage("Document selected: " + file.name +
-        ". Document uploading needs a backend media endpoint.");
-}
-
-/* =========================
-   CONTACT AND LOCATION SHARE
-========================= */
-
-function shareContact() {
-    closeModal("attachmentModal");
-
-    const username = prompt("Enter the KCHAT username to share:");
-    if (!username || !currentChat) return;
-
-    if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({
-            type: "private",
-            recipient: currentChat,
-            text: "KCHAT contact: " + username
-        }));
-    }
-}
-
-function shareLocation() {
-    closeModal("attachmentModal");
-
-    if (!navigator.geolocation) {
-        showMessage("Location is not available in this browser.");
-        return;
-    }
-
-    navigator.geolocation.getCurrentPosition(position => {
-        const url = `https://maps.google.com/?q=${position.coords.latitude},${position.coords.longitude}`;
-
-        if (socket && socket.readyState === WebSocket.OPEN && currentChat) {
-            socket.send(JSON.stringify({
-                type: "private",
-                recipient: currentChat,
-                text: "My location: " + url
-            }));
-            showMessage("Location link sent.");
-        } else {
-            showMessage("Open a chat first.");
-        }
-    }, () => showMessage("Location permission was not granted."));
-}
-
-/* =========================
-   MAIN MENU
-========================= */
-
-function openMainMenu() {
-    const choice = prompt(
-        "KCHAT MENU\n\n" +
-        "1. Add contact\n" +
-        "2. New chat\n" +
-        "3. New group\n" +
-        "4. Settings\n" +
-        "5. Refresh inbox"
-    );
-
-    if (choice === "1") addContact();
-    if (choice === "2") openContactPicker();
-    if (choice === "3") openNewGroup();
-    if (choice === "4") openSettings();
-    if (choice === "5") loadInbox();
-}
-
-/* =========================
-   PART 3 CONTINUES BELOW
-========================= */
-</script>
 <script>
-/* =========================
-   PHOTO EDITING
-========================= */
+/* KCHAT INBOX CONTROLS */
 
-function cropPhoto() {
-    if (!photoCanvas || !photoContext) return;
+const kchatBody = document.body;
+const dropdown = document.getElementById("mainDropdown");
 
-    const w = photoCanvas.width;
-    const h = photoCanvas.height;
-    const x = Math.round(w * 0.1);
-    const y = Math.round(h * 0.1);
-    const cw = Math.round(w * 0.8);
-    const ch = Math.round(h * 0.8);
-
-    const temp = document.createElement("canvas");
-    temp.width = cw;
-    temp.height = ch;
-
-    temp.getContext("2d").drawImage(
-        photoCanvas, x, y, cw, ch, 0, 0, cw, ch
-    );
-
-    photoCanvas.width = cw;
-    photoCanvas.height = ch;
-    photoContext.drawImage(temp, 0, 0);
-}
-
-function addSticker() {
-    if (!photoContext) return;
-
-    const sticker = prompt("Enter a sticker: ❤️ 😂 🔥 👍 😍");
-    if (!sticker) return;
-
-    photoContext.font = "48px Arial";
-    photoContext.fillText(
-        sticker,
-        photoCanvas.width / 2,
-        photoCanvas.height / 2
-    );
-}
-
-function addPhotoText() {
-    if (!photoContext) return;
-
-    const text = prompt("Enter text for your photo:");
-    if (!text) return;
-
-    photoContext.font = "bold 30px Arial";
-    photoContext.textAlign = "center";
-    photoContext.lineWidth = 3;
-    photoContext.strokeStyle = "#000";
-    photoContext.fillStyle = "#fff";
-
-    photoContext.strokeText(
-        text,
-        photoCanvas.width / 2,
-        photoCanvas.height / 2
-    );
-
-    photoContext.fillText(
-        text,
-        photoCanvas.width / 2,
-        photoCanvas.height / 2
-    );
-}
-
-function drawOnPhoto() {
-    if (!photoContext) return;
-
-    photoContext.beginPath();
-    photoContext.moveTo(
-        photoCanvas.width * 0.2,
-        photoCanvas.height * 0.5
-    );
-    photoContext.lineTo(
-        photoCanvas.width * 0.8,
-        photoCanvas.height * 0.5
-    );
-    photoContext.strokeStyle = "red";
-    photoContext.lineWidth = 7;
-    photoContext.stroke();
-}
-
-function applyFilter() {
-    if (!photoCanvas || !photoContext) return;
-
-    const choice = prompt(
-        "Choose filter:\n1. Black and white\n2. Vintage\n3. Bright"
-    );
-
-    const filters = {
-        "1": "grayscale(100%)",
-        "2": "sepia(80%)",
-        "3": "brightness(1.25)"
-    };
-
-    if (!filters[choice]) return;
-
-    const temp = document.createElement("canvas");
-    temp.width = photoCanvas.width;
-    temp.height = photoCanvas.height;
-
-    const ctx = temp.getContext("2d");
-    ctx.filter = filters[choice];
-    ctx.drawImage(photoCanvas, 0, 0);
-
-    photoContext.clearRect(0, 0, photoCanvas.width, photoCanvas.height);
-    photoContext.drawImage(temp, 0, 0);
-}
-
-function sendEditedPhoto() {
-    if (!photoCanvas || !currentChat) {
-        showMessage("Open a chat and select a photo first.");
-        return;
-    }
-
-    const caption = $("photoCaption").value.trim();
-    const image = document.createElement("img");
-
-    image.src = photoCanvas.toDataURL("image/jpeg", 0.85);
-    image.style.maxWidth = "220px";
-    image.style.borderRadius = "10px";
-
-    const message = document.createElement("div");
-    message.className = "message outgoing";
-    message.appendChild(image);
-
-    if (caption) {
-        const text = document.createElement("p");
-        text.textContent = caption;
-        message.appendChild(text);
-    }
-
-    $("messagesArea").appendChild(message);
-    $("messagesArea").scrollTop = $("messagesArea").scrollHeight;
-
-    closeModal("photoEditorModal");
-    $("photoCaption").value = "";
-
-    photoCanvas = null;
-    photoContext = null;
-    photoImage = null;
-
-    showMessage("Photo preview added. Actual delivery requires backend media-upload support.");
-}
-
-/* =========================
-   VOICE MESSAGE RECORDING
-========================= */
-
-let mediaRecorder = null;
-let recordedChunks = [];
-
-async function recordVoiceMessage() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        showMessage("Microphone is unavailable in this browser.");
-        return;
-    }
-
+function setKchatTheme(theme) {
+    kchatBody.setAttribute("data-theme", theme);
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-
-        mediaRecorder = new MediaRecorder(stream);
-        recordedChunks = [];
-
-        mediaRecorder.ondataavailable = event => {
-            if (event.data.size) recordedChunks.push(event.data);
-        };
-
-        mediaRecorder.onstop = () => {
-            const blob = new Blob(recordedChunks, {type: "audio/webm"});
-            const url = URL.createObjectURL(blob);
-
-            const audio = document.createElement("audio");
-            audio.controls = true;
-            audio.src = url;
-
-            $("messagesArea").appendChild(audio);
-            stream.getTracks().forEach(track => track.stop());
-
-            showMessage("Recording created. Sending it to contacts requires backend media support.");
-        };
-
-        mediaRecorder.start();
-
-        showMessage("Recording started. Click the microphone again to stop.");
-
-    } catch (error) {
-        showMessage("Microphone permission was denied or unavailable.");
-    }
+        localStorage.setItem("kchat-theme", theme);
+    } catch (error) {}
 }
 
-function stopVoiceRecording() {
-    if (mediaRecorder && mediaRecorder.state === "recording") {
-        mediaRecorder.stop();
-    }
+try {
+    setKchatTheme(localStorage.getItem("kchat-theme") || "dark");
+} catch (error) {
+    setKchatTheme("dark");
 }
 
-/* =========================
-   CALLS
-========================= */
-
-function openMainCallPicker(type) {
-    pendingCallType = type;
-
-    if (!contacts.length) {
-        showMessage("Add contacts before making a call.");
-        return;
-    }
-
-    const choice = prompt(
-        "Select contact to " + type + " call:\n\n" +
-        contacts.map((name, i) => `${i + 1}. ${name}`).join("\n")
-    );
-
-    const index = Number(choice) - 1;
-
-    if (!Number.isInteger(index) || !contacts[index]) return;
-
-    currentChat = contacts[index];
-    startCall();
-}
-
-function startVoiceCall() {
-    if (!currentChat) {
-        showMessage("Open a chat first.");
-        return;
-    }
-    pendingCallType = "voice";
-    startCall();
-}
-
-function startVideoCall() {
-    if (!currentChat) {
-        showMessage("Open a chat first.");
-        return;
-    }
-    pendingCallType = "video";
-    startCall();
-}
-
-function startCall() {
-    showMessage(
-        pendingCallType.toUpperCase() + " CALL to " + currentChat +
-        "\n\nLive calling needs WebRTC and a calling/signalling backend."
-    );
-}
-
-/* =========================
-   CHAT OPTIONS
-========================= */
-
-function openChatMenu() {
-    if (!currentChat) return;
-
-    const choice = prompt(
-        "CHAT OPTIONS\n\n" +
-        "1. View profile\n" +
-        "2. Pin chat\n" +
-        "3. Hide chat\n" +
-        "4. Block contact\n" +
-        "5. Search messages\n"
-    );
-
-    if (choice === "1") showProfile(currentChat);
-    if (choice === "2") updateChatSetting("pinned", true);
-    if (choice === "3") updateChatSetting("hidden", true);
-    if (choice === "4") blockContact();
-    if (choice === "5") searchInChat();
-}
-
-async function updateChatSetting(setting, value) {
-    if (!currentChat) return;
-
-    try {
-        await apiRequest(
-            `/api/chats/${encodeURIComponent(currentChat)}/settings`,
-            {
-                method: "PUT",
-                body: JSON.stringify({[setting]: value})
-            }
-        );
-
-        await loadInbox();
-        showMessage("Chat setting updated.");
-    } catch (error) {
-        showMessage(error.message);
-    }
-}
-
-/* =========================
-   MESSAGE OPTIONS
-========================= */
-
-function openMessageOptions(messageId) {
-    const choice = prompt(
-        "MESSAGE OPTIONS\n\n" +
-        "1. View once\n" +
-        "2. Copy message\n" +
-        "3. Cancel"
-    );
-
-    if (choice === "1") {
-        showMessage(
-            "View Once requires server-side one-time media storage. " +
-            "It is not yet secured by the current backend."
-        );
-    }
-
-    if (choice === "2") {
-        const message = document.getElementById(messageId);
-        if (message && navigator.clipboard) {
-            navigator.clipboard.writeText(message.innerText);
-        }
-    }
-}
-
-/* =========================
-   SEARCH MESSAGES
-========================= */
-
-async function searchInChat() {
-    const query = prompt("Enter a word to search for:");
-    if (!query) return;
-
-    try {
-        const result = await apiRequest(
-            `/api/messages/search?q=${encodeURIComponent(query)}&with_user=${encodeURIComponent(currentChat)}`
-        );
-
-        const messages = result.messages || [];
-
-        alert(
-            messages.length
-                ? messages.map(m => m.text || "").join("\n\n")
-                : "No matching messages."
-        );
-    } catch (error) {
-        showMessage(error.message);
-    }
-}
-
-/* =========================
-   PROFILES
-========================= */
-
-async function showProfile(username) {
-    try {
-        const profile = await apiRequest(
-            `/api/profile/${encodeURIComponent(username)}`
-        );
-
-        alert(
-            "PROFILE\n\n" +
-            "Username: " + (profile.username || username) +
-            "\nAbout: " + (profile.about || "Using KCHAT")
-        );
-    } catch (error) {
-        showMessage(error.message);
-    }
-}
-
-function showMyProfile() {
-    showProfile(currentUser);
-}
-
-/* =========================
-   SETTINGS
-========================= */
-
-function openSettings() {
-    $("settingsPanel").style.display = "block";
-}
-
-function closeSettings() {
-    $("settingsPanel").style.display = "none";
-}
-
-function openSettingsSection(section) {
-    showMessage(section + " settings will be configured here.");
-}
-
-async function showBlockedContacts() {
-    try {
-        const data = await apiRequest("/api/blocks");
-        const names = (data.blocked || []).map(item => item.username);
-
-        alert(names.length ? names.join("\n") : "No blocked contacts.");
-    } catch (error) {
-        showMessage(error.message);
-    }
-}
-
-/* =========================
-   BLOCK CONTACT
-========================= */
-
-async function blockContact() {
-    if (!currentChat) return;
-
-    if (!confirm("Block " + currentChat + "?")) return;
-
-    try {
-        await apiRequest("/api/blocks", {
-            method: "POST",
-            body: JSON.stringify({username: currentChat})
-        });
-
-        showMessage("Contact blocked.");
-        await loadInbox();
-    } catch (error) {
-        showMessage(error.message);
-    }
-}
-
-/* =========================
-   GROUP CREATION
-========================= */
-
-async function openNewGroup() {
-    const name = prompt("Enter the group name:");
-    if (!name) return;
-
-    try {
-        const result = await apiRequest("/api/groups", {
-            method: "POST",
-            body: JSON.stringify({name: name.trim()})
-        });
-
-        showMessage("Group created: " + name);
-
-        if (result.id) {
-            const username = prompt("Enter a contact username to add (or Cancel):");
-            if (username) {
-                await apiRequest(`/api/groups/${result.id}/members`, {
-                    method: "POST",
-                    body: JSON.stringify({username: username.trim()})
-                });
-            }
-        }
-    } catch (error) {
-        showMessage(error.message);
-    }
-}
-
-/* =========================
-   LOGOUT
-========================= */
-
-function logout(ask = true) {
-    if (ask && !confirm("Are you sure you want to log out?")) return;
-
-    if (socket) {
-        socket.close();
-        socket = null;
-    }
-
-    localStorage.removeItem("kchat_token");
-    localStorage.removeItem("kchat_username");
-
-    token = "";
-    currentUser = "";
-    currentChat = "";
-
-    $("chatApp").style.display = "none";
-    $("authScreen").style.display = "flex";
-
-    $("loginPassword").value = "";
-    $("registerPassword").value = "";
-
-    showLogin();
-}
-
-/* =========================
-   BUTTON EVENT CONNECTIONS
-========================= */
-
-function connectButton(id, action) {
-    const element = $(id);
-    if (element) element.addEventListener("click", action);
-}
-
-function setupKchatButtons() {
-    $("loginForm").addEventListener("submit", login);
-    $("registerForm").addEventListener("submit", register);
-
-    connectButton("showRegisterButton", showRegister);
-    connectButton("showLoginButton", showLogin);
-
-    connectButton("sendButton", sendKchatMessage);
-
-    connectButton("messageInput", () => {});
-    $("messageInput").addEventListener("keydown", event => {
-        if (event.key === "Enter") sendKchatMessage();
-    });
-
-    connectButton("backButton", backToInbox);
-    connectButton("mainVoiceButton", () => openMainCallPicker("voice"));
-    connectButton("mainVideoButton", () => openMainCallPicker("video"));
-
-    connectButton("chatVoiceButton", startVoiceCall);
-    connectButton("chatVideoButton", startVideoCall);
-    connectButton("chatMenuButton", openChatMenu);
-
-    connectButton("settingsButton", openMainMenu);
-    connectButton("newChatButton", openContactPicker);
-
-    connectButton("attachmentButton", openAttachments);
-    connectButton("cameraButton", openCamera);
-    connectButton("galleryButton", chooseGallery);
-    connectButton("documentButton", chooseDocument);
-    connectButton("shareContactButton", shareContact);
-    connectButton("shareLocationButton", shareLocation);
-
-    connectButton("cropButton", cropPhoto);
-    connectButton("stickerButton", addSticker);
-    connectButton("textOnPhotoButton", addPhotoText);
-    connectButton("drawButton", drawOnPhoto);
-    connectButton("filterButton", applyFilter);
-    connectButton("sendPhotoButton", sendEditedPhoto);
-
-    connectButton("voiceMessageButton", () => {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            stopVoiceRecording();
-        } else {
-            recordVoiceMessage();
-        }
-    });
-
-    connectButton("closeSettingsButton", closeSettings);
-    connectButton("myProfileButton", showMyProfile);
-    connectButton("accountSettingsButton", () => openSettingsSection("Account"));
-    connectButton("privacySettingsButton", () => openSettingsSection("Privacy"));
-    connectButton("chatSettingsButton", () => openSettingsSection("Chats"));
-    connectButton("notificationSettingsButton", () => openSettingsSection("Notifications"));
-    connectButton("blockedContactsButton", showBlockedContacts);
-    connectButton("logoutButton", () => logout(true));
-
-    $("inboxSearch").addEventListener("input", renderInbox);
-
-    document.querySelectorAll(".filter-btn[data-filter]").forEach(button => {
-        button.addEventListener("click", () => {
-            filterChats(button.dataset.filter);
-        });
-    });
-
-    document.querySelectorAll("[data-close]").forEach(button => {
-        button.addEventListener("click", () => {
-            closeModal(button.dataset.close);
-        });
-    });
-
-    $("cameraInput").addEventListener("change", event => {
-        const file = event.target.files[0];
-        if (file) handleSelectedMedia(file);
-        event.target.value = "";
-    });
-
-    $("galleryInput").addEventListener("change", event => {
-        const file = event.target.files[0];
-        if (file) handleSelectedMedia(file);
-        event.target.value = "";
-    });
-
-    $("documentInput").addEventListener("change", event => {
-        const file = event.target.files[0];
-        if (file) handleSelectedDocument(file);
-        event.target.value = "";
-    });
-}
-
-/* =========================
-   START APPLICATION
-========================= */
-
-document.addEventListener("DOMContentLoaded", () => {
-    setupKchatButtons();
-    restoreSession();
+document.getElementById("settingsButton")?.addEventListener("click", function(event) {
+    event.stopPropagation();
+    dropdown?.classList.toggle("hidden");
 });
 
-console.log("KCHAT JavaScript loaded successfully.");
+document.addEventListener("click", function(event) {
+    if (dropdown && !event.target.closest(".menu-wrapper")) {
+        dropdown.classList.add("hidden");
+    }
+});
 
+function openSettings() {
+    dropdown?.classList.add("hidden");
+
+    if (typeof showSettings === "function") {
+        showSettings();
+    } else {
+        alert("Settings will open here.");
+    }
+}
+
+function openNewGroup() {
+    dropdown?.classList.add("hidden");
+    if (typeof createGroup === "function") {
+        createGroup();
+    } else {
+        alert("Open My Groups to create a group.");
+    }
+}
+
+function openNewCommunity() {
+    alert("Communities will be added to KCHAT.");
+}
+
+function openBroadcastLists() {
+    alert("Broadcast lists will be added to KCHAT.");
+}
+
+function openLinkedDevices() {
+    alert("Linked devices management requires device-session support in the backend.");
+}
+
+function openStarredMessages() {
+    alert("Your starred messages will appear here.");
+}
+
+function openScheduledCalls() {
+    alert("Scheduled calls will appear here.");
+}
+
+function markAllRead() {
+    if (typeof markAllMessagesRead === "function") {
+        markAllMessagesRead();
+    } else {
+        fetch("/api/messages/read-all", {
+            method: "POST",
+            credentials: "include"
+        }).then(() => {
+            alert("Read-all request sent.");
+        }).catch(() => {
+            alert("Could not mark messages as read. Please try again.");
+        });
+    }
+}
+
+document.getElementById("newChatButton")?.addEventListener("click", function() {
+    if (typeof openNewChat === "function") {
+        openNewChat();
+    } else if (typeof loadContacts === "function") {
+        loadContacts();
+    } else {
+        alert("Open your contacts to start a new chat.");
+    }
+});
+
+/* Bottom navigation */
+function activateBottomTab(tab) {
+    document.querySelectorAll(".bottom-nav-item").forEach(button => {
+        button.classList.remove("active");
+    });
+    tab.classList.add("active");
+}
+
+[
+    ["chatsTab", "Chats"],
+    ["updatesTab", "Updates"],
+    ["communitiesTab", "Communities"],
+    ["callsTab", "Calls"]
+].forEach(([id, label]) => {
+    document.getElementById(id)?.addEventListener("click", function() {
+        activateBottomTab(this);
+        if (label !== "Chats") {
+            alert(label + " will be connected in the next feature update.");
+        }
+    });
+});
+
+/* Inbox search */
+document.getElementById("inboxSearch")?.addEventListener("input", function() {
+    const query = this.value.toLowerCase().trim();
+
+    document.querySelectorAll(".inbox-item").forEach(item => {
+        item.style.display = item.innerText.toLowerCase().includes(query)
+            ? "flex" : "none";
+    });
+});
+
+/* Inbox filters */
+document.querySelectorAll(".filter-btn").forEach(button => {
+    button.addEventListener("click", function() {
+        document.querySelectorAll(".filter-btn").forEach(item => {
+            item.classList.remove("active");
+        });
+        this.classList.add("active");
+
+        const filter = this.dataset.filter;
+
+        document.querySelectorAll(".inbox-item").forEach(item => {
+            const unread = item.dataset.unread === "true";
+            const favorite = item.dataset.favorite === "true";
+            const group = item.dataset.group === "true";
+
+            let visible = true;
+            if (filter === "unread") visible = unread;
+            if (filter === "favorites") visible = favorite;
+            if (filter === "groups") visible = group;
+
+            item.style.display = visible ? "flex" : "none";
+        });
+    });
+});
+
+/* Theme buttons can be used in inbox settings and general settings */
+window.kchatChooseTheme = function(theme) {
+    if (theme === "dark" || theme === "light") {
+        setKchatTheme(theme);
+    }
+};
+
+console.log("KCHAT redesigned inbox controls loaded.");
 </script>
-</body>
-</html>
