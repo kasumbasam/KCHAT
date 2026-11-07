@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 import hashlib
@@ -1927,3 +1928,354 @@ async def chat(websocket: WebSocket, room: str):
             })
 
         await send_online_users(room)
+        # ============================================================
+# KCHAT PRIVACY AND SECURITY SETTINGS
+# ============================================================
+
+DEFAULT_PRIVACY_SETTINGS = {
+    "last_seen": "everyone",
+    "online": "everyone",
+    "profile_photo": "everyone",
+    "about_visibility": "everyone",
+    "read_receipts": True,
+    "group_add": "everyone",
+    "group_last_seen": "same_as_last_seen",
+    "status_audience": "all_contacts",
+    "status_excluded": [],
+    "status_allowed": [],
+    "allow_status_sharing": True,
+    "default_message_timer": 0,
+    "silence_unknown_calls": False,
+    "app_lock": False
+}
+
+PRIVACY_VISIBILITY_OPTIONS = {
+    "last_seen": [
+        "everyone", "my_contacts",
+        "my_contacts_except", "nobody"
+    ],
+    "online": [
+        "everyone", "same_as_last_seen"
+    ],
+    "profile_photo": [
+        "everyone", "my_contacts",
+        "my_contacts_except", "nobody"
+    ],
+    "about_visibility": [
+        "everyone", "my_contacts",
+        "my_contacts_except", "nobody"
+    ],
+    "group_add": [
+        "everyone", "my_contacts",
+        "my_contacts_except", "nobody"
+    ],
+    "group_last_seen": [
+        "everyone", "nobody", "same_as_last_seen",
+        "my_contacts"
+    ],
+    "status_audience": [
+        "all_contacts",
+        "my_contacts_except",
+        "only_share_with"
+    ]
+}
+
+ALLOWED_MESSAGE_TIMERS = [0, 86400, 604800, 7776000]
+
+
+def ensure_privacy_table():
+    with get_db() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_privacy (
+                owner_id BIGINT PRIMARY KEY
+                    REFERENCES accounts(id) ON DELETE CASCADE,
+                settings TEXT NOT NULL DEFAULT '{}',
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+
+
+def get_privacy_settings(owner_id):
+    ensure_privacy_table()
+
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT settings
+            FROM user_privacy
+            WHERE owner_id = %s
+        """, (owner_id,)).fetchone()
+
+    settings = dict(DEFAULT_PRIVACY_SETTINGS)
+
+    if row:
+        try:
+            saved = json.loads(row["settings"])
+            if isinstance(saved, dict):
+                settings.update(saved)
+        except Exception:
+            pass
+
+    return settings
+
+
+@app.get("/api/privacy")
+async def get_privacy(request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse(
+            {"error": "Please log in again."},
+            status_code=401
+        )
+
+    return {
+        "success": True,
+        "settings": get_privacy_settings(account["id"])
+    }
+
+
+@app.put("/api/privacy")
+async def update_privacy(request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse(
+            {"error": "Please log in again."},
+            status_code=401
+        )
+
+    try:
+        data = await request.json()
+
+        if not isinstance(data, dict):
+            return JSONResponse(
+                {"error": "Invalid privacy settings."},
+                status_code=400
+            )
+
+        settings = get_privacy_settings(account["id"])
+
+        for key, allowed in PRIVACY_VISIBILITY_OPTIONS.items():
+            if key in data:
+                value = data[key]
+
+                if value not in allowed:
+                    return JSONResponse({
+                        "error": "Invalid value for " + key
+                    }, status_code=400)
+
+                settings[key] = value
+
+        boolean_fields = [
+            "read_receipts",
+            "allow_status_sharing",
+            "silence_unknown_calls",
+            "app_lock"
+        ]
+
+        for key in boolean_fields:
+            if key in data:
+                if not isinstance(data[key], bool):
+                    return JSONResponse({
+                        "error": key + " must be true or false."
+                    }, status_code=400)
+
+                settings[key] = data[key]
+
+        if "default_message_timer" in data:
+            timer = data["default_message_timer"]
+
+            if (
+                isinstance(timer, bool)
+                or timer not in ALLOWED_MESSAGE_TIMERS
+            ):
+                return JSONResponse({
+                    "error": "Invalid disappearing message timer."
+                }, status_code=400)
+
+            settings["default_message_timer"] = timer
+
+        for key in ["status_excluded", "status_allowed"]:
+            if key in data:
+                value = data[key]
+
+                if (
+                    not isinstance(value, list)
+                    or len(value) > 500
+                    or not all(
+                        isinstance(name, str)
+                        and 1 <= len(name.strip()) <= 30
+                        for name in value
+                    )
+                ):
+                    return JSONResponse({
+                        "error": "Invalid status audience list."
+                    }, status_code=400)
+
+                settings[key] = list(dict.fromkeys(
+                    name.strip() for name in value
+                ))
+
+        ensure_privacy_table()
+
+        with get_db() as conn:
+            conn.execute("""
+                INSERT INTO user_privacy (
+                    owner_id, settings, updated_at
+                )
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (owner_id)
+                DO UPDATE SET
+                    settings = EXCLUDED.settings,
+                    updated_at = NOW()
+            """, (
+                account["id"],
+                json.dumps(settings)
+            ))
+
+        return {
+            "success": True,
+            "message": "Privacy settings saved.",
+            "settings": settings
+        }
+
+    except Exception as error:
+        print("Privacy settings error:", error)
+
+        return JSONResponse({
+            "error": "Could not save privacy settings."
+        }, status_code=500)
+
+
+# ============================================================
+# KCHAT INDIVIDUAL CHAT PRIVACY
+# ============================================================
+
+@app.put("/api/chats/{username}/privacy")
+async def update_chat_privacy(username: str, request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse(
+            {"error": "Please log in again."},
+            status_code=401
+        )
+
+    try:
+        data = await request.json()
+
+        if not isinstance(data, dict):
+            return JSONResponse(
+                {"error": "Invalid chat settings."},
+                status_code=400
+            )
+
+        allowed_fields = {
+            "chat_locked": bool,
+            "last_seen_visibility": str
+        }
+
+        for key in data:
+            if key not in allowed_fields:
+                return JSONResponse({
+                    "error": "Unsupported chat privacy setting."
+                }, status_code=400)
+
+        if (
+            "chat_locked" in data
+            and not isinstance(data["chat_locked"], bool)
+        ):
+            return JSONResponse({
+                "error": "Chat lock must be true or false."
+            }, status_code=400)
+
+        if "last_seen_visibility" in data:
+            if data["last_seen_visibility"] not in [
+                "normal", "hidden"
+            ]:
+                return JSONResponse({
+                    "error": "Invalid last seen visibility."
+                }, status_code=400)
+
+        with get_db() as conn:
+            target = conn.execute("""
+                SELECT id, username
+                FROM accounts
+                WHERE username_key = %s
+            """, (username.lower(),)).fetchone()
+
+            if not target:
+                return JSONResponse({
+                    "error": "Contact not found."
+                }, status_code=404)
+
+            if target["id"] == account["id"]:
+                return JSONResponse({
+                    "error": "You cannot change privacy for yourself."
+                }, status_code=400)
+
+            if "chat_locked" in data:
+                conn.execute("""
+                    UPDATE chat_preferences
+                    SET updated_at = NOW()
+                    WHERE owner_id = %s AND peer_id = %s
+                """, (account["id"], target["id"]))
+
+                conn.execute("""
+                    INSERT INTO chat_preferences (
+                        owner_id, peer_id
+                    )
+                    VALUES (%s, %s)
+                    ON CONFLICT (owner_id, peer_id)
+                    DO NOTHING
+                """, (account["id"], target["id"]))
+
+                conn.execute("""
+                    ALTER TABLE chat_preferences
+                    ADD COLUMN IF NOT EXISTS chat_locked
+                    BOOLEAN NOT NULL DEFAULT FALSE
+                """)
+
+                conn.execute("""
+                    UPDATE chat_preferences
+                    SET chat_locked = %s, updated_at = NOW()
+                    WHERE owner_id = %s AND peer_id = %s
+                """, (
+                    data["chat_locked"],
+                    account["id"],
+                    target["id"]
+                ))
+
+            if "last_seen_visibility" in data:
+                conn.execute("""
+                    ALTER TABLE chat_preferences
+                    ADD COLUMN IF NOT EXISTS last_seen_visibility
+                    TEXT NOT NULL DEFAULT 'normal'
+                """)
+
+                conn.execute("""
+                    INSERT INTO chat_preferences (
+                        owner_id, peer_id, last_seen_visibility
+                    )
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (owner_id, peer_id)
+                    DO UPDATE SET
+                        last_seen_visibility = EXCLUDED.last_seen_visibility,
+                        updated_at = NOW()
+                """, (
+                    account["id"],
+                    target["id"],
+                    data["last_seen_visibility"]
+                ))
+
+        return {
+            "success": True,
+            "message": "Individual chat privacy saved."
+        }
+
+    except Exception as error:
+        print("Chat privacy error:", error)
+
+        return JSONResponse({
+            "error": "Could not update chat privacy."
+        }, status_code=500)
