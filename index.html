@@ -1413,7 +1413,7 @@ async function apiRequest(path, options = {}) {
     }
 
     if (!response.ok) {
-        throw new Error(data.detail || data.message || "Request failed (" + response.status + ")");
+        throw new Error(data.error || data.detail || data.message || "Request failed (" + response.status + ")");
     }
     return data;
 }
@@ -1473,19 +1473,23 @@ async function login() {
             body: JSON.stringify({ phone_number: phone, password: password })
         });
 
-        authToken = data.token || data.access_token || "mock_token";
-        currentUser = data.username || data.user?.username || "sammie' k";
+        if (!data.token || !data.username) {
+            throw new Error("The server did not return a valid login session. Please try again.");
+        }
 
+        authToken = data.token;
+        currentUser = data.username;
         localStorage.setItem("kchat_token", authToken);
         localStorage.setItem("kchat_username", currentUser);
 
         await startKChat();
     } catch (error) {
-        authToken = "mock_token";
-        currentUser = phone || "sammie' k";
-        localStorage.setItem("kchat_token", authToken);
-        localStorage.setItem("kchat_username", currentUser);
-        await startKChat();
+        authToken = "";
+        currentUser = "";
+        localStorage.removeItem("kchat_token");
+        localStorage.removeItem("kchat_username");
+        setAuthMessage(error.message || "Login failed. Check your connection and try again.");
+        showLogin();
     } finally {
         button.disabled = false;
         button.textContent = "Login";
@@ -1519,41 +1523,51 @@ async function register() {
             });
         }
 
-        await apiRequest("/api/register", {
+        const data = await apiRequest("/api/register", {
             method: "POST",
             body: JSON.stringify({ phone_number: phone, password: password, username: username, profile_picture: profilePicture })
         });
-    } catch {}
 
-    authToken = "mock_token";
-    currentUser = username;
-    localStorage.setItem("kchat_token", authToken);
-    localStorage.setItem("kchat_username", currentUser);
-    await startKChat();
-    button.disabled = false;
-    button.textContent = "Create My Account";
+        if (!data.token || !data.username) {
+            throw new Error("The server did not return a valid account session. Please try again.");
+        }
+
+        authToken = data.token;
+        currentUser = data.username;
+        localStorage.setItem("kchat_token", authToken);
+        localStorage.setItem("kchat_username", currentUser);
+        await startKChat();
+    } catch (error) {
+        authToken = "";
+        currentUser = "";
+        localStorage.removeItem("kchat_token");
+        localStorage.removeItem("kchat_username");
+        showMessage($("authMessageRegister"), error.message || "Registration failed. Please try again.", true);
+        showRegister();
+    } finally {
+        button.disabled = false;
+        button.textContent = "Create My Account";
+    }
 }
 
 async function startKChat() {
-    showApplication();
-    try {
-        await loadMyProfile();
-    } catch {
-        $("labelGlobalName").textContent = currentUser;
-        $("profileDisplayName").textContent = currentUser;
+    if (!authToken || !currentUser) {
+        throw new Error("Please log in again.");
     }
+    await loadMyProfile();
     await loadContacts();
+    showApplication();
     connectWebSocket();
 }
 
 async function loadMyProfile() {
     try {
-        const data = await apiRequest("/api/profile/me");
+        const data = await apiRequest("/api/profile/" + encodeURIComponent(currentUser));
         currentProfile = data.profile || data.user || data;
         currentUser = currentProfile.username || currentUser;
         localStorage.setItem("kchat_username", currentUser);
-    } catch {
-        currentProfile = { username: currentUser, about: "Current mood · Available" };
+    } catch (error) {
+        throw error;
     }
 
     $("labelGlobalName").textContent = currentUser;
@@ -1806,17 +1820,18 @@ $("savePrivacyButton").addEventListener("click", async () => {
 async function loadContacts() {
     try {
         const data = await apiRequest("/api/contacts");
-        contacts = data.contacts || data.users || [];
-    } catch {
-        contacts = [
-            { username: "Alex", last_message: "Hey, are the specs updated yet?", unread_count: 0 },
-            { username: "Martha Finance", last_message: "Transactions records data logs look clean.", unread_count: 1 }
-        ];
+        contacts = Array.isArray(data.contacts) ? data.contacts : [];
+        renderContacts();
+    } catch (error) {
+        contacts = [];
+        renderContacts();
+        console.error("KCHAT contacts could not be loaded:", error);
+        throw error;
     }
-    renderContacts();
 }
 
 function contactName(contact) {
+    if (typeof contact === "string") return contact;
     return contact.username || contact.name || contact.display_name || "Unknown";
 }
 
@@ -1908,13 +1923,13 @@ $("backToChats").addEventListener("click", () => {
 async function loadMessages(username) {
     try {
         const data = await apiRequest("/api/messages/" + encodeURIComponent(username));
-        messages = data.messages || [];
-    } catch {
-        messages = [
-            { username: username, text: "Welcome to your encrypted KCHAT runtime instance.", created_at: new Date().toISOString(), status: "read" }
-        ];
+        messages = Array.isArray(data.messages) ? data.messages : [];
+        renderMessages();
+    } catch (error) {
+        messages = [];
+        renderMessages();
+        alert(error.message || "Could not load this conversation. Please try again.");
     }
-    renderMessages();
 }
 
 function renderMessages() {
@@ -2076,16 +2091,28 @@ $("saveNewContactButton").addEventListener("click", async () => {
         showMessage($("addContactMessage"), "Enter a username.", true);
         return;
     }
+    const button = $("saveNewContactButton");
+    button.disabled = true;
     try {
-        await apiRequest("/api/contacts", { method: "POST", body: JSON.stringify({ username }) });
-    } catch {}
-    contacts.push({ username: username, last_message: "New contact added", unread_count: 0 });
-    $("newContactUsername").value = "";
-    showMessage($("addContactMessage"), "Contact added successfully.");
-    setTimeout(() => {
-        hide($("addContactModal"));
+        const result = await apiRequest("/api/contacts", {
+            method: "POST",
+            body: JSON.stringify({ username })
+        });
+        if (!result.success || !result.username) {
+            throw new Error(result.error || "KCHAT did not confirm adding this contact.");
+        }
+        if (!contacts.some(contact => contactName(contact).toLowerCase() === result.username.toLowerCase())) {
+            contacts.push(result.username);
+        }
+        $("newContactUsername").value = "";
+        showMessage($("addContactMessage"), result.message || "Contact added successfully.");
         renderContacts();
-    }, 800);
+        setTimeout(() => hide($("addContactModal")), 800);
+    } catch (error) {
+        showMessage($("addContactMessage"), error.message || "Could not add contact.", true);
+    } finally {
+        button.disabled = false;
+    }
 });
 
 function renderContactPicker() {
