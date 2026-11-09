@@ -2214,21 +2214,22 @@ async def chat(websocket: WebSocket, room: str):
 
                 recipient = target["username"]
 
-                with get_db() as conn:
-                    conn.execute("""
-                        UPDATE messages
-                        SET status = 'read'
-                        WHERE room = %s
-                        AND type = 'private'
-                        AND LOWER(username) = %s
-                        AND LOWER(recipient) = %s
-                        AND status != 'read'
-                        AND (expires_at IS NULL OR expires_at > NOW())
-                    """, (
-                        room,
-                        recipient.lower(),
-                        username.lower()
-                    ))
+                if get_privacy_settings(account["id"]).get("read_receipts", True):
+                    with get_db() as conn:
+                        conn.execute("""
+                            UPDATE messages
+                            SET status = 'read'
+                            WHERE room = %s
+                            AND type = 'private'
+                            AND LOWER(username) = %s
+                            AND LOWER(recipient) = %s
+                            AND status != 'read'
+                            AND (expires_at IS NULL OR expires_at > NOW())
+                        """, (
+                            room,
+                            recipient.lower(),
+                            username.lower()
+                        ))
 
                 conversation = load_private_history(
                     room,
