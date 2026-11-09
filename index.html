@@ -1069,6 +1069,15 @@ hr {
             <input type="password" id="secPassword" placeholder="Enter new passcode">
         </div>
         <button class="primary-btn" id="saveSecurityButton">Update Security Info</button>
+
+        <div class="settings-section" style="margin-top:28px;border-top:1px solid var(--border);padding-top:20px;">
+            <h3 style="color:var(--danger);">Delete KCHAT Account</h3>
+            <p class="small muted">Permanently delete your account, contacts, sessions, groups and messages associated with your account. This cannot be undone.</p>
+            <label>Confirm your current password</label>
+            <input id="deleteAccountPassword" type="password" autocomplete="current-password" placeholder="Enter your current password">
+            <button class="danger-btn" id="deleteAccountButton" style="width:100%;margin-top:12px;">Permanently Delete Account</button>
+            <p id="deleteAccountMessage" class="small muted"></p>
+        </div>
     </div>
 </div>
 
@@ -1230,8 +1239,8 @@ hr {
     <div class="modal-card">
         <h2>Add contact</h2>
 
-        <label>Registered username</label>
-        <input id="newContactUsername" placeholder="Enter exact username">
+        <label>KCHAT username or registered phone number</label>
+        <input id="newContactUsername" type="text" placeholder="Enter username or phone number">
 
         <button class="primary-btn" id="saveNewContactButton">Add contact</button>
 
@@ -1413,7 +1422,9 @@ async function apiRequest(path, options = {}) {
     }
 
     if (!response.ok) {
-        throw new Error(data.error || data.detail || data.message || "Request failed (" + response.status + ")");
+        const error = new Error(data.error || data.detail || data.message || "Request failed (" + response.status + ")");
+        error.status = response.status;
+        throw error;
     }
     return data;
 }
@@ -1679,6 +1690,35 @@ $("closeSecurityButton").addEventListener("click", () => {
     show($("settingsPanel"));
 });
 
+$("deleteAccountButton").addEventListener("click", async () => {
+    const password = $("deleteAccountPassword").value;
+    if (!password) {
+        showMessage($("deleteAccountMessage"), "Enter your current password to continue.", true);
+        return;
+    }
+
+    const confirmed = confirm("Permanently delete your KCHAT account? This action cannot be undone.");
+    if (!confirmed) return;
+
+    const button = $("deleteAccountButton");
+    button.disabled = true;
+    button.textContent = "Deleting account...";
+    try {
+        const result = await apiRequest("/api/account", {
+            method: "DELETE",
+            body: JSON.stringify({ password })
+        });
+        if (!result.success) throw new Error(result.error || "Account deletion was not confirmed.");
+        alert("Your KCHAT account has been permanently deleted.");
+        logout();
+    } catch (error) {
+        showMessage($("deleteAccountMessage"), error.message || "Could not delete account.", true);
+    } finally {
+        button.disabled = false;
+        button.textContent = "Permanently Delete Account";
+    }
+});
+
 $("subOpenPrivacy").addEventListener("click", () => {
     hide($("settingsPanel"));
     show($("privacyScreen"));
@@ -1935,7 +1975,7 @@ function renderContacts() {
     });
 
     if (!filtered.length) {
-        list.innerHTML = `<p class="muted" style="padding:25px;text-align:center;">No items found in ${activeTab.toUpperCase()}.</p>`;
+        list.innerHTML = `<p class="muted" style="padding:25px;text-align:center;">No contacts yet. Add someone using their KCHAT username or registered phone number.</p>`;
         return;
     }
 
@@ -2171,7 +2211,7 @@ $("cancelAddContact").addEventListener("click", () => {
 $("saveNewContactButton").addEventListener("click", async () => {
     const username = $("newContactUsername").value.trim();
     if (!username) {
-        showMessage($("addContactMessage"), "Enter a username.", true);
+        showMessage($("addContactMessage"), "Enter a KCHAT username or registered phone number.", true);
         return;
     }
     const button = $("saveNewContactButton");
@@ -2189,6 +2229,7 @@ $("saveNewContactButton").addEventListener("click", async () => {
         }
         $("newContactUsername").value = "";
         showMessage($("addContactMessage"), result.message || "Contact added successfully.");
+        await loadContacts();
         renderContacts();
         setTimeout(() => hide($("addContactModal")), 800);
     } catch (error) {
@@ -2368,23 +2409,38 @@ function connectWebSocket() {
     } catch {}
 }
 
+let sessionRestoreStarted = false;
+
 async function restoreSession() {
-    if (!authToken) {
+    if (sessionRestoreStarted) return;
+    sessionRestoreStarted = true;
+
+    if (!authToken || !currentUser) {
         showLogin();
         return;
     }
+
     try {
         await startKChat();
-    } catch {
-        logout();
+    } catch (error) {
+        console.error("KCHAT session restore error:", error);
+
+        // Only clear saved credentials when the server explicitly rejects the session.
+        // A temporary network/server problem must not sign the user out.
+        if (error.status === 401 || error.status === 403) {
+            logout();
+            return;
+        }
+
+        showApplication();
+        await loadContacts();
+        connectWebSocket();
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    restoreSession();
-});
-
-if (document.readyState !== "loading") {
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", restoreSession, { once: true });
+} else {
     restoreSession();
 }
 </script>
