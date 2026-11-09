@@ -1509,46 +1509,92 @@ async function register() {
         return;
     }
 
+    if (password.length < 8) {
+        showMessage($("authMessageRegister"), "Password must contain at least 8 characters.", true);
+        return;
+    }
+
+    if (pictureFile && pictureFile.size > 1800000) {
+        showMessage(
+            $("authMessageRegister"),
+            "That picture is too large. Choose an image smaller than 1.8 MB, or create the account without a picture.",
+            true
+        );
+        return;
+    }
+
     const button = $("registerButton");
+    const status = $("pictureUploadStatus");
     button.disabled = true;
     button.textContent = "Creating account...";
+    status.textContent = pictureFile ? "Preparing profile picture..." : "Creating your account...";
+
+    let data;
 
     try {
         let profilePicture = null;
+
         if (pictureFile) {
             profilePicture = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => resolve(reader.result);
-                reader.onerror = () => reject(new Error("The profile picture could not be read. Try another image or continue without a picture."));
-                reader.onabort = () => reject(new Error("Profile picture reading was cancelled. Please try again."));
+                reader.onerror = () => reject(new Error("The profile picture could not be read. Choose another image or continue without a picture."));
+                reader.onabort = () => reject(new Error("Picture reading was cancelled. Please try again."));
                 reader.readAsDataURL(pictureFile);
             });
         }
 
-        const data = await apiRequest("/api/register", {
+        status.textContent = "Sending account details securely...";
+
+        data = await apiRequest("/api/register", {
             method: "POST",
-            body: JSON.stringify({ phone_number: phone, password: password, username: username, profile_picture: profilePicture })
+            body: JSON.stringify({
+                phone_number: phone,
+                password: password,
+                username: username,
+                profile_picture: profilePicture
+            })
         });
 
         if (!data.token || !data.username) {
-            throw new Error("The server did not return a valid account session. Please try again.");
+            throw new Error("The server did not confirm account creation. Please try again.");
         }
+    } catch (error) {
+        status.textContent = "";
+        showMessage(
+            $("authMessageRegister"),
+            error.message || "Account creation failed. Check your connection and try again.",
+            true
+        );
+        return;
+    } finally {
+        button.disabled = false;
+        button.textContent = "Create My Account";
+    }
 
-        authToken = data.token;
-        currentUser = data.username;
-        localStorage.setItem("kchat_token", authToken);
-        localStorage.setItem("kchat_username", currentUser);
+    // The server has confirmed that the account and login session were created.
+    authToken = data.token;
+    currentUser = data.username;
+    localStorage.setItem("kchat_token", authToken);
+    localStorage.setItem("kchat_username", currentUser);
+    status.textContent = "Account created successfully.";
+
+    button.disabled = true;
+    button.textContent = "Opening KCHAT...";
+
+    try {
         await startKChat();
     } catch (error) {
+        // Do not tell the user registration failed after the server created the account.
         authToken = "";
         currentUser = "";
         localStorage.removeItem("kchat_token");
         localStorage.removeItem("kchat_username");
-        showRegister();
+        showLogin();
         showMessage(
-            $("authMessageRegister"),
-            error.message || "Registration failed. Please try again.",
-            true
+            $("authMessage"),
+            "Your account was created successfully. KCHAT could not finish loading, so please log in with your phone number and password.",
+            false
         );
     } finally {
         button.disabled = false;
