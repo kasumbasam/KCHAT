@@ -1829,8 +1829,13 @@ $("deleteAccountButton").addEventListener("click", async () => {
             body: JSON.stringify({ password })
         });
         if (!result.success) throw new Error(result.error || "Account deletion was not confirmed.");
-        alert("Your KCHAT account has been permanently deleted.");
+
+        // Immediately end the deleted account's session and return to Login.
         logout();
+        $("loginPhone").value = "";
+        $("loginPassword").value = "";
+        $("loginScreen").style.display = "block";
+        window.scrollTo({ top: 0, behavior: "instant" });
     } catch (error) {
         showMessage($("deleteAccountMessage"), error.message || "Could not delete account.", true);
     } finally {
