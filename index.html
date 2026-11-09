@@ -1696,27 +1696,58 @@ $("editProfilePicture").addEventListener("change", event => {
 });
 
 $("saveProfileButton").addEventListener("click", async () => {
-    const newName = $("editProfileUsername").value.trim();
+    const enteredName = $("editProfileUsername").value.trim();
     const newAbout = $("editProfileAbout").value.trim();
-    if (newName) {
-        currentUser = newName;
-        $("labelGlobalName").textContent = currentUser;
-        $("labelGlobalMood").textContent = newAbout;
-        $("profileDisplayName").textContent = currentUser;
-        localStorage.setItem("kchat_username", currentUser);
+    const pictureFile = $("editProfilePicture").files[0];
+
+    if (enteredName && enteredName.toLowerCase() !== currentUser.toLowerCase()) {
+        showMessage($("profileMessage"), "Your username cannot be changed from this screen.", true);
+        $("editProfileUsername").value = currentUser;
+        return;
     }
+
+    const button = $("saveProfileButton");
+    button.disabled = true;
     try {
-        await apiRequest("/api/profile/me", {
+        const update = { about: newAbout };
+        if (pictureFile) {
+            update.profile_picture = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error("Could not read the selected picture."));
+                reader.readAsDataURL(pictureFile);
+            });
+        }
+
+        const result = await apiRequest("/api/profile", {
             method: "PUT",
-            body: JSON.stringify({ username: newName, about: newAbout })
+            body: JSON.stringify(update)
         });
-    } catch {}
-    showMessage($("profileMessage"), "Profile saved successfully.");
-    setTimeout(() => {
-        hide($("profilePanel"));
-        show($("settingsPanel"));
-        $("profileMessage").textContent = "";
-    }, 800);
+        if (!result.success) {
+            throw new Error(result.error || "KCHAT did not confirm the profile update.");
+        }
+
+        currentProfile = { ...currentProfile, about: newAbout };
+        if (update.profile_picture) currentProfile.profile_picture = update.profile_picture;
+        $("labelGlobalMood").textContent = newAbout || "Current mood · Available";
+        if (update.profile_picture) {
+            const imageMarkup = `<img src="${escapeHTML(update.profile_picture)}" alt="Profile" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+            $("settingsGlobalAvatar").innerHTML = imageMarkup;
+            $("settingsMenuAvatar").innerHTML = imageMarkup;
+            $("profileAvatar").innerHTML = imageMarkup;
+        }
+        $("editProfilePicture").value = "";
+        showMessage($("profileMessage"), "Profile saved successfully.");
+        setTimeout(() => {
+            hide($("profilePanel"));
+            show($("settingsPanel"));
+            $("profileMessage").textContent = "";
+        }, 800);
+    } catch (error) {
+        showMessage($("profileMessage"), error.message || "Could not save your profile.", true);
+    } finally {
+        button.disabled = false;
+    }
 });
 
 // Linked Devices Logic
