@@ -1544,10 +1544,11 @@ async function register() {
             });
         }
 
-        status.textContent = "Sending account details securely...";
+        status.textContent = "Connecting to KCHAT server...";
 
         data = await apiRequest("/api/register", {
             method: "POST",
+            signal: AbortSignal.timeout(30000),
             body: JSON.stringify({
                 phone_number: phone,
                 password: password,
