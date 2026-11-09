@@ -2155,7 +2155,7 @@ async function openChat(username) {
     currentChat = username;
     $("activeChatName").textContent = username;
     $("activeChatAvatar").textContent = username.charAt(0).toUpperCase();
-    $("activeChatStatus").textContent = "Online Today";
+    $("activeChatStatus").textContent = onlineUsers.has(username.toLowerCase()) ? "Online" : "Offline";
 
     hide($("welcomeScreen"));
     show($("chatScreen"));
@@ -2507,7 +2507,9 @@ function connectWebSocket() {
             let item;
             try { item = JSON.parse(event.data); } catch { return; }
 
-            if (item.type === "private" && item.to &&
+            if (item.type === "presence") {
+                updateContactPresence(item.username, item.online === true);
+            } else if (item.type === "private" && item.to &&
                 item.to.toLowerCase() === currentUser.toLowerCase()) {
                 if (currentChat && item.username &&
                     item.username.toLowerCase() === currentChat.toLowerCase()) {
@@ -2527,6 +2529,9 @@ function connectWebSocket() {
             }
         };
         socket.onclose = () => {
+            // Clear stale indicators while reconnecting; the server will resend live presence.
+            onlineUsers.clear();
+            if (currentChat) $("activeChatStatus").textContent = "Offline";
             reconnectAttempts++;
             clearTimeout(reconnectTimer);
             reconnectTimer = setTimeout(connectWebSocket, Math.min(30000, reconnectAttempts * 3000));
@@ -2559,6 +2564,19 @@ document.querySelectorAll('input[type="password"]').forEach(input => {
     });
     wrapper.appendChild(toggle);
 });
+
+const onlineUsers = new Set();
+
+function updateContactPresence(username, online) {
+    if (!username) return;
+    const key = String(username).toLowerCase();
+    if (online) onlineUsers.add(key);
+    else onlineUsers.delete(key);
+
+    if (currentChat && currentChat.toLowerCase() === key) {
+        $("activeChatStatus").textContent = online ? "Online" : "Offline";
+    }
+}
 
 let sessionRestoreStarted = false;
 
