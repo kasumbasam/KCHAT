@@ -1029,6 +1029,13 @@ hr {
             <span>›</span>
         </div>
 
+        <div class="settings-row" style="display:block;">
+            <div style="font-weight:bold;">KCHAT Do Not Disturb</div>
+            <small class="muted">Pause live chat connection and stop new live messages without switching off your phone's internet.</small>
+            <button class="secondary-btn" id="toggleKchatDnd" style="width:100%;margin-top:12px;">Pause KCHAT connection</button>
+            <small id="kchatDndStatus" class="muted" style="display:block;margin-top:8px;">Live connection is active.</small>
+        </div>
+
         <button class="danger-btn" id="settingsLogoutButton" style="width:100%;margin-top:25px;">
             Logout
         </button>
@@ -1427,6 +1434,7 @@ let messages = [];
 let activeFilter = "all";
 let activeTab = "chat";
 let socket = null;
+let dndMode = localStorage.getItem("kchat_dnd") === "true";
 let reconnectTimer = null;
 let reconnectAttempts = 0;
 let mediaRecorder = null;
@@ -2272,6 +2280,10 @@ $("messageInput").addEventListener("keydown", event => {
 });
 
 async function sendMessage() {
+    if (dndMode) {
+        alert("KCHAT live connection is paused. Resume it before sending messages.");
+        return;
+    }
     const input = $("messageInput");
     const text = input.value.trim();
     if (!text || !currentChat) return;
@@ -2557,7 +2569,7 @@ function logout() {
 }
 
 function connectWebSocket() {
-    if (!authToken || !currentUser) return;
+    if (!authToken || !currentUser || dndMode) return;
     const protocol = location.protocol === "https:" ? "wss://" : "ws://";
     const url = protocol + location.host + "/ws/" + encodeURIComponent(currentUser) + "?token=" + encodeURIComponent(authToken);
     try {
@@ -2599,15 +2611,44 @@ function connectWebSocket() {
             }
         };
         socket.onclose = () => {
-            // Clear stale indicators while reconnecting; the server will resend live presence.
             onlineUsers.clear();
             if (currentChat) $("activeChatStatus").textContent = "Offline";
-            reconnectAttempts++;
             clearTimeout(reconnectTimer);
+            if (dndMode || !authToken) return;
+            reconnectAttempts++;
             reconnectTimer = setTimeout(connectWebSocket, Math.min(30000, reconnectAttempts * 3000));
         };
     } catch {}
 }
+
+function updateKchatDndControl() {
+    const button = $("toggleKchatDnd");
+    const status = $("kchatDndStatus");
+    if (!button || !status) return;
+    button.textContent = dndMode ? "Resume KCHAT connection" : "Pause KCHAT connection";
+    status.textContent = dndMode
+        ? "Paused on this device. Your phone's Wi-Fi and mobile data remain on."
+        : "Live connection is active.";
+}
+
+$("toggleKchatDnd").addEventListener("click", () => {
+    dndMode = !dndMode;
+    localStorage.setItem("kchat_dnd", String(dndMode));
+    clearTimeout(reconnectTimer);
+
+    if (dndMode) {
+        if (socket) {
+            try { socket.close(1000, "KCHAT paused by user"); } catch {}
+            socket = null;
+        }
+        onlineUsers.clear();
+        if (currentChat) $("activeChatStatus").textContent = "Offline";
+    } else {
+        connectWebSocket();
+    }
+
+    updateKchatDndControl();
+});
 
 // Add accessible show/hide controls to every password field (login, registration and recovery).
 document.querySelectorAll('input[type="password"]').forEach(input => {
@@ -2676,6 +2717,8 @@ async function restoreSession() {
         connectWebSocket();
     }
 }
+
+updateKchatDndControl();
 
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", restoreSession, { once: true });
