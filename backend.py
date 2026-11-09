@@ -1539,15 +1539,17 @@ async def get_private_messages(username: str, request: Request):
             peer["username"].lower(), account["username"].lower()
         )).fetchall()
 
-        unread = conn.execute("""
-            UPDATE messages SET status = 'read'
-            WHERE type = 'private'
-            AND LOWER(username) = %s
-            AND LOWER(recipient) = %s
-            AND status != 'read'
-            AND (expires_at IS NULL OR expires_at > NOW())
-            RETURNING id, username, room
-        """, (peer["username"].lower(), account["username"].lower())).fetchall()
+        unread = []
+        if get_privacy_settings(account["id"]).get("read_receipts", True):
+            unread = conn.execute("""
+                UPDATE messages SET status = 'read'
+                WHERE type = 'private'
+                AND LOWER(username) = %s
+                AND LOWER(recipient) = %s
+                AND status != 'read'
+                AND (expires_at IS NULL OR expires_at > NOW())
+                RETURNING id, username, room
+            """, (peer["username"].lower(), account["username"].lower())).fetchall()
 
     for row in unread:
         await update_sender_status(row["room"], {
@@ -1623,6 +1625,13 @@ async def mark_all_messages_read(request: Request):
 
     if not account:
         return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    if not get_privacy_settings(account["id"]).get("read_receipts", True):
+        return {
+            "success": True,
+            "marked_read": 0,
+            "message": "Read receipts are disabled."
+        }
 
     with get_db() as conn:
         rows = conn.execute("""
@@ -1939,12 +1948,18 @@ async def notify_contact_presence(username, online):
     """Notify only accounts that have this user in their KCHAT contacts."""
     with get_db() as conn:
         rows = conn.execute("""
-            SELECT DISTINCT owner.username
+            SELECT DISTINCT owner.id, owner.username
             FROM contacts
             JOIN accounts AS owner ON owner.id = contacts.owner_id
             JOIN accounts AS contact ON contact.id = contacts.contact_id
             WHERE LOWER(contact.username_key) = LOWER(%s)
         """, (username,)).fetchall()
+
+    with get_db() as conn:
+        owner = conn.execute(
+            "SELECT id FROM accounts WHERE username_key = %s",
+            (username.lower(),)
+        ).fetchone()
 
     event = {
         "type": "presence",
@@ -1953,6 +1968,8 @@ async def notify_contact_presence(username, online):
     }
 
     for row in rows:
+        if owner and not can_view_presence(owner["id"], row["id"]):
+            continue
         for websocket in connected_sockets_for(row["username"]):
             try:
                 await websocket.send_json(event)
@@ -1964,7 +1981,7 @@ async def send_contact_presence(account, websocket):
     """Send the signed-in user the current presence of their saved contacts."""
     with get_db() as conn:
         rows = conn.execute("""
-            SELECT contact.username
+            SELECT contact.id, contact.username
             FROM contacts
             JOIN accounts AS contact ON contact.id = contacts.contact_id
             WHERE contacts.owner_id = %s
@@ -1972,6 +1989,8 @@ async def send_contact_presence(account, websocket):
 
     for row in rows:
         username = row["username"]
+        if not can_view_presence(row["id"], account["id"]):
+            continue
         try:
             await websocket.send_json({
                 "type": "presence",
@@ -1996,6 +2015,26 @@ def connected_sockets_for(username):
 
 
 async def update_sender_status(room, item):
+    with get_db() as conn:
+        message = conn.execute(
+            "SELECT recipient FROM messages WHERE id = %s",
+            (item["id"],)
+        ).fetchone()
+        recipient_name = message["recipient"] if message else None
+        recipient = None
+        if recipient_name:
+            recipient = conn.execute(
+                "SELECT id FROM accounts WHERE username_key = %s",
+                (recipient_name.lower(),)
+            ).fetchone()
+
+    if recipient:
+        preferences = get_privacy_settings(recipient["id"])
+        if item.get("status") == "read" and not preferences.get("read_receipts", True):
+            return
+        if item.get("status") == "delivered" and not preferences.get("delivery_receipts", True):
+            return
+
     for websocket in connected_sockets_for(item["username"]):
         try:
             await websocket.send_json({
@@ -2322,6 +2361,7 @@ DEFAULT_PRIVACY_SETTINGS = {
     "profile_photo": "everyone",
     "about_visibility": "everyone",
     "read_receipts": True,
+    "delivery_receipts": True,
     "group_add": "everyone",
     "group_last_seen": "same_as_last_seen",
     "status_audience": "all_contacts",
@@ -2339,7 +2379,7 @@ PRIVACY_VISIBILITY_OPTIONS = {
         "my_contacts_except", "nobody"
     ],
     "online": [
-        "everyone", "same_as_last_seen"
+        "everyone", "same_as_last_seen", "nobody"
     ],
     "profile_photo": [
         "everyone", "my_contacts",
@@ -2402,6 +2442,28 @@ def get_privacy_settings(owner_id):
     return settings
 
 
+def can_view_presence(owner_id, viewer_id):
+    """Check whether this viewer may see the owner's online state."""
+    settings = get_privacy_settings(owner_id)
+    rule = settings.get("online", "everyone")
+    if rule == "nobody":
+        return False
+    if rule == "everyone":
+        return True
+    last_seen = settings.get("last_seen", "everyone")
+    if last_seen == "nobody":
+        return False
+    if last_seen == "everyone":
+        return True
+    with get_db() as conn:
+        contact = conn.execute("""
+            SELECT 1 FROM contacts
+            WHERE owner_id = %s AND contact_id = %s
+            LIMIT 1
+        """, (owner_id, viewer_id)).fetchone()
+    return bool(contact)
+
+
 @app.get("/api/privacy")
 async def get_privacy(request: Request):
     account = get_account_from_request(request)
@@ -2452,6 +2514,7 @@ async def update_privacy(request: Request):
 
         boolean_fields = [
             "read_receipts",
+            "delivery_receipts",
             "allow_status_sharing",
             "silence_unknown_calls",
             "app_lock"
