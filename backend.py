@@ -65,6 +65,11 @@ def init_db():
         """)
 
         conn.execute("""
+            ALTER TABLE accounts
+            ADD COLUMN IF NOT EXISTS recovery_code_hash TEXT
+        """)
+
+        conn.execute("""
             CREATE UNIQUE INDEX IF NOT EXISTS accounts_phone_key_idx
             ON accounts(phone_key)
             WHERE phone_key IS NOT NULL
@@ -494,6 +499,107 @@ async def login(request: Request):
         print("Login error:", error)
         return JSONResponse({
             "error": "Login failed. Please try again."
+        }, status_code=500)
+
+
+# ---------------- PASSWORD RECOVERY ----------------
+
+@app.post("/api/account/recovery-code")
+async def create_recovery_code(request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    try:
+        # A newly generated code replaces the previous code.
+        recovery_code = secrets.token_urlsafe(12)
+        recovery_hash = hashlib.sha256(recovery_code.encode("utf-8")).hexdigest()
+
+        with get_db() as conn:
+            conn.execute("""
+                UPDATE accounts
+                SET recovery_code_hash = %s
+                WHERE id = %s
+            """, (recovery_hash, account["id"]))
+
+        return {
+            "success": True,
+            "recovery_code": recovery_code,
+            "message": "Save this recovery code somewhere private. It will be shown only once."
+        }
+
+    except Exception as error:
+        print("Recovery code generation error:", error)
+        return JSONResponse({
+            "error": "Could not generate a recovery code. Please try again."
+        }, status_code=500)
+
+
+@app.post("/api/password/reset")
+async def reset_password(request: Request):
+    try:
+        data = await request.json()
+        phone = str(data.get("phone_number", "")).strip()
+        recovery_code = str(data.get("recovery_code", "")).strip()
+        new_password = str(data.get("new_password", ""))
+
+        normalized_key = phone_key(phone)
+
+        if not normalized_key or not recovery_code or not new_password:
+            return JSONResponse({
+                "error": "Enter your registered phone number, recovery code and new password."
+            }, status_code=400)
+
+        if len(new_password) < 8:
+            return JSONResponse({
+                "error": "Your new password must contain at least 8 characters."
+            }, status_code=400)
+
+        supplied_hash = hashlib.sha256(recovery_code.encode("utf-8")).hexdigest()
+
+        with get_db() as conn:
+            account = conn.execute("""
+                SELECT id, recovery_code_hash
+                FROM accounts
+                WHERE phone_key = %s
+                FOR UPDATE
+            """, (normalized_key,)).fetchone()
+
+            if (
+                not account
+                or not account["recovery_code_hash"]
+                or not secrets.compare_digest(
+                    supplied_hash,
+                    account["recovery_code_hash"]
+                )
+            ):
+                return JSONResponse({
+                    "error": "The phone number or recovery code is incorrect."
+                }, status_code=401)
+
+            new_hash = hash_password(new_password)
+            conn.execute("""
+                UPDATE accounts
+                SET password_hash = %s,
+                    recovery_code_hash = NULL
+                WHERE id = %s
+            """, (new_hash, account["id"]))
+
+            # Sign out all devices after a password reset.
+            conn.execute("""
+                DELETE FROM sessions WHERE account_id = %s
+            """, (account["id"],))
+
+        return {
+            "success": True,
+            "message": "Password changed. You can now log in with your new password."
+        }
+
+    except Exception as error:
+        print("Password reset error:", error)
+        return JSONResponse({
+            "error": "Password reset failed. Please try again."
         }, status_code=500)
 
 
