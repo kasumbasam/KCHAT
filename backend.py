@@ -1931,6 +1931,58 @@ def load_private_history(room, user1, user2):
     return [message_from_row(row) for row in rows]
 
 
+def is_user_online(username):
+    return bool(connected_sockets_for(username))
+
+
+async def notify_contact_presence(username, online):
+    """Notify only accounts that have this user in their KCHAT contacts."""
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT DISTINCT owner.username
+            FROM contacts
+            JOIN accounts AS owner ON owner.id = contacts.owner_id
+            JOIN accounts AS contact ON contact.id = contacts.contact_id
+            WHERE LOWER(contact.username_key) = LOWER(%s)
+        """, (username,)).fetchall()
+
+    event = {
+        "type": "presence",
+        "username": username,
+        "online": bool(online)
+    }
+
+    for row in rows:
+        for websocket in connected_sockets_for(row["username"]):
+            try:
+                await websocket.send_json(event)
+            except Exception as error:
+                print("Presence notification error:", error)
+
+
+async def send_contact_presence(account, websocket):
+    """Send the signed-in user the current presence of their saved contacts."""
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT contact.username
+            FROM contacts
+            JOIN accounts AS contact ON contact.id = contacts.contact_id
+            WHERE contacts.owner_id = %s
+        """, (account["id"],)).fetchall()
+
+    for row in rows:
+        username = row["username"]
+        try:
+            await websocket.send_json({
+                "type": "presence",
+                "username": username,
+                "online": is_user_online(username)
+            })
+        except Exception as error:
+            print("Initial presence error:", error)
+            break
+
+
 def connected_sockets_for(username):
     matches = []
     for room_users in list(connected_users.values()):
@@ -2046,6 +2098,10 @@ async def chat(websocket: WebSocket, room: str):
         "username": username,
         "websocket": websocket
     })
+
+    # Presence is account-wide, not limited to the currently joined room.
+    await send_contact_presence(account, websocket)
+    await notify_contact_presence(username, True)
 
     await websocket.send_json({
         "type": "welcome",
@@ -2244,6 +2300,10 @@ async def chat(websocket: WebSocket, room: str):
             user for user in connected_users.get(room, [])
             if user["websocket"] != websocket
         ]
+
+        # Mark offline only after the user's last active socket has closed.
+        if not is_user_online(username):
+            await notify_contact_presence(username, False)
 
         if not find_users(room, username):
             await broadcast(room, {
