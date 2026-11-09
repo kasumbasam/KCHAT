@@ -300,7 +300,7 @@ def create_session(account_id):
     with get_db() as conn:
         conn.execute("""
             INSERT INTO sessions (account_id, token_hash, expires_at)
-            VALUES (%s, %s, NOW() + INTERVAL '30 days')
+            VALUES (%s, %s, NOW() + INTERVAL '365 days')
         """, (account_id, token_hash(token)))
 
     return token
@@ -527,16 +527,23 @@ async def add_contact(request: Request):
 
     try:
         data = await request.json()
-        username = str(data.get("username", "")).strip()
+        identifier = str(
+            data.get("username") or data.get("phone_number") or data.get("identifier") or ""
+        ).strip()
 
-        if not username:
-            return JSONResponse({"error": "Enter a username."}, status_code=400)
+        if not identifier:
+            return JSONResponse({
+                "error": "Enter the contact's KCHAT username or registered phone number."
+            }, status_code=400)
+
+        normalized_key = phone_key(identifier)
 
         with get_db() as conn:
             target = conn.execute("""
                 SELECT id, username FROM accounts
                 WHERE username_key = %s
-            """, (username.lower(),)).fetchone()
+                   OR (%s IS NOT NULL AND phone_key = %s)
+            """, (identifier.lower(), normalized_key, normalized_key)).fetchone()
 
             if not target:
                 return JSONResponse({
@@ -592,6 +599,54 @@ async def remove_contact(username: str, request: Request):
         }, status_code=404)
 
     return {"success": True, "message": "Contact removed."}
+
+
+# ---------------- ACCOUNT DELETION ----------------
+
+@app.delete("/api/account")
+async def delete_account(request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    try:
+        data = await request.json()
+        password = str(data.get("password", ""))
+
+        if not password:
+            return JSONResponse({
+                "error": "Enter your current password to delete your account."
+            }, status_code=400)
+
+        with get_db() as conn:
+            credentials = conn.execute("""
+                SELECT password_hash FROM accounts WHERE id = %s
+            """, (account["id"],)).fetchone()
+
+            if not credentials or not verify_password(password, credentials["password_hash"]):
+                return JSONResponse({
+                    "error": "Your current password is incorrect."
+                }, status_code=401)
+
+            # Messages use usernames rather than account foreign keys.
+            conn.execute("""
+                DELETE FROM messages
+                WHERE LOWER(username) = LOWER(%s)
+                   OR LOWER(COALESCE(recipient, '')) = LOWER(%s)
+            """, (account["username"], account["username"]))
+
+            # Related contacts, sessions, preferences, blocks and group memberships
+            # are removed by the accounts table's ON DELETE CASCADE constraints.
+            conn.execute("DELETE FROM accounts WHERE id = %s", (account["id"],))
+
+        return {"success": True, "message": "Your KCHAT account has been permanently deleted."}
+
+    except Exception as error:
+        print("Account deletion error:", error)
+        return JSONResponse({
+            "error": "Account deletion failed. Please try again."
+        }, status_code=500)
 
 
 # ---------------- PROFILE AND ABOUT ----------------
