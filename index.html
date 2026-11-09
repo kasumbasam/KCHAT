@@ -1952,18 +1952,21 @@ async function sendMessage() {
     const input = $("messageInput");
     const text = input.value.trim();
     if (!text || !currentChat) return;
-    input.value = "";
-
     try {
-        await apiRequest("/api/messages", {
+        const result = await apiRequest("/api/messages", {
             method: "POST",
             body: JSON.stringify({ recipient: currentChat, text: text, type: "private" })
         });
-    } catch {}
-
-    messages.push({ username: currentUser, sender: currentUser, text: text, created_at: new Date().toISOString(), status: "sent" });
-    renderMessages();
-    await loadContacts();
+        if (!result || !result.success || !result.message) {
+            throw new Error((result && result.error) || "KCHAT did not accept the message.");
+        }
+        input.value = "";
+        messages.push(result.message);
+        renderMessages();
+        await loadContacts();
+    } catch (error) {
+        alert(error.message || "Message could not be sent. Your text is still in the box.");
+    }
 }
 
 // Main Menu Popups with WhatsApp-style Outside Click to Close
@@ -2224,6 +2227,29 @@ function connectWebSocket() {
     try {
         socket = new WebSocket(url);
         socket.onopen = () => { reconnectAttempts = 0; };
+        socket.onmessage = event => {
+            let item;
+            try { item = JSON.parse(event.data); } catch { return; }
+
+            if (item.type === "private" && item.to &&
+                item.to.toLowerCase() === currentUser.toLowerCase()) {
+                if (currentChat && item.username &&
+                    item.username.toLowerCase() === currentChat.toLowerCase()) {
+                    if (!messages.some(message => message.id === item.id)) {
+                        messages.push(item);
+                        renderMessages();
+                    }
+                }
+                loadContacts();
+            } else if (item.type === "private_status") {
+                const message = messages.find(entry => entry.id === item.id);
+                if (message) {
+                    message.status = item.status;
+                    renderMessages();
+                }
+                loadContacts();
+            }
+        };
         socket.onclose = () => {
             reconnectAttempts++;
             clearTimeout(reconnectTimer);
