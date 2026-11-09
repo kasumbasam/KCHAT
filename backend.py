@@ -1556,7 +1556,21 @@ async def get_private_messages(username: str, request: Request):
             "id": row["id"], "username": row["username"], "status": "read"
         })
 
-    return {"messages": [message_from_row(row) for row in rows], "with": peer["username"]}
+    peer_privacy = get_privacy_settings(peer["id"])
+    visible_messages = []
+    for row in rows:
+        item = message_from_row(row)
+        if row["username"].lower() == account["username"].lower():
+            if not peer_privacy.get("delivery_receipts", True):
+                item["status"] = "sent"
+            elif (
+                item.get("status") == "read"
+                and not peer_privacy.get("read_receipts", True)
+            ):
+                item["status"] = "delivered"
+        visible_messages.append(item)
+
+    return {"messages": visible_messages, "with": peer["username"]}
 
 
 @app.post("/api/messages")
@@ -1611,7 +1625,28 @@ async def send_private_message(request: Request):
                 conn.execute("UPDATE messages SET status = 'delivered' WHERE id = %s", (item["id"],))
             await update_sender_status(private_room, item)
 
-        return {"success": True, "message": item, "delivery": item["status"]}
+        response_item = dict(item)
+        recipient_privacy = get_privacy_settings(target["id"])
+        if (
+            response_item.get("status") == "delivered"
+            and not recipient_privacy.get("delivery_receipts", True)
+        ):
+            response_item["status"] = "sent"
+        elif (
+            response_item.get("status") == "read"
+            and not recipient_privacy.get("read_receipts", True)
+        ):
+            response_item["status"] = (
+                "delivered"
+                if recipient_privacy.get("delivery_receipts", True)
+                else "sent"
+            )
+
+        return {
+            "success": True,
+            "message": response_item,
+            "delivery": response_item["status"]
+        }
     except Exception as error:
         print("Private message send error:", error)
         return JSONResponse({"error": "The message could not be sent. Please try again."}, status_code=500)
@@ -1961,15 +1996,15 @@ async def notify_contact_presence(username, online):
             (username.lower(),)
         ).fetchone()
 
-    event = {
-        "type": "presence",
-        "username": username,
-        "online": bool(online)
-    }
-
     for row in rows:
-        if owner and not can_view_presence(owner["id"], row["id"]):
-            continue
+        visible_online = bool(
+            online and owner and can_view_presence(owner["id"], row["id"])
+        )
+        event = {
+            "type": "presence",
+            "username": username,
+            "online": visible_online
+        }
         for websocket in connected_sockets_for(row["username"]):
             try:
                 await websocket.send_json(event)
@@ -2580,6 +2615,11 @@ async def update_privacy(request: Request):
                 account["id"],
                 json.dumps(settings)
             ))
+
+        await notify_contact_presence(
+            account["username"],
+            is_user_online(account["username"])
+        )
 
         return {
             "success": True,
