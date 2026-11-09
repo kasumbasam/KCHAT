@@ -725,6 +725,9 @@ async def delete_account(request: Request):
                 "error": "Enter your current password to delete your account."
             }, status_code=400)
 
+        # Ensure every account-owned settings table exists before cleanup.
+        ensure_privacy_table()
+
         with get_db() as conn:
             credentials = conn.execute("""
                 SELECT password_hash FROM accounts WHERE id = %s
@@ -735,16 +738,41 @@ async def delete_account(request: Request):
                     "error": "Your current password is incorrect."
                 }, status_code=401)
 
-            # Messages use usernames rather than account foreign keys.
+            account_id = account["id"]
+            username = account["username"]
+
+            # Remove messages sent by this account and private messages addressed
+            # to it. This also removes its public-room and group-message history.
             conn.execute("""
                 DELETE FROM messages
                 WHERE LOWER(username) = LOWER(%s)
                    OR LOWER(COALESCE(recipient, '')) = LOWER(%s)
-            """, (account["username"], account["username"]))
+            """, (username, username))
 
-            # Related contacts, sessions, preferences, blocks and group memberships
-            # are removed by the accounts table's ON DELETE CASCADE constraints.
-            conn.execute("DELETE FROM accounts WHERE id = %s", (account["id"],))
+            # Explicitly remove account-owned and account-linked records.
+            # The account row deletion below also removes profile fields such as
+            # profile_picture, phone number, About text and recovery-code hash.
+            conn.execute("DELETE FROM sessions WHERE account_id = %s", (account_id,))
+            conn.execute("""
+                DELETE FROM contacts
+                WHERE owner_id = %s OR contact_id = %s
+            """, (account_id, account_id))
+            conn.execute("""
+                DELETE FROM blocked_users
+                WHERE owner_id = %s OR blocked_id = %s
+            """, (account_id, account_id))
+            conn.execute("""
+                DELETE FROM chat_preferences
+                WHERE owner_id = %s OR peer_id = %s
+            """, (account_id, account_id))
+            conn.execute("DELETE FROM user_privacy WHERE owner_id = %s", (account_id,))
+            conn.execute("DELETE FROM group_members WHERE account_id = %s", (account_id,))
+
+            # Delete groups created by this account; their memberships cascade.
+            conn.execute("DELETE FROM chat_groups WHERE creator_id = %s", (account_id,))
+
+            # Finally remove the account itself, including its profile and identity.
+            conn.execute("DELETE FROM accounts WHERE id = %s", (account_id,))
 
         return {"success": True, "message": "Your KCHAT account has been permanently deleted."}
 
