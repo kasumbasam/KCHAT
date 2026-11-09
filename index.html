@@ -1184,6 +1184,11 @@ hr {
                 <input type="checkbox" id="privacyDeliveryReceipts" style="width:auto;margin:0;">
                 Delivery receipts
             </label>
+            <label style="display:flex;align-items:center;gap:10px;margin:15px 0;">
+                <input type="checkbox" id="privacyAntiRevoke" style="width:auto;margin:0;">
+                Anti-Revoke — retain messages deleted for everyone
+            </label>
+            <p class="small muted">Anti-Revoke can retain text messages already received by your KCHAT account. It cannot recover content that was never delivered or media that KCHAT has not stored.</p>
 
             <label>Default disappearing messages</label>
             <select id="privacyMessageTimer">
@@ -1859,6 +1864,7 @@ async function loadPrivacySettings() {
         $("privacyAbout").value = settings.about_visibility || "everyone";
         $("privacyReadReceipts").checked = settings.read_receipts !== false;
         $("privacyDeliveryReceipts").checked = settings.delivery_receipts !== false;
+        $("privacyAntiRevoke").checked = settings.anti_revoke !== false;
         $("privacyMessageTimer").value = String(settings.default_message_timer || 0);
         showMessage($("privacySaveMessage"), "");
     } catch (error) {
@@ -2077,6 +2083,7 @@ $("savePrivacyButton").addEventListener("click", async () => {
                 about_visibility: $("privacyAbout").value,
                 read_receipts: $("privacyReadReceipts").checked,
                 delivery_receipts: $("privacyDeliveryReceipts").checked,
+                anti_revoke: $("privacyAntiRevoke").checked,
                 default_message_timer: Number($("privacyMessageTimer").value)
             })
         });
@@ -2217,17 +2224,46 @@ function renderMessages() {
         const date = message.created_at ? new Date(message.created_at) : new Date();
         const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+        const revokedLabel = message.revoked
+            ? `<div class="message-meta">Deleted for everyone${message.revoked_retained ? " · retained by Anti-Revoke" : ""}</div>`
+            : `<div class="message-meta">${time}</div>`;
+        const revokeButton = mine && message.id && !message.revoked
+            ? `<button type="button" class="text-btn" data-revoke-message="${escapeHTML(message.id)}" style="font-size:11px;margin-top:5px;">Delete for everyone</button>`
+            : "";
+
         return `
             <div class="message-row ${mine ? "mine" : ""}">
                 <div class="message-bubble">
                     <div class="message-text">${escapeHTML(message.text || "")}</div>
-                    <div class="message-meta">${time}</div>
+                    ${revokedLabel}
+                    ${revokeButton}
                 </div>
             </div>
         `;
     }).join("");
 
+    area.querySelectorAll("[data-revoke-message]").forEach(button => {
+        button.addEventListener("click", () => revokeMessageForEveryone(button.dataset.revokeMessage));
+    });
+
     area.scrollTop = area.scrollHeight;
+}
+
+async function revokeMessageForEveryone(messageId) {
+    if (!messageId || !confirm("Delete this message for everyone?")) return;
+    try {
+        await apiRequest("/api/messages/" + encodeURIComponent(messageId) + "/revoke", {
+            method: "POST"
+        });
+        const message = messages.find(item => item.id === messageId);
+        if (message) {
+            message.revoked = true;
+            message.revoked_retained = true;
+            renderMessages();
+        }
+    } catch (error) {
+        alert(error.message || "Could not delete this message for everyone.");
+    }
 }
 
 $("sendMessageButton").addEventListener("click", sendMessage);
@@ -2543,6 +2579,16 @@ function connectWebSocket() {
                     }
                 }
                 loadContacts();
+            } else if (item.type === "message_revoked") {
+                const message = messages.find(entry => entry.id === item.id);
+                if (message) {
+                    message.revoked = true;
+                    message.revoked_retained = item.retained === true;
+                    if (!message.revoked_retained) {
+                        message.text = "This message was deleted";
+                    }
+                    renderMessages();
+                }
             } else if (item.type === "private_status") {
                 const message = messages.find(entry => entry.id === item.id);
                 if (message) {
