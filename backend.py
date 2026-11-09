@@ -119,6 +119,11 @@ def init_db():
         """)
 
         conn.execute("""
+            ALTER TABLE messages
+            ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ
+        """)
+
+        conn.execute("""
             CREATE INDEX IF NOT EXISTS messages_room_idx
             ON messages(room, created_at)
         """)
@@ -1568,9 +1573,81 @@ async def get_private_messages(username: str, request: Request):
                 and not peer_privacy.get("read_receipts", True)
             ):
                 item["status"] = "delivered"
+
+        if item.get("revoked"):
+            if row["username"].lower() != account["username"].lower():
+                my_privacy = get_privacy_settings(account["id"])
+                item["revoked_retained"] = my_privacy.get("anti_revoke", True)
+                if not item["revoked_retained"]:
+                    item["text"] = "This message was deleted"
+            else:
+                item["revoked_retained"] = True
+
         visible_messages.append(item)
 
     return {"messages": visible_messages, "with": peer["username"]}
+
+
+@app.post("/api/messages/{message_id}/revoke")
+async def revoke_private_message(message_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    with get_db() as conn:
+        message = conn.execute("""
+            SELECT id, type, username, recipient, revoked_at
+            FROM messages
+            WHERE id = %s
+            FOR UPDATE
+        """, (message_id,)).fetchone()
+
+        if not message or message["type"] != "private":
+            return JSONResponse({"error": "Message not found."}, status_code=404)
+
+        if message["username"].lower() != account["username"].lower():
+            return JSONResponse({
+                "error": "You can only delete messages you sent."
+            }, status_code=403)
+
+        if message["revoked_at"]:
+            return JSONResponse({
+                "error": "This message has already been deleted for everyone."
+            }, status_code=409)
+
+        conn.execute("""
+            UPDATE messages
+            SET revoked_at = NOW()
+            WHERE id = %s
+        """, (message_id,))
+
+        recipient = conn.execute("""
+            SELECT id FROM accounts WHERE username_key = %s
+        """, (message["recipient"].lower(),)).fetchone()
+
+    recipient_privacy = (
+        get_privacy_settings(recipient["id"])
+        if recipient else {}
+    )
+    retained = recipient_privacy.get("anti_revoke", True)
+    event = {
+        "type": "message_revoked",
+        "id": message_id,
+        "username": account["username"],
+        "retained": retained
+    }
+
+    for websocket in connected_sockets_for(message["recipient"]):
+        try:
+            await websocket.send_json(event)
+        except Exception as error:
+            print("Message revoke notification error:", error)
+
+    return {
+        "success": True,
+        "message": "Message deleted for everyone.",
+        "retained_for_recipient": retained
+    }
 
 
 @app.post("/api/messages")
@@ -1924,6 +2001,11 @@ def message_from_row(row):
         "to": row["recipient"],
         "text": row["text"],
         "status": row["status"],
+        "revoked": bool(row.get("revoked_at")),
+        "revoked_at": (
+            row["revoked_at"].isoformat()
+            if row.get("revoked_at") else None
+        ),
         "created_at": (
             row["created_at"].isoformat()
             if row["created_at"] else None
@@ -2398,6 +2480,7 @@ DEFAULT_PRIVACY_SETTINGS = {
     "about_visibility": "everyone",
     "read_receipts": True,
     "delivery_receipts": True,
+    "anti_revoke": True,
     "group_add": "everyone",
     "group_last_seen": "same_as_last_seen",
     "status_audience": "all_contacts",
@@ -2551,6 +2634,7 @@ async def update_privacy(request: Request):
         boolean_fields = [
             "read_receipts",
             "delivery_receipts",
+            "anti_revoke",
             "allow_status_sharing",
             "silence_unknown_calls",
             "app_lock"
