@@ -642,14 +642,23 @@ async def add_contact(request: Request):
                 "error": "Enter the contact's KCHAT username or registered phone number."
             }, status_code=400)
 
+        # Accept either a username (including the displayed @username form)
+        # or a registered phone number. Avoid a nullable SQL placeholder in the
+        # WHERE clause so PostgreSQL can infer every parameter type reliably.
+        username_identifier = identifier[1:].strip() if identifier.startswith("@") else identifier
         normalized_key = phone_key(identifier)
 
         with get_db() as conn:
-            target = conn.execute("""
-                SELECT id, username FROM accounts
-                WHERE username_key = %s
-                   OR (%s IS NOT NULL AND phone_key = %s)
-            """, (identifier.lower(), normalized_key, normalized_key)).fetchone()
+            if normalized_key:
+                target = conn.execute("""
+                    SELECT id, username FROM accounts
+                    WHERE username_key = %s OR phone_key = %s
+                """, (username_identifier.lower(), normalized_key)).fetchone()
+            else:
+                target = conn.execute("""
+                    SELECT id, username FROM accounts
+                    WHERE username_key = %s
+                """, (username_identifier.lower(),)).fetchone()
 
             if not target:
                 return JSONResponse({
