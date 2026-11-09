@@ -727,6 +727,9 @@ hr {
         <button class="primary-btn" id="loginButton">
             Login
         </button>
+        <div style="text-align:right;margin-top:10px;">
+            <button type="button" class="text-btn" id="forgotPasswordLink">Forgot Password?</button>
+        </div>
 
         <p id="authMessage"></p>
 
@@ -773,6 +776,32 @@ hr {
         <div class="auth-switch">
             Already registered?
             <button id="showLoginButton">Login</button>
+        </div>
+    </div>
+</section>
+
+<!-- FORGOT PASSWORD SCREEN -->
+<section id="forgotPasswordScreen" class="auth-screen hidden">
+    <div class="auth-card">
+        <div class="logo">KCHAT</div>
+        <p class="auth-subtitle">Recover your account securely</p>
+        <h2>Reset password</h2>
+
+        <label>Registered phone number</label>
+        <input id="recoveryPhone" type="tel" placeholder="+256..." autocomplete="tel">
+
+        <label>One-time recovery code</label>
+        <input id="recoveryCode" type="text" placeholder="Enter your saved recovery code" autocomplete="off">
+
+        <label>New password</label>
+        <input id="recoveryNewPassword" type="password" placeholder="At least 8 characters" autocomplete="new-password">
+
+        <button class="primary-btn" id="resetPasswordButton">Reset Password</button>
+        <p id="recoveryMessage" class="small muted"></p>
+
+        <div class="auth-switch">
+            Remembered your password?
+            <button type="button" id="backToLoginFromRecovery">Back to login</button>
         </div>
     </div>
 </section>
@@ -1069,6 +1098,14 @@ hr {
             <input type="password" id="secPassword" placeholder="Enter new passcode">
         </div>
         <button class="primary-btn" id="saveSecurityButton">Update Security Info</button>
+
+        <div class="settings-section" style="margin-top:22px;border-top:1px solid var(--border);padding-top:18px;">
+            <h3>Account Recovery Code</h3>
+            <p class="small muted">Generate a one-time recovery code and save it somewhere private. You will need it if you forget your password. Generating a new code replaces the old one.</p>
+            <button class="secondary-btn" id="generateRecoveryCodeButton" style="width:100%;">Generate Recovery Code</button>
+            <input id="generatedRecoveryCode" type="text" readonly placeholder="Your recovery code will appear here" style="margin-top:10px;">
+            <p id="recoveryCodeMessage" class="small muted"></p>
+        </div>
 
         <div class="settings-section" style="margin-top:28px;border-top:1px solid var(--border);padding-top:20px;">
             <h3 style="color:var(--danger);">Delete KCHAT Account</h3>
@@ -1439,6 +1476,7 @@ function setAuthMessage(message, error = true) {
 function showLogin() {
     show($("loginScreen"));
     hide($("registerScreen"));
+    hide($("forgotPasswordScreen"));
     hide($("appScreen"));
     setAuthMessage("");
 }
@@ -1446,6 +1484,7 @@ function showLogin() {
 function showRegister() {
     hide($("loginScreen"));
     show($("registerScreen"));
+    hide($("forgotPasswordScreen"));
     hide($("appScreen"));
     setAuthMessage("");
 }
@@ -1459,6 +1498,81 @@ function showApplication() {
 
 $("showRegisterButton").addEventListener("click", showRegister);
 $("showLoginButton").addEventListener("click", showLogin);
+
+$("forgotPasswordLink").addEventListener("click", () => {
+    $("recoveryPhone").value = $("loginPhone").value.trim();
+    hide($("loginScreen"));
+    hide($("registerScreen"));
+    show($("forgotPasswordScreen"));
+    $("recoveryMessage").textContent = "";
+});
+
+$("backToLoginFromRecovery").addEventListener("click", showLogin);
+
+$("resetPasswordButton").addEventListener("click", async () => {
+    const phone = $("recoveryPhone").value.trim();
+    const code = $("recoveryCode").value.trim();
+    const newPassword = $("recoveryNewPassword").value;
+
+    if (!phone || !code || !newPassword) {
+        showMessage($("recoveryMessage"), "Enter your phone number, recovery code and new password.", true);
+        return;
+    }
+    if (newPassword.length < 8) {
+        showMessage($("recoveryMessage"), "Your new password must contain at least 8 characters.", true);
+        return;
+    }
+
+    const button = $("resetPasswordButton");
+    button.disabled = true;
+    button.textContent = "Resetting password...";
+    try {
+        const result = await apiRequest("/api/password/reset", {
+            method: "POST",
+            body: JSON.stringify({
+                phone_number: phone,
+                recovery_code: code,
+                new_password: newPassword
+            })
+        });
+        if (!result.success) throw new Error(result.error || "Password reset was not confirmed.");
+
+        $("loginPhone").value = phone;
+        $("loginPassword").value = "";
+        $("recoveryCode").value = "";
+        $("recoveryNewPassword").value = "";
+        showLogin();
+        showMessage($("authMessage"), "Password changed successfully. Log in using your new password.", false);
+    } catch (error) {
+        showMessage($("recoveryMessage"), error.message || "Could not reset password.", true);
+    } finally {
+        button.disabled = false;
+        button.textContent = "Reset Password";
+    }
+});
+
+$("generateRecoveryCodeButton").addEventListener("click", async () => {
+    const button = $("generateRecoveryCodeButton");
+    const output = $("generatedRecoveryCode");
+    button.disabled = true;
+    button.textContent = "Generating...";
+    output.value = "";
+    try {
+        const result = await apiRequest("/api/account/recovery-code", {
+            method: "POST"
+        });
+        if (!result.success || !result.recovery_code) {
+            throw new Error(result.error || "The server did not return a recovery code.");
+        }
+        output.value = result.recovery_code;
+        showMessage($("recoveryCodeMessage"), "Save this code now. It is shown only once; generating another code replaces it.");
+    } catch (error) {
+        showMessage($("recoveryCodeMessage"), error.message || "Could not generate recovery code.", true);
+    } finally {
+        button.disabled = false;
+        button.textContent = "Generate Recovery Code";
+    }
+});
 
 $("loginButton").addEventListener("click", login);
 $("loginPassword").addEventListener("keydown", event => {
