@@ -1516,9 +1516,11 @@ async function register() {
     try {
         let profilePicture = null;
         if (pictureFile) {
-            profilePicture = await new Promise((resolve) => {
+            profilePicture = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error("The profile picture could not be read. Try another image or continue without a picture."));
+                reader.onabort = () => reject(new Error("Profile picture reading was cancelled. Please try again."));
                 reader.readAsDataURL(pictureFile);
             });
         }
@@ -1542,8 +1544,12 @@ async function register() {
         currentUser = "";
         localStorage.removeItem("kchat_token");
         localStorage.removeItem("kchat_username");
-        showMessage($("authMessageRegister"), error.message || "Registration failed. Please try again.", true);
         showRegister();
+        showMessage(
+            $("authMessageRegister"),
+            error.message || "Registration failed. Please try again.",
+            true
+        );
     } finally {
         button.disabled = false;
         button.textContent = "Create My Account";
