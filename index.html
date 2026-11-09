@@ -1142,8 +1142,8 @@ hr {
             <label>Last seen</label>
             <select id="privacyLastSeen">
                 <option value="everyone">Everyone</option>
-                <option value="contacts">My contacts</option>
-                <option value="contacts_except">My contacts except...</option>
+                <option value="my_contacts">My contacts</option>
+                <option value="my_contacts_except">My contacts except...</option>
                 <option value="nobody">Nobody</option>
             </select>
 
@@ -1151,6 +1151,7 @@ hr {
             <select id="privacyOnline">
                 <option value="everyone">Everyone</option>
                 <option value="same_as_last_seen">Same as last seen</option>
+                <option value="nobody">Nobody</option>
             </select>
 
             <label>Profile photo</label>
@@ -1178,6 +1179,10 @@ hr {
             <label style="display:flex;align-items:center;gap:10px;margin:15px 0;">
                 <input type="checkbox" id="privacyReadReceipts" style="width:auto;margin:0;">
                 Read receipts
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;margin:15px 0;">
+                <input type="checkbox" id="privacyDeliveryReceipts" style="width:auto;margin:0;">
+                Delivery receipts
             </label>
 
             <label>Default disappearing messages</label>
@@ -1844,9 +1849,27 @@ $("deleteAccountButton").addEventListener("click", async () => {
     }
 });
 
-$("subOpenPrivacy").addEventListener("click", () => {
+async function loadPrivacySettings() {
+    try {
+        const result = await apiRequest("/api/privacy");
+        const settings = result.settings || {};
+        $("privacyLastSeen").value = settings.last_seen || "everyone";
+        $("privacyOnline").value = settings.online || "everyone";
+        $("privacyProfilePhoto").value = settings.profile_photo || "everyone";
+        $("privacyAbout").value = settings.about_visibility || "everyone";
+        $("privacyReadReceipts").checked = settings.read_receipts !== false;
+        $("privacyDeliveryReceipts").checked = settings.delivery_receipts !== false;
+        $("privacyMessageTimer").value = String(settings.default_message_timer || 0);
+        showMessage($("privacySaveMessage"), "");
+    } catch (error) {
+        showMessage($("privacySaveMessage"), error.message || "Could not load privacy settings.", true);
+    }
+}
+
+$("subOpenPrivacy").addEventListener("click", async () => {
     hide($("settingsPanel"));
     show($("privacyScreen"));
+    await loadPrivacySettings();
 });
 $("privacyBackButton").addEventListener("click", () => {
     hide($("privacyScreen"));
@@ -2053,12 +2076,13 @@ $("savePrivacyButton").addEventListener("click", async () => {
                 profile_photo: $("privacyProfilePhoto").value,
                 about_visibility: $("privacyAbout").value,
                 read_receipts: $("privacyReadReceipts").checked,
+                delivery_receipts: $("privacyDeliveryReceipts").checked,
                 default_message_timer: Number($("privacyMessageTimer").value)
             })
         });
         showMessage($("privacySaveMessage"), "Privacy settings saved.");
-    } catch {
-        showMessage($("privacySaveMessage"), "Privacy settings saved locally.");
+    } catch (error) {
+        showMessage($("privacySaveMessage"), error.message || "Could not save privacy settings.", true);
     } finally {
         btn.disabled = false;
         btn.textContent = "Save Privacy Settings";
