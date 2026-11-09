@@ -1303,6 +1303,120 @@ async def search_messages(
     }
 
 
+
+
+# ---------------- PRIVATE MESSAGE HISTORY AND DELIVERY ----------------
+
+@app.get("/api/messages/{username}")
+async def get_private_messages(username: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    peer_name = username.strip()[:30]
+    if not peer_name or peer_name.lower() == account["username"].lower():
+        return JSONResponse({"error": "Choose a valid conversation."}, status_code=400)
+
+    with get_db() as conn:
+        peer = conn.execute("""
+            SELECT id, username FROM accounts WHERE username_key = %s
+        """, (peer_name.lower(),)).fetchone()
+        if not peer:
+            return JSONResponse({"error": "User not found."}, status_code=404)
+        if users_blocked(account["id"], peer["id"]):
+            return JSONResponse({"error": "This conversation is unavailable."}, status_code=403)
+
+        rows = conn.execute("""
+            SELECT * FROM messages
+            WHERE type = 'private'
+            AND (
+                (LOWER(username) = %s AND LOWER(recipient) = %s)
+                OR
+                (LOWER(username) = %s AND LOWER(recipient) = %s)
+            )
+            AND (expires_at IS NULL OR expires_at > NOW())
+            ORDER BY created_at ASC
+        """, (
+            account["username"].lower(), peer["username"].lower(),
+            peer["username"].lower(), account["username"].lower()
+        )).fetchall()
+
+        unread = conn.execute("""
+            UPDATE messages SET status = 'read'
+            WHERE type = 'private'
+            AND LOWER(username) = %s
+            AND LOWER(recipient) = %s
+            AND status != 'read'
+            AND (expires_at IS NULL OR expires_at > NOW())
+            RETURNING id, username, room
+        """, (peer["username"].lower(), account["username"].lower())).fetchall()
+
+    for row in unread:
+        await update_sender_status(row["room"], {
+            "id": row["id"], "username": row["username"], "status": "read"
+        })
+
+    return {"messages": [message_from_row(row) for row in rows], "with": peer["username"]}
+
+
+@app.post("/api/messages")
+async def send_private_message(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    try:
+        data = await request.json()
+        recipient_name = str(data.get("recipient", data.get("to", ""))).strip()[:30]
+        message_text = str(data.get("text", "")).strip()
+        if not recipient_name or not message_text:
+            return JSONResponse({"error": "Choose a recipient and enter a message."}, status_code=400)
+        if recipient_name.lower() == account["username"].lower():
+            return JSONResponse({"error": "You cannot message yourself."}, status_code=400)
+
+        with get_db() as conn:
+            target = conn.execute("""
+                SELECT id, username FROM accounts WHERE username_key = %s
+            """, (recipient_name.lower(),)).fetchone()
+        if not target:
+            return JSONResponse({"error": "That KCHAT user does not exist."}, status_code=404)
+        if users_blocked(account["id"], target["id"]):
+            return JSONResponse({"error": "Message not sent. This conversation is blocked."}, status_code=403)
+
+        recipient = target["username"]
+        private_room = "private:" + ":".join(private_pair(account["username"], recipient))
+        item = {
+            "id": uuid.uuid4().hex,
+            "type": "private",
+            "username": account["username"],
+            "to": recipient,
+            "text": message_text[:10000],
+            "status": "sent"
+        }
+        item = save_message(item, private_room)
+        delivered = False
+
+        for target_socket in connected_sockets_for(recipient):
+            try:
+                delivery_item = dict(item)
+                delivery_item["status"] = "delivered"
+                await target_socket.send_json(delivery_item)
+                delivered = True
+            except Exception as error:
+                print("Private HTTP delivery error:", error)
+
+        if delivered:
+            item["status"] = "delivered"
+            with get_db() as conn:
+                conn.execute("UPDATE messages SET status = 'delivered' WHERE id = %s", (item["id"],))
+            await update_sender_status(private_room, item)
+
+        return {"success": True, "message": item, "delivery": item["status"]}
+    except Exception as error:
+        print("Private message send error:", error)
+        return JSONResponse({"error": "The message could not be sent. Please try again."}, status_code=500)
+
+
 # ---------------- MARK ALL AS READ ----------------
 
 @app.post("/api/messages/read-all")
@@ -1619,10 +1733,22 @@ def load_private_history(room, user1, user2):
     return [message_from_row(row) for row in rows]
 
 
+def connected_sockets_for(username):
+    matches = []
+    for room_users in list(connected_users.values()):
+        for user in list(room_users):
+            if (
+                user["username"].lower() == username.lower()
+                and user["websocket"].client_state == WebSocketState.CONNECTED
+            ):
+                matches.append(user["websocket"])
+    return matches
+
+
 async def update_sender_status(room, item):
-    for sender in find_users(room, item["username"]):
+    for websocket in connected_sockets_for(item["username"]):
         try:
-            await sender["websocket"].send_json({
+            await websocket.send_json({
                 "type": "private_status",
                 "id": item["id"],
                 "status": item["status"]
@@ -1636,13 +1762,12 @@ async def deliver_pending_messages(room, username, websocket):
         rows = conn.execute("""
             SELECT *
             FROM messages
-            WHERE room = %s
-            AND type = 'private'
+            WHERE type = 'private'
             AND LOWER(recipient) = %s
             AND status = 'sent'
             AND (expires_at IS NULL OR expires_at > NOW())
             ORDER BY created_at ASC
-        """, (room, username.lower())).fetchall()
+        """, (username.lower(),)).fetchall()
 
         for row in rows:
             item = message_from_row(row)
@@ -1875,10 +2000,11 @@ async def chat(websocket: WebSocket, room: str):
                     "status": "sent"
                 }
 
-                save_message(item, room)
+                private_room = "private:" + ":".join(private_pair(username, recipient))
+                save_message(item, private_room)
                 await websocket.send_json(item)
 
-                targets = find_users(room, recipient)
+                targets = connected_sockets_for(recipient)
                 delivered = False
 
                 for target in targets:
@@ -1886,7 +2012,7 @@ async def chat(websocket: WebSocket, room: str):
                     delivery_item["status"] = "delivered"
 
                     try:
-                        await target["websocket"].send_json(delivery_item)
+                        await target.send_json(delivery_item)
                         delivered = True
                     except Exception as error:
                         print("Private delivery error:", error)
