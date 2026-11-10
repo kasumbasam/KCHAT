@@ -1041,7 +1041,7 @@ hr {
     position:fixed;
     inset:0;
     background:#000b;
-    z-index:60;
+    z-index:10001;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -2042,6 +2042,28 @@ function openKchatUpdatesScreen() {
     if (typeof loadChannels === "function") loadChannels();
 }
 
+/* Remove every forced Updates style when navigating away. */
+function closeKchatUpdatesScreen(nextTab = "chat") {
+    const app = $("appScreen");
+    const status = $("statusScreen");
+    const main = $("mainChatArea");
+    if (app) {
+        app.classList.remove("status-open");
+        app.classList.remove("mobile-chat-open");
+    }
+    if (main) main.style.removeProperty("display");
+    if (status) {
+        status.style.removeProperty("display");
+        status.style.removeProperty("visibility");
+        status.style.removeProperty("z-index");
+        hide(status);
+    }
+    activeTab = nextTab;
+    document.querySelectorAll(".whatsapp-tab-btn").forEach(button => {
+        button.classList.toggle("active", button.dataset.tab === nextTab);
+    });
+}
+
 document.addEventListener("click", event => {
     const target = event.target instanceof Element ? event.target : event.target && event.target.parentElement;
     const statusButton = target && target.closest('.whatsapp-tab-btn[data-tab="status"], [data-main-nav="status"]');
@@ -2989,10 +3011,8 @@ $("updatesSettingsMenu").addEventListener("click",()=>{hide($("updatesMenu"));op
 document.querySelectorAll("[data-main-nav]").forEach(button=>button.addEventListener("click",()=>{
     const tab=button.dataset.mainNav;
     if(tab==="status")return;
-    $("appScreen").classList.remove("status-open");
+    closeKchatUpdatesScreen(tab);
     document.querySelectorAll(".whatsapp-tab-btn").forEach(item=>item.classList.toggle("active",item.dataset.tab===tab));
-    activeTab=tab;
-    hide($("statusScreen"));
     if(tab==="chat"||tab==="call"){
         if(currentChat)show($("chatScreen"));else show($("welcomeScreen"));
         renderContacts();
@@ -3011,11 +3031,7 @@ document.querySelectorAll(".whatsapp-tab-btn").forEach(button => {
             openKchatUpdatesScreen();
             return;
         }
-        $("appScreen").classList.remove("status-open");
-        $("statusScreen").style.removeProperty("display");
-        $("statusScreen").style.removeProperty("visibility");
-        $("statusScreen").style.removeProperty("z-index");
-        hide($("statusScreen"));
+        closeKchatUpdatesScreen(activeTab);
         if (activeTab === "chat" || activeTab === "call") {
             if (currentChat) show($("chatScreen"));
             else show($("welcomeScreen"));
