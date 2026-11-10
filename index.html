@@ -1637,7 +1637,7 @@ hr {
                 <div class="status-page-scroll">
                     <div class="status-section-title">Status</div>
                     <div class="status-stories" id="statusStories">
-                        <button class="my-status-card" id="myStatusCard">
+                        <button type="button" class="my-status-card" id="myStatusCard">
                             <span class="my-status-photo" id="myStatusPhoto"><span id="myStatusInitial">S</span></span>
                             <span class="my-status-add">+</span>
                             <span class="my-status-copy"><strong id="myStatusTitle">My status</strong><small id="myStatusSubtitle">Tap to add status</small><span id="myStatusPreview" class="my-status-preview hidden"></span></span>
@@ -3487,62 +3487,31 @@ $("deleteMyStatusButton").addEventListener("click",async()=>{
 async function handleMyStatusCardTap(){
     const card=$("myStatusCard");
     if(!card)return;
-    const cachedMine=(window.kchatStatuses||[]).filter(item=>item.is_mine);
-    // Open immediately from cache so a slow server request never makes the tap appear dead.
-    if(cachedMine.length){
-        openStatusViewer(cachedMine);
-    }else{
-        openStatusViewer([{id:"status-loading",is_mine:true,username:currentUser||"Me",text:"Loading your status…"}]);
-    }
     card.setAttribute("aria-busy","true");
     try{
         const loaded=await loadStatuses();
-        if(loaded===null){
-            if(!cachedMine.length){
-                const content=$("statusViewerContent");
-                content.replaceChildren();
-                const message=document.createElement("div");
-                message.className="status-viewer-text";
-                message.textContent="Could not load your status. Check your connection and try again.";
-                content.appendChild(message);
-                $("statusViewerFooter").textContent="";
-                $("deleteMyStatusButton").classList.add("hidden");
-            }
-            return;
-        }
-        const mine=loaded.filter(item=>item.is_mine);
+        if(loaded===null)throw new Error("KCHAT could not retrieve your statuses. Check your connection and try again.");
+        const mine=loaded.filter(item=>item.is_mine).sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
         if(mine.length){
-            openStatusViewer(mine);
+            openStatusViewer(mine,0);
         }else{
             closeStatusViewer();
-            alert("You haven't shared a status yet. Use the camera button for a photo/video or the pen button for a written status.");
+            alert("No active status was found on your account. Share a photo, video or written status first.");
         }
     }catch(error){
         console.error("My status tap failed:",error);
-        if(!cachedMine.length){
-            const content=$("statusViewerContent");
-            content.replaceChildren();
-            const message=document.createElement("div");
-            message.className="status-viewer-text";
-            message.textContent="Could not load your status. Please try again.";
-            content.appendChild(message);
-            $("statusViewerFooter").textContent="";
-            $("deleteMyStatusButton").classList.add("hidden");
-        }
+        alert(error.message||"Could not load your status. Please try again.");
     }finally{
         card.removeAttribute("aria-busy");
     }
 }
-// Capture the tap at document level so child elements or overlapping page handlers
-// cannot silently swallow the My status action.
-document.addEventListener("click",event=>{
-    const target=event.target instanceof Element?event.target:null;
-    const card=target&&target.closest("#myStatusCard");
-    if(!card)return;
+// Bind directly to the My status row. This keeps the action reliable even
+// when the Updates screen is shown/hidden or other navigation listeners exist.
+$("myStatusCard").addEventListener("click",event=>{
     event.preventDefault();
-    event.stopImmediatePropagation();
+    event.stopPropagation();
     handleMyStatusCardTap();
-},true);
+});
 async function loadStatuses(){
     try{
         const result=await apiRequest("/api/statuses");
