@@ -794,6 +794,32 @@ hr {
     object-fit:cover;
     border-radius:50%;
 }
+.settings-profile-avatar {
+    position:relative;
+    cursor:pointer;
+    border:2px solid var(--border);
+    transition:filter .15s ease,transform .15s ease;
+}
+.settings-profile-avatar:hover {
+    filter:brightness(.82);
+    transform:scale(1.03);
+}
+.settings-profile-avatar::after {
+    content:"📷";
+    position:absolute;
+    right:0;
+    bottom:0;
+    width:25px;
+    height:25px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    background:var(--accent);
+    color:#10131a;
+    border:2px solid var(--panel);
+    font-size:13px;
+}
 .settings-profile-details {
     flex:1;
     min-width:0;
@@ -1216,7 +1242,7 @@ hr {
         </div>
 
         <div class="settings-profile-header" id="settingsProfileHeader">
-            <div class="settings-profile-avatar" id="settingsProfileAvatar">S</div>
+            <div class="settings-profile-avatar" id="settingsProfileAvatar" role="button" tabindex="0" title="Change profile photo" aria-label="Change profile photo">S</div>
             <div class="settings-profile-details">
                 <div class="settings-profile-name" id="settingsProfileName">Your name</div>
                 <small class="settings-profile-username" id="settingsProfileUsername">@username</small>
@@ -2090,6 +2116,18 @@ async function loadMyProfile() {
         $("settingsProfileAvatar").textContent = initial;
     }
 }
+
+// Tap the profile photo in the Settings header to choose a new picture.
+function openSettingsProfilePhotoPicker() {
+    $("editProfilePicture").click();
+}
+$("settingsProfileAvatar").addEventListener("click", openSettingsProfilePhotoPicker);
+$("settingsProfileAvatar").addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openSettingsProfilePhotoPicker();
+    }
+});
 
 // Sidebar open profile centre
 $("openProfilePanelFromSidebar").addEventListener("click", () => {
