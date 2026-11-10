@@ -474,10 +474,31 @@ hr {
 .message-meta {
     display:flex;
     justify-content:flex-end;
+    align-items:center;
     gap:6px;
     color:#b7c4cc;
     font-size:12px;
     margin-top:6px;
+}
+
+.message-receipt {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:14px;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:-3px;
+    padding-right:3px;
+    color:#9aa4ad;
+}
+.message-receipt.read {
+    color:#38a9ff;
+}
+.message-receipt-label {
+    font-size:10px;
+    color:var(--muted);
+    letter-spacing:0;
 }
 
 .message-image {
@@ -2268,9 +2289,17 @@ function renderMessages() {
         const messageContent = isImage
             ? `<img class="message-image" src="${escapeHTML(message.text)}" alt="Photo sent in KCHAT" loading="lazy">`
             : `<div class="message-text">${escapeHTML(message.text || "")}</div>`;
+        const status = String(message.status || "sent").toLowerCase();
+        const receiptMarkup = mine && !message.revoked
+            ? status === "read"
+                ? '<span class="message-receipt read" title="Read" aria-label="Read">●●</span><span class="message-receipt-label">Read</span>'
+                : status === "delivered"
+                    ? '<span class="message-receipt" title="Delivered" aria-label="Delivered">●●</span><span class="message-receipt-label">Delivered</span>'
+                    : '<span class="message-receipt" title="Sent" aria-label="Sent">●</span><span class="message-receipt-label">Sent</span>'
+            : "";
         const revokedLabel = message.revoked
             ? `<div class="message-meta">Deleted for everyone${message.revoked_retained ? " · retained by Anti-Revoke" : ""}</div>`
-            : `<div class="message-meta">${time}</div>`;
+            : `<div class="message-meta"><span>${time}</span>${receiptMarkup}</div>`;
         const revokeButton = mine && message.id && !message.revoked
             ? `<button type="button" class="text-btn" data-revoke-message="${escapeHTML(message.id)}" style="font-size:11px;margin-top:5px;">Delete for everyone</button>`
             : "";
