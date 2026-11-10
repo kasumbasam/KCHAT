@@ -2806,23 +2806,38 @@ async def get_statuses(request: Request):
 
     try:
         ensure_status_table()
+        # Load the owner's statuses independently from contact statuses.
+        # This guarantees that My status still loads even if the contacts
+        # lookup encounters a problem.
         with get_db() as conn:
-            rows = conn.execute("""
+            own_rows = conn.execute("""
                 SELECT s.id, s.owner_id, a.username, a.profile_picture, s.text,
-                       s.media_data, s.media_type, s.created_at,
-                       s.expires_at
+                       s.media_data, s.media_type, s.created_at, s.expires_at
                 FROM status_updates s
                 JOIN accounts a ON a.id = s.owner_id
-                WHERE s.expires_at > NOW()
-                  AND (
-                    s.owner_id = %s
-                    OR s.owner_id IN (
-                        SELECT contact_id FROM contacts
-                        WHERE owner_id = %s
-                    )
-                  )
+                WHERE s.owner_id = %s AND s.expires_at > NOW()
                 ORDER BY s.created_at DESC
-            """, (account["id"], account["id"])).fetchall()
+            """, (account["id"],)).fetchall()
+
+        contact_rows = []
+        try:
+            with get_db() as conn:
+                contact_rows = conn.execute("""
+                    SELECT s.id, s.owner_id, a.username, a.profile_picture, s.text,
+                           s.media_data, s.media_type, s.created_at, s.expires_at
+                    FROM status_updates s
+                    JOIN accounts a ON a.id = s.owner_id
+                    JOIN contacts c ON c.contact_id = s.owner_id
+                    WHERE c.owner_id = %s
+                      AND s.owner_id <> %s
+                      AND s.expires_at > NOW()
+                    ORDER BY s.created_at DESC
+                """, (account["id"], account["id"])).fetchall()
+        except Exception as contact_error:
+            print("Contact status lookup warning:", contact_error)
+
+        rows = list(own_rows) + list(contact_rows)
+        rows.sort(key=lambda row: row["created_at"], reverse=True)
 
         visible_rows = []
         for row in rows:
