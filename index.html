@@ -714,7 +714,9 @@ hr {
 .text-status-header button:last-child svg,.text-status-actions svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .text-status-header strong{font:600 17px Arial,sans-serif;color:#fff}
 .text-status-writing-area{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:20px 4px 62px}
-#textStatusInput{width:100%;height:100%;min-height:0;resize:none;border:0!important;outline:0;background:transparent!important;color:#fff!important;text-align:center;font:600 clamp(27px,6vw,42px)/1.35 Arial,sans-serif;padding:18px 8px 36px!important;overflow:auto;overflow-wrap:anywhere}
+#textStatusInput{width:100%;height:100%;min-height:0;resize:none;border:0!important;outline:0;background:transparent!important;color:#fff!important;text-align:center;font:600 clamp(27px,6vw,42px)/1.35 Arial,sans-serif;padding:18px 8px 36px!important;overflow:auto;overflow-wrap:anywhere;cursor:text;caret-color:#fff;pointer-events:auto;touch-action:pan-y}
+#textStatusWritingArea{cursor:text;touch-action:manipulation}
+#textStatusWritingArea.is-typing #textStatusInput{caret-color:#fff}
 #textStatusInput::placeholder{color:#ffffffa8}
 .text-status-at-button{position:absolute;right:8px;bottom:14px;width:42px;height:42px;border:0;border-radius:50%;background:#00000025;color:#fff;font:700 22px Arial,sans-serif}
 .text-status-writing-area .status-mention-list{position:absolute;left:0;right:0;bottom:62px;z-index:5;max-height:34vh;background:#182126;border:1px solid #ffffff35}
@@ -3059,13 +3061,35 @@ function setTextStatusBackground(index){
     textStatusBackgroundIndex=(index+textStatusBackgrounds.length)%textStatusBackgrounds.length;
     $("textStatusModal").querySelector(".text-status-card").style.background=textStatusBackgrounds[textStatusBackgroundIndex];
 }
+function focusTextStatusInput(){
+    const input=$("textStatusInput");
+    if(!input) return;
+    input.focus({preventScroll:true});
+    const end=input.value.length;
+    try{input.setSelectionRange(end,end);}catch(_){}
+}
 function openTextStatus(){
     hide($("updatesMenu"));
-    $("textStatusInput").value="";
+    const input=$("textStatusInput");
+    input.value="";
     setTextStatusBackground(textStatusBackgroundIndex);
     show($("textStatusModal"));
-    $("textStatusInput").focus();
+    /* Wait until the full-screen editor is visible before focusing,
+       so the caret and mobile keyboard open in the actual writing area. */
+    requestAnimationFrame(()=>setTimeout(focusTextStatusInput,60));
 }
+/* Tapping anywhere in the large writing canvas should place the cursor
+   in the text field and take the user straight to typing. */
+$("textStatusWritingArea").addEventListener("click",event=>{
+    if(event.target.closest("#textStatusAtButton") || event.target.closest("#textStatusMentionList")) return;
+    focusTextStatusInput();
+});
+$("textStatusInput").addEventListener("focus",()=>{
+    $("textStatusWritingArea").classList.add("is-typing");
+});
+$("textStatusInput").addEventListener("blur",()=>{
+    $("textStatusWritingArea").classList.remove("is-typing");
+});
 $("changeTextStatusBackground").addEventListener("click",()=>setTextStatusBackground(textStatusBackgroundIndex+1));
 $("textStatusAddFile").addEventListener("click",()=>$("statusFileInput").click());
 $("writeStatusButton").addEventListener("click",openTextStatus);
