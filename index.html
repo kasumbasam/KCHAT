@@ -1319,6 +1319,7 @@ hr {
  #textStatusModal .text-status-top-tools button{width:38px!important;height:38px!important;min-width:38px!important}
 }
 
+.status-sticker-overlay{position:absolute;z-index:8;transform:translate(-50%,-50%);font:clamp(34px,9vw,64px) Arial,sans-serif;line-height:1;cursor:grab;touch-action:none;user-select:none;filter:drop-shadow(0 2px 3px #0009)}
 /* WhatsApp-style media editor controls */
 .status-editor-backdrop .status-editor-card{position:relative}
 .status-editor-top{justify-content:flex-start!important}
@@ -3569,10 +3570,26 @@ $("anotherStatusFile").onchange=e=>{statusEditorFiles.push(...Array.from(e.targe
 $("statusFilter").onchange=()=>{const img=$("statusEditorPreview").querySelector("img");if(img)img.style.filter=$("statusFilter").value;};
 
 document.querySelectorAll("[data-status-emoji]").forEach(button=>button.addEventListener("click",()=>{
- const caption=$("mediaStatusCaption");
- const start=caption.selectionStart??caption.value.length,end=caption.selectionEnd??start;
- caption.setRangeText(button.dataset.statusEmoji,start,end,"end");
- caption.focus();
+ const box=$("statusEditorPreview");
+ const sticker=document.createElement("div");
+ sticker.className="status-sticker-overlay";
+ sticker.textContent=button.dataset.statusEmoji;
+ sticker.style.left="50%";sticker.style.top="48%";
+ box.appendChild(sticker);
+ $("statusEmojiTray").classList.add("hidden");
+ let dragging=false,dx=0,dy=0;
+ sticker.addEventListener("pointerdown",event=>{
+  dragging=true;sticker.setPointerCapture(event.pointerId);
+  const r=sticker.getBoundingClientRect();dx=event.clientX-r.left;dy=event.clientY-r.top;
+ });
+ sticker.addEventListener("pointermove",event=>{
+  if(!dragging)return;
+  const r=box.getBoundingClientRect();
+  sticker.style.left=(event.clientX-r.left-dx+sticker.offsetWidth/2)+"px";
+  sticker.style.top=(event.clientY-r.top-dy+sticker.offsetHeight/2)+"px";
+ });
+ sticker.addEventListener("pointerup",()=>dragging=false);
+ sticker.addEventListener("pointercancel",()=>dragging=false);
 }));
 $("statusFileShortcut").onclick=()=>$("anotherStatusFile").click();
 document.querySelectorAll("[data-filter-value]").forEach(button=>button.addEventListener("click",()=>{$("statusFilter").value=button.dataset.filterValue;$("statusFilter").dispatchEvent(new Event("change"));document.querySelectorAll("[data-filter-value]").forEach(item=>item.classList.toggle("active",item===button));}));
@@ -3624,7 +3641,13 @@ $("statusCropApply").onclick=()=>{
  $("statusCropControls").classList.add("hidden");
  $("statusCropButton").classList.remove("active");
 };
-$("saveMediaStatus").onclick=async()=>{const caption=$("mediaStatusCaption").value.trim();try{if(statusEditorEditingId){await apiRequest("/api/statuses/"+encodeURIComponent(statusEditorEditingId),{method:"PUT",body:JSON.stringify({text:caption})});}else if(!statusEditorFiles.length){if(!caption){alert("Write something first.");return;}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:caption})});}else{$("myStatusCard").classList.add("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","0%");for(let i=0;i<statusEditorFiles.length;i++){const f=statusEditorFiles[i];$("myStatusCard").style.setProperty("--upload-progress",Math.round(i/statusEditorFiles.length*100)+"%");if(f.size>5*1024*1024)throw new Error(f.name+" is larger than 5 MB.");$("statusUploadProgress").textContent="Uploading "+(i+1)+" of "+statusEditorFiles.length+"…";let data;if(f.type.startsWith("image/")&&($("statusFilter").value!=="none"||statusEditorCrop||statusEditorDraw)){const image=new Image();const objectUrl=URL.createObjectURL(f);await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error("Could not process "+f.name));image.src=objectUrl;});const sourceWidth=image.naturalWidth,sourceHeight=image.naturalHeight,canvas=document.createElement("canvas");if(statusEditorCrop){const side=Math.min(sourceWidth,sourceHeight);canvas.width=side;canvas.height=side;}else{canvas.width=sourceWidth;canvas.height=sourceHeight;}const context=canvas.getContext("2d");context.filter=$("statusFilter").value;if(statusEditorCrop){const side=Math.min(sourceWidth,sourceHeight);context.drawImage(image,(sourceWidth-side)/2,(sourceHeight-side)/2,side,side,0,0,side,side);}else{context.drawImage(image,0,0);}if(statusEditorCanvas&&statusEditorDraw){context.filter="none";context.drawImage(statusEditorCanvas,0,0,canvas.width,canvas.height);}data=canvas.toDataURL("image/jpeg",.92);URL.revokeObjectURL(objectUrl);}else{data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error("Could not read "+f.name));r.readAsDataURL(f);});}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:i===0?caption:"",media_data:data,media_type:f.type.startsWith("video/")?"video":"image"})});}}$("myStatusCard").classList.remove("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","100%");hide($("mediaStatusEditor"));statusEditorFiles=[];statusEditorEditingId=null;await loadStatuses();const mine=(window.kchatStatuses||[]).filter(x=>x.is_mine);renderStatusStories();openStatusViewer(mine,0);}catch(error){$("myStatusCard").classList.remove("is-uploading");alert(error.message||"Could not share status.");$("statusUploadProgress").textContent="Upload failed — "+(error.message||"Try again.");}};
+$("saveMediaStatus").onclick=async()=>{const caption=$("mediaStatusCaption").value.trim();try{if(statusEditorEditingId){await apiRequest("/api/statuses/"+encodeURIComponent(statusEditorEditingId),{method:"PUT",body:JSON.stringify({text:caption})});}else if(!statusEditorFiles.length){if(!caption){alert("Write something first.");return;}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:caption})});}else{$("myStatusCard").classList.add("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","0%");for(let i=0;i<statusEditorFiles.length;i++){const f=statusEditorFiles[i];$("myStatusCard").style.setProperty("--upload-progress",Math.round(i/statusEditorFiles.length*100)+"%");if(f.size>5*1024*1024)throw new Error(f.name+" is larger than 5 MB.");$("statusUploadProgress").textContent="Uploading "+(i+1)+" of "+statusEditorFiles.length+"…";let data;if(f.type.startsWith("image/")&&($("statusFilter").value!=="none"||statusEditorCrop||statusEditorDraw)){const image=new Image();const objectUrl=URL.createObjectURL(f);await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error("Could not process "+f.name));image.src=objectUrl;});const sourceWidth=image.naturalWidth,sourceHeight=image.naturalHeight,canvas=document.createElement("canvas");if(statusEditorCrop){const side=Math.min(sourceWidth,sourceHeight);canvas.width=side;canvas.height=side;}else{canvas.width=sourceWidth;canvas.height=sourceHeight;}const context=canvas.getContext("2d");context.filter=$("statusFilter").value;if(statusEditorCrop){const side=Math.min(sourceWidth,sourceHeight);context.drawImage(image,(sourceWidth-side)/2,(sourceHeight-side)/2,side,side,0,0,side,side);}else{context.drawImage(image,0,0);}if(statusEditorCanvas&&statusEditorDraw){context.filter="none";context.drawImage(statusEditorCanvas,0,0,canvas.width,canvas.height);}
+const previewBox=$("statusEditorPreview"),previewRect=previewBox.getBoundingClientRect();
+previewBox.querySelectorAll(".status-sticker-overlay").forEach(sticker=>{
+ const r=sticker.getBoundingClientRect(),x=(r.left+r.width/2-previewRect.left)*canvas.width/previewRect.width,y=(r.top+r.height/2-previewRect.top)*canvas.height/previewRect.height;
+ context.save();context.filter="none";context.textAlign="center";context.textBaseline="middle";context.font=(Math.max(34,r.height)*canvas.height/previewRect.height)+"px Arial";context.fillText(sticker.textContent,x,y);context.restore();
+});
+data=canvas.toDataURL("image/jpeg",.92);URL.revokeObjectURL(objectUrl);}else{data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error("Could not read "+f.name));r.readAsDataURL(f);});}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:i===0?caption:"",media_data:data,media_type:f.type.startsWith("video/")?"video":"image"})});}}$("myStatusCard").classList.remove("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","100%");hide($("mediaStatusEditor"));statusEditorFiles=[];statusEditorEditingId=null;await loadStatuses();const mine=(window.kchatStatuses||[]).filter(x=>x.is_mine);renderStatusStories();openStatusViewer(mine,0);}catch(error){$("myStatusCard").classList.remove("is-uploading");alert(error.message||"Could not share status.");$("statusUploadProgress").textContent="Upload failed — "+(error.message||"Try again.");}};
 $("editMyStatusButton").onclick=()=>{const item=statusViewerItems[statusViewerIndex];if(!item?.is_mine)return;closeStatusViewer();openMediaStatusEditor([],item);};
 
 function showJustCreatedStatus(status){
