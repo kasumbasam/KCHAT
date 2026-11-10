@@ -3048,17 +3048,65 @@ $("deleteMyStatusButton").addEventListener("click",async()=>{
         renderStatusViewer();
     }catch(error){alert(error.message||"Could not delete this status.");}
 });
-$("myStatusCard").addEventListener("click",async()=>{
-    // Refresh from the server before deciding whether the viewer is empty.
-    // Never launch the upload picker just because the cached list is stale.
-    const loaded=await loadStatuses();
-    const mine=(loaded||window.kchatStatuses||[]).filter(item=>item.is_mine);
-    if(mine.length){
-        openStatusViewer(mine);
+async function handleMyStatusCardTap(){
+    const card=$("myStatusCard");
+    if(!card)return;
+    const cachedMine=(window.kchatStatuses||[]).filter(item=>item.is_mine);
+    // Open immediately from cache so a slow server request never makes the tap appear dead.
+    if(cachedMine.length){
+        openStatusViewer(cachedMine);
     }else{
-        alert("You haven't shared a status yet. Use the camera button for a photo/video or the pen button for a written status.");
+        openStatusViewer([{id:"status-loading",is_mine:true,username:currentUser||"Me",text:"Loading your status…"}]);
     }
-});
+    card.setAttribute("aria-busy","true");
+    try{
+        const loaded=await loadStatuses();
+        if(loaded===null){
+            if(!cachedMine.length){
+                const content=$("statusViewerContent");
+                content.replaceChildren();
+                const message=document.createElement("div");
+                message.className="status-viewer-text";
+                message.textContent="Could not load your status. Check your connection and try again.";
+                content.appendChild(message);
+                $("statusViewerFooter").textContent="";
+                $("deleteMyStatusButton").classList.add("hidden");
+            }
+            return;
+        }
+        const mine=loaded.filter(item=>item.is_mine);
+        if(mine.length){
+            openStatusViewer(mine);
+        }else{
+            closeStatusViewer();
+            alert("You haven't shared a status yet. Use the camera button for a photo/video or the pen button for a written status.");
+        }
+    }catch(error){
+        console.error("My status tap failed:",error);
+        if(!cachedMine.length){
+            const content=$("statusViewerContent");
+            content.replaceChildren();
+            const message=document.createElement("div");
+            message.className="status-viewer-text";
+            message.textContent="Could not load your status. Please try again.";
+            content.appendChild(message);
+            $("statusViewerFooter").textContent="";
+            $("deleteMyStatusButton").classList.add("hidden");
+        }
+    }finally{
+        card.removeAttribute("aria-busy");
+    }
+}
+// Capture the tap at document level so child elements or overlapping page handlers
+// cannot silently swallow the My status action.
+document.addEventListener("click",event=>{
+    const target=event.target instanceof Element?event.target:null;
+    const card=target&&target.closest("#myStatusCard");
+    if(!card)return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    handleMyStatusCardTap();
+},true);
 async function loadStatuses(){
     try{
         const result=await apiRequest("/api/statuses");
