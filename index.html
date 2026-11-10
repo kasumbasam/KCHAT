@@ -680,6 +680,10 @@ hr {
 .my-status-copy,.status-story-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
 .my-status-copy strong,.status-story-name{font:600 17px Arial,sans-serif;color:#f5f7f8}
 .my-status-copy small,.status-story-time{font:14px Arial,sans-serif;color:#879197}
+.my-status-preview{display:block;max-width:min(360px,72vw);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:12px Arial,sans-serif;color:#c4cdd1;margin-top:1px}
+.my-status-preview.media-preview{width:48px;height:34px;max-width:48px;border-radius:7px;background-size:cover;background-position:center;position:relative}
+.my-status-preview.media-preview.video-preview:after{content:"▶";position:absolute;inset:0;display:grid;place-items:center;color:#fff;text-shadow:0 1px 4px #000;font-size:13px}
+.my-status-preview.text-preview{display:inline-block;max-width:min(360px,72vw);padding:4px 8px;border-radius:7px;color:#fff}
 .other-status-stories{display:flex;flex-direction:column}
 .status-story-card{min-height:76px}
 .status-story-avatar{border:3px solid #25d366}
@@ -1636,7 +1640,7 @@ hr {
                         <button class="my-status-card" id="myStatusCard">
                             <span class="my-status-photo" id="myStatusPhoto"><span id="myStatusInitial">S</span></span>
                             <span class="my-status-add">+</span>
-                            <span class="my-status-copy"><strong id="myStatusTitle">My status</strong><small id="myStatusSubtitle">Tap to add status</small></span>
+                            <span class="my-status-copy"><strong id="myStatusTitle">My status</strong><small id="myStatusSubtitle">Tap to add status</small><span id="myStatusPreview" class="my-status-preview hidden"></span></span>
                         </button>
                     </div>
                     <div class="status-section-title">Recent updates</div>
@@ -3756,7 +3760,32 @@ function renderStatusStories(){
     $("myStatusPhoto").innerHTML=photo?'<img src="'+escapeHTML(photo)+'" alt="My profile">':'<span id="myStatusInitial">'+escapeHTML((currentUser||"S").charAt(0).toUpperCase())+'</span>';
     $("myStatusPhoto").classList.toggle("has-status",mine.length>0);
     $("myStatusTitle").textContent=mine.length?"My status · "+mine.length:"My status";
-    $("myStatusSubtitle").textContent=mine.length?"Tap to view your updates":"Tap to add status";
+    const latestMine=mine[0]||null;
+    const subtitle=$("myStatusSubtitle");
+    const preview=$("myStatusPreview");
+    subtitle.textContent=latestMine?"Tap to view · "+new Date(latestMine.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"Tap to add status";
+    preview.className="my-status-preview hidden";
+    preview.textContent="";
+    preview.style.background="";
+    preview.style.backgroundImage="";
+    if(latestMine){
+        if(latestMine.media_data&&latestMine.media_type==="image"){
+            preview.className="my-status-preview media-preview";
+            preview.style.backgroundImage="url("+JSON.stringify(latestMine.media_data)+")";
+            preview.setAttribute("aria-label","Latest photo status");
+        }else if(latestMine.media_type==="video"){
+            preview.className="my-status-preview media-preview video-preview";
+            preview.style.backgroundImage=latestMine.media_data?"url("+JSON.stringify(latestMine.media_data)+")":"linear-gradient(135deg,#253b45,#101820)";
+            preview.setAttribute("aria-label","Latest video status");
+        }else if(latestMine.media_type==="audio"){
+            preview.className="my-status-preview text-preview";
+            preview.textContent="🎙 Voice status";
+        }else{
+            preview.className="my-status-preview text-preview";
+            preview.textContent=(latestMine.text||"Written status").slice(0,90);
+            preview.style.background=latestMine.background||"#546E7A";
+        }
+    }
     const latestByUser=new Map();
     others.forEach(item=>{
         const key=item.username||"";
