@@ -535,6 +535,49 @@ hr {
     letter-spacing:0;
 }
 
+.pinned-message-banner {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 14px;
+    background:var(--panel);
+    border-bottom:1px solid var(--border);
+    cursor:pointer;
+    min-height:48px;
+}
+.pinned-message-banner.hidden { display:none; }
+.pinned-message-banner .pin-mark {
+    flex:0 0 30px;
+    width:30px;
+    height:30px;
+    display:grid;
+    place-items:center;
+    border-radius:9px;
+    background:var(--panel2);
+    color:var(--accent);
+    font-size:16px;
+}
+.pinned-message-banner .pin-copy { min-width:0; flex:1; }
+.pinned-message-banner .pin-title {
+    color:var(--accent);
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+}
+.pinned-message-banner .pin-preview {
+    color:var(--text);
+    font-size:13px;
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+    margin-top:2px;
+}
+.pinned-message-banner .pin-count {
+    color:var(--muted);
+    font-size:11px;
+    white-space:nowrap;
+}
 .message-bubble { user-select:text; -webkit-user-select:text; }
 .message-bubble.message-selected { outline:2px solid var(--accent); }
 .message-action-menu {
@@ -1010,6 +1053,7 @@ hr {
                     </div>
                 </header>
 
+                <div id="pinnedMessageBanner" class="pinned-message-banner hidden" role="button" tabindex="0" aria-label="Jump to pinned message"></div>
                 <div id="messagesArea" class="messages-area"></div>
 
                 <div class="message-composer">
@@ -2557,9 +2601,52 @@ async function shareMessage(message) {
     }
 }
 
+function renderPinnedMessageBanner() {
+    const banner = $("pinnedMessageBanner");
+    if (!banner) return;
+    const pinned = messages.filter(message => message.pinned_by_me && !message.revoked);
+    if (!pinned.length) {
+        banner.classList.add("hidden");
+        banner.innerHTML = "";
+        banner.onclick = null;
+        banner.onkeydown = null;
+        return;
+    }
+
+    const message = pinned[pinned.length - 1];
+    const preview = String(message.text || "").startsWith("data:image/")
+        ? "Photo"
+        : String(message.text || "Message");
+    banner.innerHTML = `
+        <span class="pin-mark" aria-hidden="true">📌</span>
+        <span class="pin-copy">
+            <span class="pin-title">Pinned message</span>
+            <span class="pin-preview">${escapeHTML(preview)}</span>
+        </span>
+        ${pinned.length > 1 ? `<span class="pin-count">+${pinned.length - 1} more</span>` : ""}
+        <span aria-hidden="true">›</span>
+    `;
+    const jumpToPinned = () => {
+        const target = $("messagesArea").querySelector('[data-message-id="' + CSS.escape(String(message.id)) + '"]');
+        if (target) {
+            target.scrollIntoView({ behavior: "smooth", block: "center" });
+            target.classList.add("message-selected");
+            setTimeout(() => target.classList.remove("message-selected"), 1600);
+        }
+    };
+    banner.onclick = jumpToPinned;
+    banner.onkeydown = event => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            jumpToPinned();
+        }
+    };
+}
+
 function renderMessages() {
     const area = $("messagesArea");
     closeMessageActionMenu();
+    renderPinnedMessageBanner();
     if (!messages.length) {
         area.innerHTML = '<p class="muted" style="text-align:center;">No messages yet. Say hello!</p>';
         return;
