@@ -1748,6 +1748,9 @@ const pendingDeliveryStatuses = new Map();
 let activeFilter = "all";
 let activeTab = "chat";
 let socket = null;
+const typingUsers = new Map();
+let localTyping = false;
+let localTypingStopTimer = null;
 let dndMode = localStorage.getItem("kchat_dnd") === "true";
 let reconnectTimer = null;
 let reconnectAttempts = 0;
@@ -2543,9 +2546,12 @@ function renderContacts() {
             ? `<img src="${escapeHTML(pic)}" alt="Avatar">`
             : escapeHTML(name.charAt(0).toUpperCase());
         const unread = Number(contact.unread_count || 0);
-        const preview = contact.last_message
-            ? (String(contact.last_message).startsWith("data:image/") ? "📷 Photo" : contact.last_message)
-            : "Start a conversation";
+        const isTyping = typingUsers.has(name.toLowerCase());
+        const preview = isTyping
+            ? "typing…"
+            : contact.last_message
+                ? (String(contact.last_message).startsWith("data:image/") ? "📷 Photo" : contact.last_message)
+                : "Start a conversation";
         const isMine = String(contact.last_message_sender || "").toLowerCase() === String(currentUser || "").toLowerCase();
         const deliveryStatus = String(contact.last_message_status || "sent").toLowerCase();
         const report = isMine && contact.last_message
@@ -2564,7 +2570,7 @@ function renderContacts() {
                 <div class="avatar">${avatarContent}</div>
                 <div class="chat-item-info">
                     <div class="chat-item-name"><span>${escapeHTML(name)}</span>${contact.pinned ? '<span class="chat-pin-indicator" title="Pinned chat" aria-label="Pinned chat">📌</span>' : ""}</div>
-                    <div class="chat-item-preview"><span>${report}</span><span>${escapeHTML(preview)}</span></div>
+                    <div class="chat-item-preview${isTyping ? " typing-preview" : ""}"><span>${isTyping ? "" : report}</span><span>${escapeHTML(preview)}</span></div>
                 </div>
                 <div class="chat-item-time">
                     <div>${escapeHTML(time)}</div>
@@ -2602,6 +2608,7 @@ document.querySelectorAll(".filter-btn").forEach(button => {
 
 async function openChat(username) {
     if (!username) return;
+    stopLocalTyping();
     currentChat = username;
     updateChatMenuPinLabel();
     $("activeChatName").textContent = username;
@@ -2935,9 +2942,57 @@ document.addEventListener("keydown", event => {
 });
 
 $("sendMessageButton").addEventListener("click", sendMessage);
+$("messageInput").addEventListener("input", handleTypingInput);
 $("messageInput").addEventListener("keydown", event => {
     if (event.key === "Enter") sendMessage();
 });
+
+function setRemoteTyping(username, active) {
+    const key = String(username || "").toLowerCase();
+    if (!key) return;
+    const previous = typingUsers.get(key);
+    if (previous) clearTimeout(previous);
+    if (active) {
+        const timer = setTimeout(() => {
+            typingUsers.delete(key);
+            renderContacts();
+            if (currentChat && currentChat.toLowerCase() === key) {
+                $("activeChatStatus").textContent = onlineUsers.has(key) ? "Online" : "Offline";
+            }
+        }, 4500);
+        typingUsers.set(key, timer);
+    } else {
+        typingUsers.delete(key);
+    }
+    renderContacts();
+    if (currentChat && currentChat.toLowerCase() === key) {
+        $("activeChatStatus").textContent = active ? "typing…" : (onlineUsers.has(key) ? "Online" : "Offline");
+    }
+}
+
+function sendTypingState(active) {
+    if (!socket || socket.readyState !== WebSocket.OPEN || !currentChat) return;
+    socket.send(JSON.stringify({ type: "typing", to: currentChat, active: active === true }));
+}
+
+function stopLocalTyping() {
+    clearTimeout(localTypingStopTimer);
+    if (localTyping) sendTypingState(false);
+    localTyping = false;
+}
+
+function handleTypingInput() {
+    if (!currentChat || !$("messageInput").value.trim()) {
+        stopLocalTyping();
+        return;
+    }
+    if (!localTyping) {
+        localTyping = true;
+        sendTypingState(true);
+    }
+    clearTimeout(localTypingStopTimer);
+    localTypingStopTimer = setTimeout(stopLocalTyping, 1800);
+}
 
 async function sendMessage() {
     if (dndMode) {
@@ -2947,6 +3002,7 @@ async function sendMessage() {
     const input = $("messageInput");
     const text = input.value.trim();
     if (!text || !currentChat) return;
+    stopLocalTyping();
     try {
         const result = await apiRequest("/api/messages", {
             method: "POST",
@@ -3468,7 +3524,9 @@ function connectWebSocket() {
             let item;
             try { item = JSON.parse(event.data); } catch { return; }
 
-            if (item.type === "presence") {
+            if (item.type === "typing") {
+                setRemoteTyping(item.username, item.active === true);
+            } else if (item.type === "presence") {
                 updateContactPresence(item.username, item.online === true);
             } else if (item.type === "private" && item.to &&
                 item.to.toLowerCase() === currentUser.toLowerCase()) {
