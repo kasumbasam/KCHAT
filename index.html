@@ -345,6 +345,40 @@ hr {
     text-overflow:ellipsis;
 }
 
+.chat-item-preview {
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+
+.inbox-delivery-dot {
+    flex:0 0 auto;
+    color:var(--muted);
+    font-size:11px;
+    letter-spacing:-3px;
+    white-space:nowrap;
+}
+
+.inbox-delivery-dot.read {
+    color:#38A9FF;
+}
+
+.inbox-unread-count {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:19px;
+    height:19px;
+    margin-top:5px;
+    padding:0 5px;
+    border-radius:10px;
+    background:var(--accent);
+    color:#071018;
+    font-size:11px;
+    font-weight:700;
+}
+
+
 .chat-item-time {
     color:var(--muted);
     font-size:14px;
@@ -2153,13 +2187,58 @@ $("savePrivacyButton").addEventListener("click", async () => {
 // Contacts and Conversations
 async function loadContacts() {
     try {
-        const data = await apiRequest("/api/contacts");
-        contacts = Array.isArray(data.contacts) ? data.contacts : [];
+        // Load saved contacts and the actual conversation inbox separately.
+        // The inbox is the source of truth for last messages and delivery reports.
+        const [contactData, inboxData] = await Promise.all([
+            apiRequest("/api/contacts"),
+            apiRequest("/api/inbox")
+        ]);
+
+        const savedContacts = Array.isArray(contactData.contacts) ? contactData.contacts : [];
+        const inboxItems = Array.isArray(inboxData.inbox) ? inboxData.inbox : [];
+        const byName = new Map();
+
+        // Keep every saved contact, including people with whom no message exists yet.
+        savedContacts.forEach(entry => {
+            const name = contactName(entry);
+            if (name) byName.set(name.toLowerCase(), {
+                username: name,
+                last_message: "",
+                last_message_sender: "",
+                last_message_status: "",
+                last_message_time: null,
+                unread_count: 0,
+                hidden: false,
+                pinned: false
+            });
+        });
+
+        // Merge real conversation data over the saved-contact placeholders.
+        inboxItems.forEach(item => {
+            const name = contactName(item);
+            if (name) byName.set(name.toLowerCase(), {
+                ...(byName.get(name.toLowerCase()) || {}),
+                ...item
+            });
+        });
+
+        contacts = Array.from(byName.values()).sort((a, b) => {
+            if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1;
+            const aTime = a.last_message_time ? new Date(a.last_message_time).getTime() : 0;
+            const bTime = b.last_message_time ? new Date(b.last_message_time).getTime() : 0;
+            return bTime - aTime;
+        });
         renderContacts();
     } catch (error) {
-        contacts = [];
+        console.error("KCHAT inbox could not be loaded:", error);
+        // Keep the contact list usable if the inbox endpoint is temporarily unavailable.
+        try {
+            const data = await apiRequest("/api/contacts");
+            contacts = Array.isArray(data.contacts) ? data.contacts : [];
+        } catch {
+            contacts = [];
+        }
         renderContacts();
-        console.error("KCHAT contacts could not be loaded:", error);
     }
 }
 
@@ -2192,25 +2271,43 @@ function renderContacts() {
     list.innerHTML = filtered.map(contact => {
         const name = contactName(contact);
         const pic = contact.profile_picture;
-        const avatarContent = pic ? `<img src="${escapeHTML(pic)}" alt="Avatar">` : escapeHTML(name.charAt(0).toUpperCase());
+        const avatarContent = pic
+            ? `<img src="${escapeHTML(pic)}" alt="Avatar">`
+            : escapeHTML(name.charAt(0).toUpperCase());
         const unread = Number(contact.unread_count || 0);
+        const preview = contact.last_message
+            ? (String(contact.last_message).startsWith("data:image/") ? "📷 Photo" : contact.last_message)
+            : "Start a conversation";
+        const isMine = String(contact.last_message_sender || "").toLowerCase() === String(currentUser || "").toLowerCase();
+        const deliveryStatus = String(contact.last_message_status || "sent").toLowerCase();
+        const report = isMine && contact.last_message
+            ? deliveryStatus === "read"
+                ? '<span class="inbox-delivery-dot read" title="Read" aria-label="Read">●●</span>'
+                : deliveryStatus === "delivered"
+                    ? '<span class="inbox-delivery-dot" title="Delivered" aria-label="Delivered">●●</span>'
+                    : '<span class="inbox-delivery-dot" title="Sent" aria-label="Sent">●</span>'
+            : "";
+        const time = contact.last_message_time
+            ? new Date(contact.last_message_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            : "";
 
         return `
             <div class="chat-item" data-username="${escapeHTML(name)}">
                 <div class="avatar">${avatarContent}</div>
                 <div class="chat-item-info">
                     <div class="chat-item-name">${escapeHTML(name)}</div>
-                    <div class="chat-item-preview">${escapeHTML(contact.last_message || "Start a conversation")}</div>
+                    <div class="chat-item-preview"><span>${report}</span><span>${escapeHTML(preview)}</span></div>
                 </div>
-                <div class="chat-item-time">${unread ? "● " + unread : ""}</div>
+                <div class="chat-item-time">
+                    <div>${escapeHTML(time)}</div>
+                    ${unread ? '<div class="inbox-unread-count">' + unread + '</div>' : ""}
+                </div>
             </div>
         `;
     }).join("");
 
     list.querySelectorAll(".chat-item").forEach(item => {
-        item.addEventListener("click", () => {
-            openChat(item.dataset.username);
-        });
+        item.addEventListener("click", () => openChat(item.dataset.username));
     });
 }
 
@@ -2363,7 +2460,7 @@ async function sendMessage() {
         input.value = "";
         messages.push(result.message);
         renderMessages();
-        await loadContacts();
+        loadContacts();
     } catch (error) {
         alert(error.message || "Message could not be sent. Your text is still in the box.");
     }
