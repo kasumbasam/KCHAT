@@ -2917,6 +2917,117 @@ async def delete_status(status_id: str, request: Request):
 
 
 # ============================================================
+# KCHAT CHANNEL DIRECTORY
+# ============================================================
+
+def ensure_channels_tables():
+    with get_db() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS channels (
+                id TEXT PRIMARY KEY,
+                owner_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS channel_members (
+                channel_id TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+                account_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY(channel_id, account_id)
+            )
+        """)
+
+
+@app.get("/api/channels")
+async def list_channels(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    try:
+        ensure_channels_tables()
+        with get_db() as conn:
+            rows = conn.execute("""
+                SELECT c.id, c.name, c.description, c.created_at,
+                       a.username AS owner,
+                       EXISTS(
+                           SELECT 1 FROM channel_members m
+                           WHERE m.channel_id = c.id AND m.account_id = %s
+                       ) AS following,
+                       (SELECT COUNT(*) FROM channel_members m
+                        WHERE m.channel_id = c.id) AS followers
+                FROM channels c
+                JOIN accounts a ON a.id = c.owner_id
+                ORDER BY c.created_at DESC
+            """, (account["id"],)).fetchall()
+        return {"success": True, "channels": [{
+            "id": row["id"], "name": row["name"],
+            "description": row["description"], "owner": row["owner"],
+            "following": row["following"], "followers": row["followers"],
+            "created_at": row["created_at"].isoformat()
+        } for row in rows]}
+    except Exception as error:
+        print("List channels error:", error)
+        return JSONResponse({"error": "Could not load channels."}, status_code=500)
+
+
+@app.post("/api/channels")
+async def create_channel(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    try:
+        data = await request.json()
+        name = str(data.get("name", "")).strip()[:60]
+        description = str(data.get("description", "")).strip()[:300]
+        if len(name) < 2:
+            return JSONResponse({"error": "Channel name must contain at least 2 characters."}, status_code=400)
+        ensure_channels_tables()
+        channel_id = uuid.uuid4().hex
+        with get_db() as conn:
+            conn.execute("""
+                INSERT INTO channels (id, owner_id, name, description)
+                VALUES (%s, %s, %s, %s)
+            """, (channel_id, account["id"], name, description))
+            conn.execute("""
+                INSERT INTO channel_members (channel_id, account_id)
+                VALUES (%s, %s)
+            """, (channel_id, account["id"]))
+        return {"success": True, "channel": {
+            "id": channel_id, "name": name, "description": description,
+            "owner": account["username"], "following": True, "followers": 1
+        }}
+    except Exception as error:
+        print("Create channel error:", error)
+        return JSONResponse({"error": "Could not create this channel."}, status_code=500)
+
+
+@app.post("/api/channels/{channel_id}/follow")
+async def follow_channel(channel_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    try:
+        ensure_channels_tables()
+        with get_db() as conn:
+            exists = conn.execute(
+                "SELECT id FROM channels WHERE id = %s", (channel_id,)
+            ).fetchone()
+            if not exists:
+                return JSONResponse({"error": "Channel not found."}, status_code=404)
+            conn.execute("""
+                INSERT INTO channel_members (channel_id, account_id)
+                VALUES (%s, %s) ON CONFLICT DO NOTHING
+            """, (channel_id, account["id"]))
+        return {"success": True, "message": "Channel followed."}
+    except Exception as error:
+        print("Follow channel error:", error)
+        return JSONResponse({"error": "Could not follow this channel."}, status_code=500)
+
+
+# ============================================================
 # KCHAT PRIVACY AND SECURITY SETTINGS
 # ============================================================
 
