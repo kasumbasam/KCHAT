@@ -1393,6 +1393,7 @@ hr {
                     <button data-main-nav="communities"><span>♧</span>Communities</button>
                     <button data-main-nav="call"><span>♧</span>Calls</button>
                 </nav>
+                <input id="statusFileInput" type="file" accept="image/*,video/*" class="hidden">
             </section>
         </main>
 
@@ -2791,18 +2792,74 @@ document.addEventListener("click",event=>{
 });
 function openTextStatus(){hide($("updatesMenu"));show($("textStatusModal"));$("textStatusInput").focus();}
 $("writeStatusButton").addEventListener("click",openTextStatus);
-$("myStatusCard").addEventListener("click",()=>{$("uploadStatusButton").click();});
+$("myStatusCard").addEventListener("click",()=>{
+    const mine=(window.kchatStatuses||[]).filter(item=>item.is_mine);
+    if(mine.length) {
+        const latest=mine[0];
+        alert(latest.text || (latest.media_type==="video" ? "You have a video status." : "You have a photo status."));
+    } else {
+        $("uploadStatusButton").click();
+    }
+});
+async function loadStatuses(){
+    try{
+        const result=await apiRequest("/api/statuses");
+        window.kchatStatuses=Array.isArray(result.statuses)?result.statuses:[];
+        renderStatusStories();
+    }catch(error){
+        console.error("Status loading failed:",error);
+        $("otherStatusStories").innerHTML='<div class="status-empty-card">Could not load updates</div>';
+    }
+}
+function renderStatusStories(){
+    const statuses=window.kchatStatuses||[];
+    const mine=statuses.filter(item=>item.is_mine);
+    const others=statuses.filter(item=>!item.is_mine);
+    const photo=currentProfile?.profile_picture;
+    $("myStatusPhoto").innerHTML=photo?'<img src="'+escapeHTML(photo)+'" alt="My profile">':'<span id="myStatusInitial">'+escapeHTML((currentUser||"S").charAt(0).toUpperCase())+'</span>';
+    $("myStatusCard").querySelector(".status-card-caption").textContent=mine.length?"My status · "+mine.length:"My status";
+    $("otherStatusStories").innerHTML=others.length?others.map(item=>{
+        const pic=item.profile_picture?'<img src="'+escapeHTML(item.profile_picture)+'" alt="">':escapeHTML((item.username||"?").charAt(0).toUpperCase());
+        return '<button class="status-story-card" type="button" data-status-id="'+escapeHTML(item.id)+'"><span class="status-story-avatar">'+pic+'</span><span class="status-story-name">'+escapeHTML(item.username)+'</span></button>';
+    }).join(""):'<div class="status-empty-card">No recent updates</div>';
+    $("otherStatusStories").querySelectorAll("[data-status-id]").forEach(card=>card.addEventListener("click",()=>{
+        const item=statuses.find(status=>status.id===card.dataset.statusId);
+        if(!item)return;
+        if(item.media_data){
+            const viewer=window.open();
+            if(viewer){viewer.document.write(item.media_type==="video"?'<video controls autoplay style="max-width:100%;max-height:90vh" src="'+item.media_data+'"></video>':'<img style="max-width:100%;max-height:90vh" src="'+item.media_data+'">');}
+        }else alert(item.text||"Status update");
+    }));
+}
+
 $("cancelTextStatus").addEventListener("click",()=>hide($("textStatusModal")));
-$("publishTextStatus").addEventListener("click",()=>{
+$("publishTextStatus").addEventListener("click",async()=>{
     const value=$("textStatusInput").value.trim();
     if(!value){alert("Write something for your status first.");return;}
-    alert("The text status composer is ready. Status publishing needs the status-sharing service to be added to KCHAT's backend.");
+    const button=$("publishTextStatus");button.disabled=true;button.textContent="Sharing...";
+    try{
+        await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:value})});
+        $("textStatusInput").value="";hide($("textStatusModal"));await loadStatuses();
+    }catch(error){alert(error.message||"Could not share status.");}
+    finally{button.disabled=false;button.textContent="Share status";}
 });
-$("uploadStatusButton").addEventListener("click",()=>{
-    const picker=$("mediaFileInput");
-    picker.setAttribute("accept","image/*,video/*");
-    picker.removeAttribute("capture");
-    picker.click();
+$("uploadStatusButton").addEventListener("click",()=>$("statusFileInput").click());
+$("statusFileInput").addEventListener("change",async event=>{
+    const file=event.target.files?.[0];event.target.value="";
+    if(!file)return;
+    if(!file.type.startsWith("image/")&&!file.type.startsWith("video/")){alert("Choose an image or video.");return;}
+    if(file.size>5*1024*1024){alert("Choose a file smaller than 5 MB for status.");return;}
+    const reader=new FileReader();
+    reader.onload=async()=>{
+        const button=$("uploadStatusButton");button.disabled=true;
+        try{
+            await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({media_data:reader.result,media_type:file.type.startsWith("video/")?"video":"image"})});
+            await loadStatuses();alert("Your status has been shared.");
+        }catch(error){alert(error.message||"Could not upload status.");}
+        finally{button.disabled=false;}
+    };
+    reader.onerror=()=>alert("Could not read that file.");
+    reader.readAsDataURL(file);
 });
 $("exploreChannelsButton").addEventListener("click",()=>alert("Channel discovery will appear here when channel services are enabled."));
 $("channelsExploreEmpty").addEventListener("click",()=>alert("Channel discovery will appear here when channel services are enabled."));
@@ -2834,6 +2891,7 @@ document.querySelectorAll(".whatsapp-tab-btn").forEach(button => {
             hide($("chatScreen"));
             hide($("welcomeScreen"));
             show($("statusScreen"));
+            loadStatuses();
             return;
         }
         hide($("statusScreen"));
