@@ -348,6 +348,18 @@ hr {
     background:color-mix(in srgb, var(--panel2) 48%, transparent);
 }
 
+
+.contact-picker-tools{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
+.contact-picker-tools button{flex:1;min-width:130px}
+.contact-picker-section{margin:16px 0 8px;color:var(--accent);font-weight:bold}
+.device-contact-row{display:flex;align-items:center;gap:11px;padding:11px 8px;border-bottom:1px solid var(--border)}
+.device-contact-row .avatar{width:45px;height:45px}
+.device-contact-copy{flex:1;min-width:0}
+.device-contact-name{font-weight:bold;overflow-wrap:anywhere}
+.device-contact-phone{font-size:15px;color:var(--muted);overflow-wrap:anywhere}
+.device-contact-action{padding:8px 12px;border:0;border-radius:20px;background:var(--accent);color:#000;font-weight:bold;white-space:nowrap}
+.contact-picker-note{font-size:14px;color:var(--muted);margin:10px 0}
+
 .chat-item-preview {
     color:var(--muted);
     font-size:16px;
@@ -1437,15 +1449,20 @@ hr {
 
 <!-- CONTACT PICKER -->
 <div id="contactPickerModal" class="modal-backdrop hidden">
-    <div class="modal-card">
+    <div class="modal-card" style="max-width:560px;">
         <h2>New conversation</h2>
-        <input id="contactPickerSearch" placeholder="Search contacts">
-
+        <p class="small muted">Choose contacts saved on this phone. KCHAT matches their phone numbers with registered accounts.</p>
+        <div class="contact-picker-tools">
+            <button type="button" class="secondary-btn" id="deviceContactsButton">Load phone contacts</button>
+            <button type="button" class="secondary-btn" id="importContactsButton">Import contacts file</button>
+        </div>
+        <input id="contactsFileInput" type="file" accept=".vcf,text/vcard,text/x-vcard" hidden>
+        <input id="contactPickerSearch" placeholder="Search name or phone number">
+        <div id="contactPickerStatus" class="contact-picker-note">Load your phone contacts or import a .vcf contacts file to begin.</div>
         <div id="contactPickerList"></div>
-
         <div class="modal-actions">
             <button class="secondary-btn" id="closeContactPicker">Close</button>
-            <button class="primary-btn" id="addNewContactButton">Add contact</button>
+            <button class="primary-btn" id="addNewContactButton">Add KCHAT contact</button>
         </div>
     </div>
 </div>
@@ -1598,6 +1615,9 @@ let reconnectAttempts = 0;
 let mediaRecorder = null;
 let audioChunks = [];
 let currentProfile = null;
+let deviceContacts = [];
+let matchedDeviceContacts = [];
+
 
 function escapeHTML(value) {
     return String(value ?? "").replace(/[&<>"']/g, char => ({
@@ -2847,12 +2867,16 @@ document.addEventListener("click", (e) => {
     }
 });
 
-// Dedicated Select Contact / User Button Action
-$("sidebarSelectContactBtn").addEventListener("click", () => {
+// Open the phone-contact conversation selector from either New Chat button.
+async function openDeviceContactPicker() {
+    $("contactPickerSearch").value = "";
+    $("contactPickerStatus").textContent = "Load your phone contacts or import a .vcf contacts file to begin.";
     show($("contactPickerModal"));
-    loadContacts();
+    await loadContacts();
     renderContactPicker();
-});
+}
+$("newChatButton").addEventListener("click", openDeviceContactPicker);
+$("sidebarSelectContactBtn").addEventListener("click", openDeviceContactPicker);
 
 $("menuSettings").addEventListener("click", () => {
     hide($("mainMenu"));
@@ -2861,8 +2885,7 @@ $("menuSettings").addEventListener("click", () => {
 
 $("menuContacts").addEventListener("click", () => {
     hide($("mainMenu"));
-    show($("contactPickerModal"));
-    renderContactPicker();
+    openDeviceContactPicker();
 });
 
 $("menuLogout").addEventListener("click", logout);
@@ -2958,22 +2981,147 @@ $("saveNewContactButton").addEventListener("click", async () => {
     }
 });
 
-function renderContactPicker() {
-    const search = $("contactPickerSearch").value.toLowerCase();
-    const filtered = contacts.filter(contact => contactName(contact).toLowerCase().includes(search));
-    $("contactPickerList").innerHTML = filtered.map(contact => {
-        const name = contactName(contact);
-        return `
-            <button class="settings-row" data-pick="${escapeHTML(name)}">
-                ${escapeHTML(name)} <span>›</span>
-            </button>
-        `;
-    }).join("");
+function normalizeDevicePhone(value) {
+    const digits = String(value || "").replace(/\D/g, "");
+    return digits.length >= 7 && digits.length <= 15 ? digits : "";
+}
 
-    $("contactPickerList").querySelectorAll("[data-pick]").forEach(button => {
+function parseVCardContacts(text) {
+    const unfolded = String(text || "").replace(/\r?\n[ \t]/g, "");
+    const cards = unfolded.split(/BEGIN:VCARD/i).slice(1);
+    const found = [];
+    cards.forEach(card => {
+        const body = card.split(/END:VCARD/i)[0] || "";
+        const nameLine = body.split(/\r?\n/).find(line => /^FN(?:;[^:]*)?:/i.test(line));
+        const telLines = body.split(/\r?\n/).filter(line => /^TEL(?:;[^:]*)?:/i.test(line));
+        const name = nameLine ? nameLine.substring(nameLine.indexOf(":") + 1).trim() : "";
+        telLines.forEach(line => {
+            const phone = line.substring(line.indexOf(":") + 1).replace(/[^\d+()\-\s]/g, "").trim();
+            if (normalizeDevicePhone(phone)) found.push({ name: name || phone, phone });
+        });
+    });
+    return found;
+}
+
+async function matchDeviceContacts() {
+    const unique = new Map();
+    deviceContacts.forEach(contact => {
+        const phone = String(contact.phone || "").trim();
+        const key = normalizeDevicePhone(phone);
+        if (key && !unique.has(key)) unique.set(key, { name: contact.name || phone, phone, key });
+    });
+    const list = Array.from(unique.values());
+    if (!list.length) {
+        matchedDeviceContacts = [];
+        renderContactPicker();
+        showMessage($("contactPickerStatus"), "No valid phone numbers were found in those contacts.", true);
+        return;
+    }
+    $("contactPickerStatus").textContent = "Checking " + list.length + " phone number(s) against KCHAT...";
+    try {
+        const result = await apiRequest("/api/contacts/match", {
+            method: "POST",
+            body: JSON.stringify({ phone_numbers: list.map(item => item.phone) })
+        });
+        const registered = new Map((result.matches || []).map(item => [normalizeDevicePhone(item.phone_number), item]));
+        matchedDeviceContacts = list.map(item => ({
+            ...item,
+            account: registered.get(item.key) || null
+        }));
+        $("contactPickerStatus").textContent = matchedDeviceContacts.length + " phone contact(s) loaded. Registered KCHAT users appear first.";
+        renderContactPicker();
+    } catch (error) {
+        $("contactPickerStatus").textContent = error.message || "Could not match contacts. Please try again.";
+    }
+}
+
+async function loadPhoneContacts() {
+    if (!navigator.contacts || typeof navigator.contacts.select !== "function") {
+        $("contactPickerStatus").textContent = "This browser does not provide direct phone contacts access. Use Import contacts file and select a .vcf file exported from your phone's Contacts app.";
+        $("contactsFileInput").click();
+        return;
+    }
+    try {
+        const picked = await navigator.contacts.select(["name", "tel"], { multiple: true });
+        deviceContacts = picked.flatMap(item => {
+            const names = Array.isArray(item.name) ? item.name : [];
+            const tels = Array.isArray(item.tel) ? item.tel : [];
+            return tels.map(phone => ({ name: names[0] || phone, phone }));
+        });
+        await matchDeviceContacts();
+    } catch (error) {
+        if (error && error.name === "AbortError") return;
+        $("contactPickerStatus").textContent = "Contacts could not be opened. You can import a .vcf contacts file instead.";
+    }
+}
+
+$("deviceContactsButton").addEventListener("click", loadPhoneContacts);
+$("importContactsButton").addEventListener("click", () => $("contactsFileInput").click());
+$("contactsFileInput").addEventListener("change", async event => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    try {
+        deviceContacts = parseVCardContacts(await file.text());
+        await matchDeviceContacts();
+    } catch {
+        $("contactPickerStatus").textContent = "Could not read that contacts file. Please choose a valid .vcf file.";
+    }
+    event.target.value = "";
+});
+
+function inviteDeviceContact(contact) {
+    const message = "Hi " + contact.name + "! Join me on KCHAT: https://kchat-1-ef55.onrender.com";
+    const sms = "sms:" + encodeURIComponent(contact.phone) + "?body=" + encodeURIComponent(message);
+    if (navigator.share) {
+        navigator.share({ title: "Join me on KCHAT", text: message }).catch(() => {});
+    } else {
+        window.location.href = sms;
+    }
+}
+
+function renderContactPicker() {
+    const search = $("contactPickerSearch").value.trim().toLowerCase();
+    const registered = matchedDeviceContacts.filter(item => item.account &&
+        (item.name.toLowerCase().includes(search) || item.phone.toLowerCase().includes(search) ||
+         String(item.account.username || "").toLowerCase().includes(search)));
+    const notRegistered = matchedDeviceContacts.filter(item => !item.account &&
+        (item.name.toLowerCase().includes(search) || item.phone.toLowerCase().includes(search)));
+    let output = "";
+    if (registered.length) {
+        output += '<div class="contact-picker-section">Contacts on KCHAT</div>';
+        output += registered.map(item => {
+            const account = item.account;
+            const avatar = account.profile_picture
+                ? '<img src="' + escapeHTML(account.profile_picture) + '" alt="">'
+                : escapeHTML(item.name.charAt(0).toUpperCase());
+            return '<div class="device-contact-row"><div class="avatar">' + avatar + '</div>' +
+                '<div class="device-contact-copy"><div class="device-contact-name">' + escapeHTML(item.name) + '</div>' +
+                '<div class="device-contact-phone">' + escapeHTML(item.phone) + '</div></div>' +
+                '<button class="device-contact-action" data-open-user="' + escapeHTML(account.username) + '">Chat</button></div>';
+        }).join("");
+    }
+    if (notRegistered.length) {
+        output += '<div class="contact-picker-section">Contacts Not on KCHAT</div>';
+        output += notRegistered.map((item, index) =>
+            '<div class="device-contact-row"><div class="avatar">👤</div>' +
+            '<div class="device-contact-copy"><div class="device-contact-name">' + escapeHTML(item.name) + '</div>' +
+            '<div class="device-contact-phone">' + escapeHTML(item.phone) + '</div></div>' +
+            '<button class="device-contact-action" data-invite-index="' + index + '">Invite</button></div>'
+        ).join("");
+    }
+    if (!output) output = '<p class="muted" style="padding:16px;text-align:center;">' +
+        (matchedDeviceContacts.length ? "No contacts match your search." : "Load phone contacts or import a .vcf file to see your contacts here.") + '</p>';
+    $("contactPickerList").innerHTML = output;
+    $("contactPickerList").querySelectorAll("[data-open-user]").forEach(button => {
         button.addEventListener("click", async () => {
             hide($("contactPickerModal"));
-            await openChat(button.dataset.pick);
+            await openChat(button.dataset.openUser);
+        });
+    });
+    $("contactPickerList").querySelectorAll("[data-invite-index]").forEach(button => {
+        button.addEventListener("click", () => {
+            const item = notRegistered[Number(button.dataset.inviteIndex)];
+            if (item) inviteDeviceContact(item);
         });
     });
 }
