@@ -698,10 +698,21 @@ hr {
 .channels-empty strong{color:#f5f7f8;font-size:20px}
 .channels-empty small{max-width:280px;font-size:15px}
 .channels-empty button{border:0;border-radius:20px;background:#25d366;color:#07130b;padding:9px 18px;margin-top:8px}
-.status-floating-actions{position:absolute;right:22px;bottom:92px;display:flex;flex-direction:column;align-items:flex-end;gap:16px}
-.status-pen-fab,.status-camera-fab{border:0;display:grid;place-items:center;box-shadow:0 5px 18px #0008}
-.status-pen-fab{width:68px;height:68px;border-radius:20px;background:#1d272b;color:#f4f7f8}
-.status-camera-fab{width:92px;height:92px;border-radius:28px;background:#25d366;color:#06130b}
+.status-create-bar{position:absolute;left:8px;right:8px;bottom:82px;min-height:76px;display:flex;align-items:center;justify-content:space-around;gap:2px;padding:7px 5px;background:#080d10;border-top:1px solid #ffffff18;z-index:5}
+.status-create-option{min-width:0;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:0;background:transparent;color:#e8edef;font-size:12px;padding:5px 1px}
+.status-create-icon{font-size:24px;line-height:26px}
+.status-format-option{flex:0 0 40px;width:40px;height:40px;border:0;border-radius:50%;background:#1b2925;color:#25d366;font:bold 19px Arial,sans-serif}
+.voice-status-backdrop{z-index:10040;padding:0!important;background:#000!important}
+.voice-status-card{width:min(100%,560px);height:100dvh;max-height:100dvh;border-radius:0;background:#101719;color:#fff;padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom);display:flex;flex-direction:column}
+.voice-status-card header,.voice-status-card footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0}
+.voice-status-card header button{border:0;background:none;color:white;font-size:30px}
+.voice-status-recorder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+#voiceStatusTimer{font:500 38px Arial,sans-serif;font-variant-numeric:tabular-nums}
+#voiceStatusHint{color:#aeb9bd;text-align:center}
+#voiceStatusRecord{width:82px;height:82px;border:0;border-radius:50%;background:#25d366;font-size:32px}
+.voice-status-card footer button{border:0;border-radius:22px;padding:12px 16px;background:#273238;color:white}
+.voice-status-card footer #shareVoiceStatus{background:#25d366;color:#06130b;font-weight:700}
+.voice-status-card footer #shareVoiceStatus:disabled{opacity:.4}
 .status-bottom-nav{height:82px;flex:0 0 82px;display:flex;justify-content:space-around;align-items:center;background:#080d10;border-top:1px solid #ffffff0d;padding-bottom:env(safe-area-inset-bottom)}
 .status-bottom-nav button{flex:1;height:100%;border:0;background:transparent;color:#e4e9eb;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:16px}
 .status-bottom-nav button span{font:28px Arial}
@@ -1496,9 +1507,13 @@ hr {
                         <div class="channels-empty"><span>◉</span><strong>Discover channels</strong><small>Follow channels to see news, creators and updates here.</small><button id="channelsExploreEmpty">Explore channels</button></div>
                     </div>
                 </div>
-                <div class="status-floating-actions">
-                    <button id="writeStatusButton" class="status-pen-fab" title="Write a text status" aria-label="Write a text status"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m14 5 5 5M4 20l4.5-1 11-11a2.1 2.1 0 0 0-3-3l-11 11L4 20Z"/></svg></button>
-                    <button id="uploadStatusButton" class="status-camera-fab" title="Add photo or video status" aria-label="Add photo or video status"><svg viewBox="0 0 24 24" width="29" height="29" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4H10L8.5 6H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.5L14 4Z"/><circle cx="12" cy="13" r="3.5"/><path d="M19 2v4m-2-2h4"/></svg></button>
+                <div class="status-create-bar" aria-label="Create a status">
+                    <button type="button" id="recordVoiceStatus" class="status-create-option"><span class="status-create-icon">🎙</span><span>Voice</span></button>
+                    <button type="button" id="openStatusOverview" class="status-create-option"><span class="status-create-icon">◉</span><span>Status</span></button>
+                    <button type="button" id="uploadStatusButton" class="status-create-option"><span class="status-create-icon">▧</span><span>Photo</span></button>
+                    <button type="button" id="writeStatusButton" class="status-create-option"><span class="status-create-icon">✎</span><span>Text</span></button>
+                    <button type="button" id="uploadVideoStatus" class="status-create-option"><span class="status-create-icon">▣</span><span>Video</span></button>
+                    <button type="button" id="statusFormatButton" class="status-format-option" aria-label="Text format">Aa</button>
                 </div>
                 <nav class="status-bottom-nav" aria-label="Main navigation">
                     <button data-main-nav="chat"><span>▤</span>Chats</button>
@@ -1568,6 +1583,14 @@ hr {
 </div>
 
 
+<!-- VOICE STATUS RECORDER -->
+<div id="voiceStatusModal" class="modal-backdrop hidden voice-status-backdrop">
+ <section class="voice-status-card">
+  <header><button type="button" id="closeVoiceStatus">×</button><strong>Voice status</strong></header>
+  <div class="voice-status-recorder"><div id="voiceStatusTimer">00:00</div><div id="voiceStatusHint">Tap the microphone to start recording</div><button type="button" id="voiceStatusRecord">🎙</button><audio id="voiceStatusPreview" controls class="hidden"></audio></div>
+  <footer><button type="button" id="discardVoiceStatus">Discard</button><button type="button" id="shareVoiceStatus" disabled>Share voice status</button></footer>
+ </section>
+</div>
 <!-- MEDIA STATUS EDITOR -->
 <div id="mediaStatusEditor" class="modal-backdrop hidden status-editor-backdrop">
  <div class="status-editor-card">
@@ -3144,6 +3167,10 @@ function renderStatusViewer() {
         content.appendChild(video);
         const playAttempt=video.play();
         if(playAttempt&&typeof playAttempt.catch==="function")playAttempt.catch(()=>{});
+    }else if(item.media_data && item.media_type==="audio"){
+        const audio=document.createElement("audio");
+        audio.src=item.media_data;audio.controls=true;audio.autoplay=true;audio.className="status-audio-playback";
+        content.appendChild(audio);duration=0;
     }else if(item.media_data){
         const image=document.createElement("img");
         image.src=item.media_data;image.alt="Status photo";
@@ -3444,7 +3471,26 @@ $("publishTextStatus").addEventListener("click",async()=>{
     }catch(error){alert(error.message||"Could not share status.");}
     finally{button.disabled=false;}
 });
-$("uploadStatusButton").addEventListener("click",()=>$("statusFileInput").click());
+$("uploadStatusButton").addEventListener("click",()=>{$("statusFileInput").accept="image/*";$("statusFileInput").click();});
+$("uploadVideoStatus").addEventListener("click",()=>{$("statusFileInput").accept="video/*";$("statusFileInput").click();});
+$("openStatusOverview").addEventListener("click",()=>{$("myStatusCard").click();});
+$("statusFormatButton").addEventListener("click",()=>openTextStatus());
+let voiceStatusRecorder=null,voiceStatusChunks=[],voiceStatusBlob=null,voiceStatusClock=null,voiceStatusStarted=0;
+function resetVoiceStatus(){if(voiceStatusClock)clearInterval(voiceStatusClock);voiceStatusClock=null;voiceStatusBlob=null;voiceStatusChunks=[];$("voiceStatusPreview").classList.add("hidden");$("voiceStatusPreview").removeAttribute("src");$("voiceStatusTimer").textContent="00:00";$("voiceStatusHint").textContent="Tap the microphone to start recording";$("shareVoiceStatus").disabled=true;voiceStatusRecorder=null;}
+$("recordVoiceStatus").addEventListener("click",()=>{resetVoiceStatus();show($("voiceStatusModal"));});
+$("closeVoiceStatus").addEventListener("click",()=>{if(voiceStatusRecorder&&voiceStatusRecorder.state==="recording")voiceStatusRecorder.stop();hide($("voiceStatusModal"));});
+$("discardVoiceStatus").addEventListener("click",()=>{if(voiceStatusRecorder&&voiceStatusRecorder.state==="recording")voiceStatusRecorder.stop();resetVoiceStatus();});
+$("voiceStatusRecord").addEventListener("click",async()=>{
+ if(voiceStatusRecorder&&voiceStatusRecorder.state==="recording"){voiceStatusRecorder.stop();return;}
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.MediaRecorder){alert("Voice recording needs a supported browser and microphone permission.");return;}
+ try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});const mime=["audio/webm;codecs=opus","audio/webm","audio/mp4"].find(type=>MediaRecorder.isTypeSupported(type));voiceStatusRecorder=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);voiceStatusChunks=[];
+ voiceStatusRecorder.ondataavailable=e=>{if(e.data&&e.data.size)voiceStatusChunks.push(e.data);};
+ voiceStatusRecorder.onstop=()=>{stream.getTracks().forEach(track=>track.stop());voiceStatusBlob=new Blob(voiceStatusChunks,{type:voiceStatusRecorder.mimeType||"audio/webm"});$("voiceStatusPreview").src=URL.createObjectURL(voiceStatusBlob);$("voiceStatusPreview").classList.remove("hidden");$("voiceStatusHint").textContent="Preview your recording, then share it";$("shareVoiceStatus").disabled=false;if(voiceStatusClock)clearInterval(voiceStatusClock);};
+ voiceStatusRecorder.start();voiceStatusStarted=Date.now();$("voiceStatusHint").textContent="Recording… tap the microphone to finish";voiceStatusClock=setInterval(()=>{const sec=Math.floor((Date.now()-voiceStatusStarted)/1000);$("voiceStatusTimer").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");},250);
+ }catch(error){alert("Microphone access was denied or unavailable. Allow microphone access and try again.");}
+});
+$("shareVoiceStatus").addEventListener("click",async()=>{if(!voiceStatusBlob)return;const button=$("shareVoiceStatus");button.disabled=true;button.textContent="Uploading…";try{if(voiceStatusBlob.size>5*1024*1024)throw new Error("Recording too large. Please record a shorter voice status.");const reader=new FileReader();const data=await new Promise((resolve,reject)=>{reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Could not read recording."));reader.readAsDataURL(voiceStatusBlob);});const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({media_data:data,media_type:"audio",text:""})});hide($("voiceStatusModal"));resetVoiceStatus();showJustCreatedStatus(result.status);}catch(error){alert(error.message||"Could not share voice status.");button.disabled=false;button.textContent="Share voice status";}});
+
 $("statusFileInput").addEventListener("change",event=>{const files=Array.from(event.target.files||[]);event.target.value="";if(!files.length)return;const invalid=files.find(f=>!f.type.startsWith("image/")&&!f.type.startsWith("video/"));if(invalid){alert("Choose images or videos only.");return;}hide($("textStatusModal"));openMediaStatusEditor(files);});
 $("exploreChannelsButton").addEventListener("click",loadChannels);
 $("channelsExploreEmpty").addEventListener("click",loadChannels);
