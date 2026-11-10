@@ -384,6 +384,11 @@ hr {
     gap:6px;
 }
 
+.chat-item-preview.typing-preview span:last-child {
+    color:var(--accent);
+    font-weight:700;
+}
+
 .inbox-delivery-dot {
     flex:0 0 auto;
     color:var(--muted);
@@ -2948,25 +2953,32 @@ $("messageInput").addEventListener("keydown", event => {
 });
 
 function setRemoteTyping(username, active) {
-    const key = String(username || "").toLowerCase();
+    const key = String(username || "").trim().toLowerCase();
     if (!key) return;
+
     const previous = typingUsers.get(key);
     if (previous) clearTimeout(previous);
+
     if (active) {
         const timer = setTimeout(() => {
             typingUsers.delete(key);
             renderContacts();
-            if (currentChat && currentChat.toLowerCase() === key) {
+            if (currentChat && currentChat.trim().toLowerCase() === key) {
                 $("activeChatStatus").textContent = onlineUsers.has(key) ? "Online" : "Offline";
             }
-        }, 4500);
+        }, 5000);
         typingUsers.set(key, timer);
     } else {
         typingUsers.delete(key);
     }
+
+    // Refresh the homepage chat row immediately, even if another chat is open.
     renderContacts();
-    if (currentChat && currentChat.toLowerCase() === key) {
-        $("activeChatStatus").textContent = active ? "typing…" : (onlineUsers.has(key) ? "Online" : "Offline");
+
+    if (currentChat && currentChat.trim().toLowerCase() === key) {
+        $("activeChatStatus").textContent = active
+            ? "typing…"
+            : (onlineUsers.has(key) ? "Online" : "Offline");
     }
 }
 
@@ -2986,10 +2998,13 @@ function handleTypingInput() {
         stopLocalTyping();
         return;
     }
-    if (!localTyping) {
-        localTyping = true;
-        sendTypingState(true);
-    }
+
+    localTyping = true;
+
+    // Send a fresh typing signal on every keystroke. This also recovers when
+    // the first keystroke happens while the WebSocket is still connecting.
+    sendTypingState(true);
+
     clearTimeout(localTypingStopTimer);
     localTypingStopTimer = setTimeout(stopLocalTyping, 1800);
 }
@@ -3519,7 +3534,14 @@ function connectWebSocket() {
     const url = protocol + location.host + "/ws/" + encodeURIComponent(currentUser) + "?token=" + encodeURIComponent(authToken);
     try {
         socket = new WebSocket(url);
-        socket.onopen = () => { reconnectAttempts = 0; };
+        socket.onopen = () => {
+            reconnectAttempts = 0;
+            // If the user was already typing during a reconnect, announce it now.
+            if (currentChat && $("messageInput").value.trim()) {
+                localTyping = true;
+                sendTypingState(true);
+            }
+        };
         socket.onmessage = event => {
             let item;
             try { item = JSON.parse(event.data); } catch { return; }
