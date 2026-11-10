@@ -744,10 +744,18 @@ hr {
 #textStatusInput::placeholder{color:#ffffffa8}
 .text-status-at-button{position:absolute;right:8px;bottom:14px;width:42px;height:42px;border:0;border-radius:50%;background:#00000025;color:#fff;font:700 22px Arial,sans-serif}
 .text-status-writing-area .status-mention-list{position:absolute;left:0;right:0;bottom:62px;z-index:5;max-height:34vh;background:#182126;border:1px solid #ffffff35}
-.text-status-actions{height:76px;flex:0 0 76px;display:flex;align-items:center;justify-content:space-between;padding:0 2px 8px}
-.text-status-actions button{width:52px;height:52px;border:0;border-radius:50%;display:grid;place-items:center;color:#fff;background:#00000028}
-.text-status-actions #publishTextStatus{width:58px;height:58px;background:#25d366;color:#06200f}
+.text-status-actions{height:76px;flex:0 0 76px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 2px 8px}
+.text-status-tools{display:flex;align-items:center;gap:7px;min-width:0}
+.text-status-actions button{width:44px;height:44px;flex:0 0 44px;border:0;border-radius:50%;display:grid;place-items:center;color:#fff;background:#00000028;font:600 18px Arial,sans-serif}
+.text-status-actions button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.text-status-actions #textStatusStyleButton{font-size:17px;font-weight:700}
+.text-status-actions #textStatusEmojiButton{font-size:27px}
+.text-status-actions #textStatusVoiceButton{font-size:21px}
+.text-status-actions #publishTextStatus{width:58px;height:58px;flex:0 0 58px;background:#25d366;color:#06200f}
 .text-status-actions #publishTextStatus svg{width:28px;height:28px}
+.text-status-emoji-tray{position:absolute;left:14px;right:14px;bottom:86px;z-index:8;display:flex;flex-wrap:wrap;gap:7px;padding:12px;border-radius:15px;background:#172126;border:1px solid #ffffff30;box-shadow:0 8px 28px #0008}
+.text-status-emoji-tray.hidden{display:none!important}
+.text-status-emoji-tray button{width:38px;height:38px;border:0;border-radius:9px;background:#ffffff12;font:24px Arial,sans-serif}
 .status-viewer-content .status-viewer-text{background:var(--status-text-background,transparent);border-radius:12px;min-width:100%;min-height:100%;display:flex;align-items:center;justify-content:center}
 
 .status-viewer{position:fixed;inset:0;z-index:10020;background:#050708;color:#fff;display:flex;flex-direction:column;padding:12px max(12px,env(safe-area-inset-left)) max(12px,env(safe-area-inset-bottom));}
@@ -1604,10 +1612,18 @@ hr {
             <button type="button" class="text-status-at-button" id="textStatusAtButton" aria-label="Mention a person or group">@</button>
             <div id="textStatusMentionList" class="status-mention-list hidden"></div>
         </div>
+        <div id="textStatusEmojiTray" class="text-status-emoji-tray hidden" aria-label="Choose an emoji">
+            <button type="button" data-text-status-emoji="😀">😀</button><button type="button" data-text-status-emoji="😂">😂</button><button type="button" data-text-status-emoji="🥰">🥰</button><button type="button" data-text-status-emoji="😍">😍</button><button type="button" data-text-status-emoji="❤️">❤️</button><button type="button" data-text-status-emoji="🔥">🔥</button><button type="button" data-text-status-emoji="👍">👍</button><button type="button" data-text-status-emoji="🙏">🙏</button><button type="button" data-text-status-emoji="🎉">🎉</button><button type="button" data-text-status-emoji="✨">✨</button>
+        </div>
         <footer class="text-status-actions">
-            <button type="button" id="textStatusAddFile" aria-label="Add photo or video" title="Add photo or video">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h3l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z"/><circle cx="12" cy="13" r="3"/></svg>
-            </button>
+            <div class="text-status-tools">
+                <button type="button" id="textStatusAddFile" aria-label="Attach photo or video" title="Attach photo or video">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h3l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z"/><circle cx="12" cy="13" r="3"/></svg>
+                </button>
+                <button type="button" id="textStatusStyleButton" aria-label="Change text style" title="Change text style">Aa</button>
+                <button type="button" id="textStatusEmojiButton" aria-label="Add emoji" title="Add emoji">☺</button>
+                <button type="button" id="textStatusVoiceButton" aria-label="Record voice status" title="Record voice status">🎙</button>
+            </div>
             <button type="button" id="publishTextStatus" aria-label="Share status" title="Share status">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 18-8-8 18-2.5-7.5L3 11Z"/><path d="M10.5 13.5 21 3"/></svg>
             </button>
@@ -3136,6 +3152,9 @@ function openTextStatus(){
     hide($("updatesMenu"));
     const input=$("textStatusInput");
     input.value="";
+    input.style.font="";
+    textStatusStyleIndex=0;
+    $("textStatusEmojiTray").classList.add("hidden");
     setTextStatusBackground(textStatusBackgroundIndex);
     show($("textStatusModal"));
     /* Wait until the full-screen editor is visible before focusing,
@@ -3156,6 +3175,27 @@ $("textStatusInput").addEventListener("blur",()=>{
 });
 $("changeTextStatusBackground").addEventListener("click",()=>setTextStatusBackground(textStatusBackgroundIndex+1));
 $("textStatusAddFile").addEventListener("click",()=>$("statusFileInput").click());
+let textStatusStyleIndex=0;
+const textStatusFontStyles=["600 clamp(27px,6vw,42px)/1.35 Arial,sans-serif","600 clamp(27px,6vw,42px)/1.35 Georgia,serif","600 clamp(29px,6vw,44px)/1.2 'Caveat',cursive"];
+$("textStatusStyleButton").addEventListener("click",()=>{
+    textStatusStyleIndex=(textStatusStyleIndex+1)%textStatusFontStyles.length;
+    $("textStatusInput").style.font=textStatusFontStyles[textStatusStyleIndex];
+});
+$("textStatusEmojiButton").addEventListener("click",()=>{
+    $("textStatusEmojiTray").classList.toggle("hidden");
+});
+$("textStatusEmojiTray").addEventListener("click",event=>{
+    const button=event.target.closest("[data-text-status-emoji]");
+    if(!button)return;
+    const input=$("textStatusInput"),emoji=button.dataset.textStatusEmoji;
+    const start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
+    input.setRangeText(emoji,start,end,"end");
+    input.focus();
+});
+$("textStatusVoiceButton").addEventListener("click",()=>{
+    resetVoiceStatus();
+    show($("voiceStatusModal"));
+});
 let statusViewerItems = [];
 let statusViewerIndex = 0;
 let statusViewerTimer = null;
@@ -3545,7 +3585,7 @@ $("voiceStatusRecord").addEventListener("click",async()=>{
  voiceStatusRecorder.start();voiceStatusStarted=Date.now();$("voiceStatusHint").textContent="Recording… tap the microphone to finish";voiceStatusClock=setInterval(()=>{const sec=Math.floor((Date.now()-voiceStatusStarted)/1000);$("voiceStatusTimer").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");},250);
  }catch(error){alert("Microphone access was denied or unavailable. Allow microphone access and try again.");}
 });
-$("shareVoiceStatus").addEventListener("click",async()=>{if(!voiceStatusBlob)return;const button=$("shareVoiceStatus");button.disabled=true;button.textContent="Uploading…";try{if(voiceStatusBlob.size>5*1024*1024)throw new Error("Recording too large. Please record a shorter voice status.");const reader=new FileReader();const data=await new Promise((resolve,reject)=>{reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Could not read recording."));reader.readAsDataURL(voiceStatusBlob);});const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({media_data:data,media_type:"audio",text:""})});hide($("voiceStatusModal"));resetVoiceStatus();showJustCreatedStatus(result.status);}catch(error){alert(error.message||"Could not share voice status.");button.disabled=false;button.textContent="Share voice status";}});
+$("shareVoiceStatus").addEventListener("click",async()=>{if(!voiceStatusBlob)return;const button=$("shareVoiceStatus");button.disabled=true;button.textContent="Uploading…";try{if(voiceStatusBlob.size>5*1024*1024)throw new Error("Recording too large. Please record a shorter voice status.");const reader=new FileReader();const data=await new Promise((resolve,reject)=>{reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Could not read recording."));reader.readAsDataURL(voiceStatusBlob);});const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({media_data:data,media_type:"audio",text:""})});hide($("voiceStatusModal"));hide($("textStatusModal"));resetVoiceStatus();showJustCreatedStatus(result.status);}catch(error){alert(error.message||"Could not share voice status.");button.disabled=false;button.textContent="Share voice status";}});
 
 $("statusFileInput").addEventListener("change",event=>{const files=Array.from(event.target.files||[]);event.target.value="";if(!files.length)return;const invalid=files.find(f=>!f.type.startsWith("image/")&&!f.type.startsWith("video/"));if(invalid){alert("Choose images or videos only.");return;}hide($("textStatusModal"));openMediaStatusEditor(files);});
 $("exploreChannelsButton").addEventListener("click",loadChannels);
