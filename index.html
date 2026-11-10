@@ -1335,11 +1335,11 @@ hr {
 
 .status-sticker-overlay{position:absolute;z-index:8;transform:translate(-50%,-50%);font:clamp(34px,9vw,64px) Arial,sans-serif;line-height:1;cursor:grab;touch-action:none;user-select:none;filter:drop-shadow(0 2px 3px #0009)}
 .status-sticker-overlay.is-selected{outline:1.5px solid #ffffff;outline-offset:7px;border-radius:3px;cursor:move}
-.status-sticker-overlay .sticker-resize-handle{position:absolute;width:13px;height:13px;min-width:13px;min-height:13px;padding:0;margin:0;border:1.5px solid #202326;border-radius:2px;background:#fff;box-shadow:0 1px 4px #000b;z-index:2;touch-action:none}
-.status-sticker-overlay .sticker-resize-handle.nw{left:-14px;top:-14px;cursor:nwse-resize}
-.status-sticker-overlay .sticker-resize-handle.ne{right:-14px;top:-14px;cursor:nesw-resize}
-.status-sticker-overlay .sticker-resize-handle.sw{left:-14px;bottom:-14px;cursor:nesw-resize}
-.status-sticker-overlay .sticker-resize-handle.se{right:-14px;bottom:-14px;cursor:nwse-resize}
+.status-sticker-overlay .sticker-resize-handle,.status-media-text-overlay .sticker-resize-handle{position:absolute;width:13px;height:13px;min-width:13px;min-height:13px;padding:0;margin:0;border:1.5px solid #202326;border-radius:2px;background:#fff;box-shadow:0 1px 4px #000b;z-index:12;touch-action:none;cursor:nwse-resize;box-sizing:border-box}
+.status-sticker-overlay .sticker-resize-handle.nw,.status-media-text-overlay .sticker-resize-handle.nw{left:-14px;top:-14px;cursor:nwse-resize}
+.status-sticker-overlay .sticker-resize-handle.ne,.status-media-text-overlay .sticker-resize-handle.ne{right:-14px;top:-14px;cursor:nesw-resize}
+.status-sticker-overlay .sticker-resize-handle.sw,.status-media-text-overlay .sticker-resize-handle.sw{left:-14px;bottom:-14px;cursor:nesw-resize}
+.status-sticker-overlay .sticker-resize-handle.se,.status-media-text-overlay .sticker-resize-handle.se{right:-14px;bottom:-14px;cursor:nwse-resize}
 /* WhatsApp-style media editor controls */
 .status-editor-backdrop .status-editor-card{position:relative}
 .status-editor-top{justify-content:flex-start!important}
@@ -3663,7 +3663,43 @@ $("statusDrawButton").onclick=()=>{
 document.querySelectorAll("[data-draw-color]").forEach(button=>button.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();$("statusDrawColor").value=button.dataset.drawColor;document.querySelectorAll("[data-draw-color]").forEach(item=>item.classList.toggle("selected",item===button));$("statusDrawPalette").classList.remove("hidden");statusEditorDraw=true;$("statusDrawButton").classList.add("active");if(statusEditorCanvas)statusEditorCanvas.style.pointerEvents="auto";}));
 $("statusDrawColor").addEventListener("change",()=>document.querySelectorAll("[data-draw-color]").forEach(item=>item.classList.toggle("selected",item.dataset.drawColor===$("statusDrawColor").value)));
 $("statusDrawUndo").onclick=()=>{if(statusEditorStrokes.length){statusEditorStrokes.pop();redrawStatusEditorCanvas();}};
-$("statusAddText").onclick=()=>{const box=$("statusEditorPreview"),overlay=document.createElement("div");overlay.className="status-media-text-overlay";overlay.contentEditable="true";overlay.setAttribute("data-placeholder","Type text");overlay.textContent="";overlay.style.left="50%";overlay.style.top="48%";box.appendChild(overlay);overlay.focus();enableStatusOverlayGestures(overlay);};
+$("statusAddText").onclick=()=>{
+ const box=$("statusEditorPreview"),overlay=document.createElement("div");
+ overlay.className="status-media-text-overlay is-selected";
+ overlay.contentEditable="true";
+ overlay.setAttribute("data-placeholder","Type text");
+ overlay.textContent="";
+ overlay.style.left="50%";overlay.style.top="48%";
+ ["nw","ne","sw","se"].forEach(corner=>{
+  const handle=document.createElement("span");
+  handle.className="sticker-resize-handle "+corner;
+  handle.contentEditable="false";
+  handle.setAttribute("role","slider");
+  handle.setAttribute("aria-label","Resize text from "+corner+" corner");
+  handle.addEventListener("pointerdown",event=>{
+   event.preventDefault();event.stopPropagation();
+   handle.setPointerCapture(event.pointerId);
+   const startX=event.clientX,startY=event.clientY,startScale=Number(overlay.dataset.scale||1);
+   const direction=(corner==="nw"||corner==="sw")?-1:1;
+   const vertical=(corner==="nw"||corner==="ne")?-1:1;
+   const move=moveEvent=>{
+    const dx=(moveEvent.clientX-startX)*direction;
+    const dy=(moveEvent.clientY-startY)*vertical;
+    overlay.dataset.scale=Math.max(.35,Math.min(5,startScale+(dx+dy)/150));
+    makeStatusOverlayTransform(overlay);
+   };
+   const finish=()=>{handle.removeEventListener("pointermove",move);handle.removeEventListener("pointerup",finish);handle.removeEventListener("pointercancel",finish);};
+   handle.addEventListener("pointermove",move);
+   handle.addEventListener("pointerup",finish);
+   handle.addEventListener("pointercancel",finish);
+  });
+  overlay.appendChild(handle);
+ });
+ box.querySelectorAll(".status-sticker-overlay,.status-media-text-overlay").forEach(item=>item.classList.remove("is-selected"));
+ box.appendChild(overlay);
+ overlay.focus();
+ enableStatusOverlayGestures(overlay);
+};
 $("statusAddSticker").onclick=()=>{
  $("statusEmojiTray").classList.toggle("hidden");
  $("statusDrawPalette").classList.add("hidden");
