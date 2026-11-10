@@ -1165,6 +1165,15 @@ hr {
 .status-editor-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
 .status-editor-tools button,.status-editor-tools select{border:1px solid #ffffff2b;border-radius:12px;background:#202a30;color:#fff;padding:9px 12px}
 .status-editor-tools button.active{background:#25d366;color:#06130b}
+
+.status-mention-composer{position:relative;display:flex;align-items:flex-end;gap:8px;width:100%}
+.status-mention-composer textarea{flex:1;min-width:0}
+.status-at-button{flex:0 0 38px;width:38px;height:38px;border:1px solid var(--border-color,#394354);border-radius:50%;background:var(--surface,#202735);color:var(--accent,#70d6ff);font-size:20px;font-weight:700;cursor:pointer}
+.status-mention-list{display:flex;flex-direction:column;gap:4px;max-height:190px;overflow:auto;margin:6px 0;padding:5px;border:1px solid var(--border-color,#394354);border-radius:10px;background:var(--surface,#202735)}
+.status-mention-list button{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 10px;border:0;border-radius:7px;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.status-mention-list button:hover{background:rgba(112,214,255,.12)}
+.status-mention-list small{opacity:.7;font-size:11px}
+
 .status-mention-list{max-height:150px;overflow:auto;background:#202a30;border-radius:10px;margin-top:5px}
 .status-mention-list button{display:block;width:100%;padding:9px;text-align:left;background:none;color:white;border:0}
 .status-upload-label{font-size:12px;color:#25d366;margin-top:5px}
@@ -1480,7 +1489,8 @@ hr {
 <div id="textStatusModal" class="modal-backdrop hidden">
     <div class="modal-card text-status-card">
         <h2>Write a status</h2>
-        <textarea id="textStatusInput" maxlength="700" rows="5" placeholder="What's on your mind?"></textarea>
+        <div class="status-mention-composer"><textarea id="textStatusInput" maxlength="700" rows="5" placeholder="What's on your mind? Type @ to mention a person or group"></textarea><button type="button" class="status-at-button" id="textStatusAtButton" aria-label="Mention a person or group">@</button></div>
+        <div id="textStatusMentionList" class="status-mention-list hidden"></div>
         <div class="modal-actions"><button class="secondary-btn" id="cancelTextStatus">Cancel</button><button class="primary-btn" id="publishTextStatus">Share status</button></div>
     </div>
 </div>
@@ -1497,7 +1507,7 @@ hr {
    <button type="button" id="statusAddText">Aa Text</button><button type="button" id="statusAddSticker">Sticker</button><button type="button" id="statusCropButton">Crop</button>
   </div>
   <div class="status-editor-tools"><select id="statusFilter" aria-label="Colour filter"><option value="none">Original</option><option value="grayscale(1)">B&W</option><option value="sepia(.8)">Vintage</option><option value="saturate(1.8)">Vivid</option><option value="contrast(1.25)">Contrast</option></select><button type="button" id="addAnotherStatusMedia">＋ Add photo/video</button><input id="anotherStatusFile" type="file" accept="image/*,video/*" multiple class="hidden"></div>
-  <textarea id="mediaStatusCaption" rows="2" maxlength="700" placeholder="Add a caption… Use @ to mention someone"></textarea><div id="statusMentionList" class="status-mention-list hidden"></div><div id="statusUploadProgress" class="status-upload-label"></div>
+  <div class="status-mention-composer"><textarea id="mediaStatusCaption" rows="2" maxlength="700" placeholder="Add a caption… Type @ to mention a person or group"></textarea><button type="button" class="status-at-button" id="mediaStatusAtButton" aria-label="Mention a person or group">@</button></div><div id="statusMentionList" class="status-mention-list hidden"></div><div id="statusUploadProgress" class="status-upload-label"></div>
  </div>
 </div>
 
@@ -3065,9 +3075,51 @@ async function loadStatuses(){
 
 // Status editor: multi-file publishing, upload progress, @mentions and media tools.
 let statusEditorFiles=[];let statusEditorEditingId=null;let statusEditorDraw=false;let statusEditorCanvas=null;let statusEditorCtx=null;let statusEditorCrop=false;
-function statusMentionMatches(prefix){return (contacts||[]).filter(c=>String(c.username||c.name||c.contact_username||"").toLowerCase().includes(prefix.toLowerCase())).slice(0,8);}
-function updateStatusMentions(){const input=$("mediaStatusCaption"), box=$("statusMentionList"), before=input.value.slice(0,input.selectionStart), match=before.match(/@([\\w .-]*)$/);if(!match){hide(box);return;}const list=statusMentionMatches(match[1].trim());box.innerHTML=list.map(c=>{const n=c.username||c.name||c.contact_username;return '<button type="button" data-mention="'+escapeHTML(n)+'">@'+escapeHTML(n)+'</button>';}).join("")||'<button type="button" disabled>No matching contacts</button>';show(box);box.querySelectorAll("[data-mention]").forEach(btn=>btn.onclick=()=>{const start=input.selectionStart, m=before.match(/@([\\w .-]*)$/);input.value=input.value.slice(0,start-m[0].length)+"@"+btn.dataset.mention+" "+input.value.slice(start);input.focus();hide(box);});}
-$("mediaStatusCaption").addEventListener("input",updateStatusMentions);
+let statusMentionGroupsCache=[];
+async function getStatusMentionTargets(){
+    const people=(contacts||[]).map(c=>typeof c==="string"?c:(c.username||c.name||c.contact_username||"")).filter(Boolean).map(name=>({kind:"person",name}));
+    try{const result=await apiRequest("/api/groups");statusMentionGroupsCache=(result.groups||[]).map(g=>({kind:"group",name:g.name}));}catch(error){console.warn("Could not load groups for status mentions:",error);}
+    return [...people,...statusMentionGroupsCache];
+}
+function statusMentionMatches(prefix,targets){
+    const q=String(prefix||"").toLowerCase();
+    return targets.filter(item=>item.name.toLowerCase().includes(q)).slice(0,10);
+}
+function setupStatusMentionComposer(inputId,boxId,buttonId){
+    const input=$(inputId),box=$(boxId),button=$(buttonId);
+    if(!input||!box)return;
+    let targetsPromise=null;
+    async function refresh(){
+        const before=input.value.slice(0,input.selectionStart);
+        const match=before.match(/@([\\w .-]*)$/);
+        if(!match){hide(box);return;}
+        targetsPromise=targetsPromise||getStatusMentionTargets();
+        const targets=await targetsPromise;
+        if(input!==document.activeElement)return;
+        const current=input.value.slice(0,input.selectionStart).match(/@([\\w .-]*)$/);
+        if(!current){hide(box);return;}
+        const list=statusMentionMatches(current[1].trim(),targets);
+        box.innerHTML=list.map(item=>'<button type="button" data-mention-kind="'+item.kind+'" data-mention-name="'+escapeHTML(item.name)+'"><strong>@'+escapeHTML(item.name)+'</strong><small>'+(item.kind==="group"?"Group mention":"Private contact")+'</small></button>').join("")||'<button type="button" disabled>No matching people or groups</button>';
+        show(box);
+        box.querySelectorAll("[data-mention-name]").forEach(btn=>btn.onclick=()=>{
+            const cursor=input.selectionStart,active=input.value.slice(0,cursor).match(/@([\\w .-]*)$/);
+            if(!active)return;
+            const token="@"+btn.dataset.mentionName;
+            input.value=input.value.slice(0,cursor-active[0].length)+token+" "+input.value.slice(cursor);
+            input.focus();const next=cursor-active[0].length+token.length+1;input.setSelectionRange(next,next);hide(box);
+        });
+    }
+    input.addEventListener("input",refresh);
+    input.addEventListener("click",refresh);
+    input.addEventListener("keyup",refresh);
+    if(button)button.addEventListener("click",()=>{
+        const start=input.selectionStart,end=input.selectionEnd;
+        input.value=input.value.slice(0,start)+"@"+input.value.slice(end);
+        input.focus();input.setSelectionRange(start+1,start+1);refresh();
+    });
+}
+setupStatusMentionComposer("mediaStatusCaption","statusMentionList","mediaStatusAtButton");
+setupStatusMentionComposer("textStatusInput","textStatusMentionList","textStatusAtButton");
 function setupStatusEditorPreview(file){const box=$("statusEditorPreview");box.replaceChildren();statusEditorCanvas=null;let media;if(file.type.startsWith("video/")){media=document.createElement("video");media.controls=true;media.src=URL.createObjectURL(file);}else{media=document.createElement("img");media.src=URL.createObjectURL(file);media.style.filter=$("statusFilter").value;}box.appendChild(media);const canvas=document.createElement("canvas");canvas.className="status-editor-canvas";canvas.width=box.clientWidth||500;canvas.height=box.clientHeight||350;box.appendChild(canvas);statusEditorCanvas=canvas;statusEditorCtx=canvas.getContext("2d");canvas.style.pointerEvents=statusEditorDraw?"auto":"none";canvas.onpointerdown=e=>{if(!statusEditorDraw)return;canvas.setPointerCapture(e.pointerId);const r=canvas.getBoundingClientRect();statusEditorCtx.beginPath();statusEditorCtx.moveTo(e.clientX-r.left,e.clientY-r.top);statusEditorCtx.strokeStyle=$("statusDrawColor").value;statusEditorCtx.lineWidth=Number($("statusPenSize").value);statusEditorCtx.lineCap="round";};canvas.onpointermove=e=>{if(!statusEditorDraw||!e.buttons)return;const r=canvas.getBoundingClientRect();statusEditorCtx.lineTo(e.clientX-r.left,e.clientY-r.top);statusEditorCtx.stroke();};}
 function openMediaStatusEditor(files,editing=null){statusEditorFiles=Array.from(files||[]);statusEditorEditingId=editing?.id||null;$("mediaStatusCaption").value=editing?.text||"";if(statusEditorFiles.length)setupStatusEditorPreview(statusEditorFiles[0]);else if(editing?.media_data){const blob=fetch(editing.media_data).then(r=>r.blob()).then(b=>{const f=new File([b],editing.media_type==="video"?"status.mp4":"status.jpg",{type:b.type});statusEditorFiles=[f];setupStatusEditorPreview(f);});}else $("statusEditorPreview").textContent="Written status";$("statusUploadProgress").textContent="";show($("mediaStatusEditor"));}
 $("discardStatusEdit").onclick=()=>{hide($("mediaStatusEditor"));statusEditorFiles=[];statusEditorEditingId=null;};
