@@ -1318,6 +1318,40 @@ hr {
  #textStatusModal .text-status-top-tools{gap:5px!important}
  #textStatusModal .text-status-top-tools button{width:38px!important;height:38px!important;min-width:38px!important}
 }
+
+/* WhatsApp-style media editor controls */
+.status-editor-backdrop .status-editor-card{position:relative}
+.status-editor-top{justify-content:flex-start!important}
+.status-editor-top strong{display:none}
+#discardStatusEdit{order:0;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:#202326!important;font-size:23px!important}
+#saveMediaStatus{margin-left:auto}
+.status-editor-toolbar{height:48px;flex:0 0 48px;justify-content:center;gap:26px;padding:0 8px}
+.status-editor-toolbar button{width:44px;height:44px;background:#1b2429}
+.status-editor-preview-wrap{overflow:hidden}
+.status-draw-palette{position:absolute;z-index:12;left:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;padding:10px 7px;border-radius:24px;background:#101619dd;backdrop-filter:blur(8px)}
+.status-draw-palette.hidden{display:none}
+.status-draw-palette button[data-draw-color]{width:25px;height:25px;min-height:25px;border-radius:50%;border:2px solid #ffffff80;background:var(--draw-colour);padding:0}
+.status-draw-palette button.selected{outline:2px solid #25d366;outline-offset:3px}
+.status-draw-palette .draw-undo{width:30px;height:30px;border:0;border-radius:50%;background:#29343a;color:#fff;font-size:23px}
+.status-emoji-tray{left:10px;right:10px;top:auto;bottom:10px;max-width:none;max-height:48%;overflow:auto;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;background:#11191ff2;border:1px solid #ffffff20}
+.status-emoji-tray.hidden{display:none}
+.status-emoji-tray button{min-width:0;padding:7px 2px;font-size:25px;background:#202b31}
+.status-crop-controls{position:absolute;z-index:14;inset:10px 10px auto;display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:28px;background:#101619e8;color:#fff}
+.status-crop-controls.hidden{display:none}
+.status-crop-controls span{flex:1;font:13px Arial,sans-serif}
+.status-crop-controls button{width:38px;height:38px;border:0;border-radius:50%;background:#29343a;color:#fff;font-size:24px}
+.status-editor-adjustments{gap:8px}
+.status-editor-adjustments label{display:none}
+#addAnotherStatusMedia{margin:0!important;flex:0 0 42px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:#202b31;font-size:27px}
+.status-editor-caption{display:flex;gap:7px}
+.status-editor-caption textarea{flex:1;min-width:0}
+.status-editor-caption .status-file-button{display:none}
+@media(max-width:420px){
+ .status-editor-toolbar{gap:18px}
+ .status-emoji-tray{grid-template-columns:repeat(6,minmax(0,1fr))}
+ .status-draw-palette{left:6px;gap:8px}
+}
+
 </style>
 </head>
 
@@ -1689,18 +1723,23 @@ hr {
  <div class="status-editor-card">
   <div class="status-editor-top"><button type="button" id="discardStatusEdit" aria-label="Discard">✕</button><strong>Edit status</strong><button type="button" id="saveMediaStatus">Share</button></div>
   <div class="status-editor-toolbar" aria-label="Media editing tools">
-   <button type="button" id="statusCropButton" title="Crop and rotate"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v14a2 2 0 0 0 2 2h12M3 7h14a2 2 0 0 1 2 2v12" /></svg></button>
-   <button type="button" id="statusAddSticker" title="Stickers and emoji"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg></button>
-   <button type="button" id="statusDrawButton" title="Draw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.5-1 11-11a2.1 2.1 0 0 0-3-3l-11 11L4 20Z"/><path d="m14.5 6.5 3 3"/></svg></button>
-   <button type="button" id="statusAddText" title="Add text"><span class="status-tool-t">T</span></button>
+   <button type="button" id="statusCropButton" title="Crop and rotate" aria-label="Crop and rotate"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v14a2 2 0 0 0 2 2h12M3 7h14a2 2 0 0 1 2 2v12" /></svg></button>
+   <button type="button" id="statusAddSticker" title="Stickers and emoji" aria-label="Stickers and emoji"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg></button>
+   <button type="button" id="statusDrawButton" title="Draw" aria-label="Draw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.5-1 11-11a2.1 2.1 0 0 0-3-3l-11 11L4 20Z"/><path d="m14.5 6.5 3 3"/></svg></button>
+   <button type="button" id="statusAddText" title="Add caption" aria-label="Add caption"><span class="status-tool-t">T</span></button>
   </div>
   <div class="status-editor-preview-wrap"><div id="statusEditorPreview" class="status-editor-preview"></div>
-   <div id="statusEmojiTray" class="status-emoji-tray hidden"><button type="button" data-status-emoji="❤️">❤️</button><button type="button" data-status-emoji="😂">😂</button><button type="button" data-status-emoji="😍">😍</button><button type="button" data-status-emoji="🔥">🔥</button><button type="button" data-status-emoji="✨">✨</button><button type="button" data-status-emoji="🥰">🥰</button><button type="button" data-status-emoji="👍">👍</button><button type="button" data-status-emoji="🎉">🎉</button></div>
+   <div id="statusDrawPalette" class="status-draw-palette hidden" aria-label="Drawing colours">
+    <button type="button" data-draw-color="#ffffff" class="selected" style="--draw-colour:#ffffff" aria-label="Pen colour 1"></button><button type="button" data-draw-color="#ff3b30" class="" style="--draw-colour:#ff3b30" aria-label="Pen colour 2"></button><button type="button" data-draw-color="#ffcc00" class="" style="--draw-colour:#ffcc00" aria-label="Pen colour 3"></button><button type="button" data-draw-color="#34c759" class="" style="--draw-colour:#34c759" aria-label="Pen colour 4"></button><button type="button" data-draw-color="#0a84ff" class="" style="--draw-colour:#0a84ff" aria-label="Pen colour 5"></button><button type="button" data-draw-color="#bf5af2" class="" style="--draw-colour:#bf5af2" aria-label="Pen colour 6"></button><button type="button" data-draw-color="#ff2d55" class="" style="--draw-colour:#ff2d55" aria-label="Pen colour 7"></button><button type="button" data-draw-color="#111111" class="" style="--draw-colour:#111111" aria-label="Pen colour 8"></button>
+    <button type="button" id="statusDrawUndo" class="draw-undo" aria-label="Undo drawing">↶</button>
+   </div>
+   <div id="statusCropControls" class="status-crop-controls hidden"><button type="button" id="statusCropBack" aria-label="Back to editor">←</button><span>Crop and rotate</span><button type="button" id="statusRotateButton" aria-label="Rotate image">↻</button><button type="button" id="statusCropApply" aria-label="Done cropping">✓</button></div>
+   <div id="statusEmojiTray" class="status-emoji-tray hidden" aria-label="Emoji and stickers"><button type="button" data-status-emoji="❤️">❤️</button><button type="button" data-status-emoji="😂">😂</button><button type="button" data-status-emoji="😍">😍</button><button type="button" data-status-emoji="🔥">🔥</button><button type="button" data-status-emoji="✨">✨</button><button type="button" data-status-emoji="🥰">🥰</button><button type="button" data-status-emoji="👍">👍</button><button type="button" data-status-emoji="🎉">🎉</button><button type="button" data-status-emoji="😭">😭</button><button type="button" data-status-emoji="😘">😘</button><button type="button" data-status-emoji="🤣">🤣</button><button type="button" data-status-emoji="😊">😊</button><button type="button" data-status-emoji="🙏">🙏</button><button type="button" data-status-emoji="👏">👏</button><button type="button" data-status-emoji="💯">💯</button><button type="button" data-status-emoji="💖">💖</button><button type="button" data-status-emoji="💕">💕</button><button type="button" data-status-emoji="💔">💔</button><button type="button" data-status-emoji="😎">😎</button><button type="button" data-status-emoji="🤔">🤔</button><button type="button" data-status-emoji="😢">😢</button><button type="button" data-status-emoji="😁">😁</button><button type="button" data-status-emoji="😅">😅</button><button type="button" data-status-emoji="🤩">🤩</button><button type="button" data-status-emoji="🥳">🥳</button><button type="button" data-status-emoji="😴">😴</button><button type="button" data-status-emoji="🤗">🤗</button><button type="button" data-status-emoji="😇">😇</button><button type="button" data-status-emoji="🙌">🙌</button><button type="button" data-status-emoji="💪">💪</button><button type="button" data-status-emoji="🌹">🌹</button><button type="button" data-status-emoji="🌸">🌸</button><button type="button" data-status-emoji="🌈">🌈</button><button type="button" data-status-emoji="☀️">☀️</button><button type="button" data-status-emoji="⭐">⭐</button><button type="button" data-status-emoji="⚡">⚡</button><button type="button" data-status-emoji="🎂">🎂</button><button type="button" data-status-emoji="🎁">🎁</button><button type="button" data-status-emoji="🍀">🍀</button><button type="button" data-status-emoji="🦋">🦋</button><button type="button" data-status-emoji="🐶">🐶</button><button type="button" data-status-emoji="🐱">🐱</button><button type="button" data-status-emoji="☕">☕</button><button type="button" data-status-emoji="🎵">🎵</button><button type="button" data-status-emoji="🚀">🚀</button><button type="button" data-status-emoji="💐">💐</button><button type="button" data-status-emoji="👑">👑</button><button type="button" data-status-emoji="💃">💃</button><button type="button" data-status-emoji="🕺">🕺</button><button type="button" data-status-emoji="🤍">🤍</button><button type="button" data-status-emoji="🖤">🖤</button><button type="button" data-status-emoji="💛">💛</button><button type="button" data-status-emoji="💚">💚</button><button type="button" data-status-emoji="💙">💙</button><button type="button" data-status-emoji="💜">💜</button><button type="button" data-status-emoji="🧡">🧡</button><button type="button" data-status-emoji="🤎">🤎</button><button type="button" data-status-emoji="✅">✅</button><button type="button" data-status-emoji="❣️">❣️</button><button type="button" data-status-emoji="😜">😜</button><button type="button" data-status-emoji="😋">😋</button></div>
    <div id="statusFilterTray" class="status-filter-tray hidden"><div class="status-filter-hint">Swipe up to view filters</div><div class="status-filter-options">
     <button type="button" data-filter-value="none"><span class="filter-swatch filter-none"></span>None</button><button type="button" data-filter-value="saturate(1.65) contrast(1.08)"><span class="filter-swatch filter-pop"></span>Pop</button><button type="button" data-filter-value="grayscale(1)"><span class="filter-swatch filter-bw"></span>B&amp;W</button><button type="button" data-filter-value="saturate(1.12) hue-rotate(12deg)"><span class="filter-swatch filter-cool"></span>Cool</button><button type="button" data-filter-value="contrast(1.28) saturate(.78)"><span class="filter-swatch filter-chrome"></span>Chrome</button><button type="button" data-filter-value="sepia(.22) contrast(1.12) saturate(.82)"><span class="filter-swatch filter-film"></span>Film</button>
    </div></div>
   </div>
-  <div class="status-editor-adjustments"><label>Pen colour <select id="statusDrawColor"><option value="#ffffff">White</option><option value="#ff5252">Red</option><option value="#ffeb3b">Yellow</option><option value="#25d366">Green</option><option value="#70d6ff">Blue</option><option value="#ff69b4">Pink</option></select></label><label>Pen size <select id="statusPenSize"><option value="3">Small</option><option value="7" selected>Medium</option><option value="13">Large</option></select></label><button type="button" id="addAnotherStatusMedia" title="Add another photo or video">＋ Add file</button><input id="anotherStatusFile" type="file" accept="image/*,video/*" multiple class="hidden"></div>
+  <div class="status-editor-adjustments"><label>Pen colour <select id="statusDrawColor"><option value="#ffffff">White</option><option value="#ff5252">Red</option><option value="#ffeb3b">Yellow</option><option value="#25d366">Green</option><option value="#70d6ff">Blue</option><option value="#ff69b4">Pink</option></select></label><label>Pen size <select id="statusPenSize"><option value="3">Small</option><option value="7" selected>Medium</option><option value="13">Large</option></select></label><button type="button" id="addAnotherStatusMedia" title="Add another photo or video" aria-label="Add another file">＋</button><input id="anotherStatusFile" type="file" accept="image/*,video/*" multiple class="hidden"></div>
   <div class="status-mention-composer status-editor-caption"><textarea id="mediaStatusCaption" rows="2" maxlength="700" placeholder="Add a caption… Type @ to mention someone"></textarea><button type="button" class="status-at-button" id="mediaStatusAtButton" aria-label="Mention a person or group">@</button><button type="button" class="status-file-button" id="statusFileShortcut" aria-label="Add another file">＋</button></div>
   <div id="statusMentionList" class="status-mention-list hidden"></div><div id="statusUploadProgress" class="status-upload-label"></div>
   <select id="statusFilter" class="hidden" aria-label="Status filter"><option value="none">None</option><option value="saturate(1.65) contrast(1.08)">Pop</option><option value="grayscale(1)">B&amp;W</option><option value="saturate(1.12) hue-rotate(12deg)">Cool</option><option value="contrast(1.28) saturate(.78)">Chrome</option><option value="sepia(.22) contrast(1.12) saturate(.82)">Film</option></select>
@@ -3528,8 +3567,13 @@ $("discardStatusEdit").onclick=()=>{hide($("mediaStatusEditor"));statusEditorFil
 $("addAnotherStatusMedia").onclick=()=>$("anotherStatusFile").click();
 $("anotherStatusFile").onchange=e=>{statusEditorFiles.push(...Array.from(e.target.files||[]));e.target.value="";if(statusEditorFiles.length)setupStatusEditorPreview(statusEditorFiles[0]);$("statusUploadProgress").textContent=statusEditorFiles.length+" item(s) selected";};
 $("statusFilter").onchange=()=>{const img=$("statusEditorPreview").querySelector("img");if(img)img.style.filter=$("statusFilter").value;};
-$("statusAddSticker").onclick=()=>$("statusEmojiTray").classList.toggle("hidden");
-document.querySelectorAll("[data-status-emoji]").forEach(button=>button.addEventListener("click",()=>{$("mediaStatusCaption").value+=button.dataset.statusEmoji;$("statusEmojiTray").classList.add("hidden");}));
+
+document.querySelectorAll("[data-status-emoji]").forEach(button=>button.addEventListener("click",()=>{
+ const caption=$("mediaStatusCaption");
+ const start=caption.selectionStart??caption.value.length,end=caption.selectionEnd??start;
+ caption.setRangeText(button.dataset.statusEmoji,start,end,"end");
+ caption.focus();
+}));
 $("statusFileShortcut").onclick=()=>$("anotherStatusFile").click();
 document.querySelectorAll("[data-filter-value]").forEach(button=>button.addEventListener("click",()=>{$("statusFilter").value=button.dataset.filterValue;$("statusFilter").dispatchEvent(new Event("change"));document.querySelectorAll("[data-filter-value]").forEach(item=>item.classList.toggle("active",item===button));}));
 let statusFilterSwipeStart=0;
@@ -3537,10 +3581,49 @@ $("statusEditorPreview").addEventListener("touchstart",event=>{statusFilterSwipe
 $("statusEditorPreview").addEventListener("touchend",event=>{const movement=statusFilterSwipeStart-event.changedTouches[0].clientY;if(movement>45)$("statusFilterTray").classList.remove("hidden");else if(movement< -45)$("statusFilterTray").classList.add("hidden");},{passive:true});
 $("statusEditorPreview").addEventListener("wheel",event=>{if(event.deltaY< -12)$("statusFilterTray").classList.remove("hidden");else if(event.deltaY>12)$("statusFilterTray").classList.add("hidden");},{passive:true});
 
-$("statusDrawButton").onclick=()=>{statusEditorDraw=!statusEditorDraw;$("statusDrawButton").classList.toggle("active",statusEditorDraw);if(statusEditorCanvas)statusEditorCanvas.style.pointerEvents=statusEditorDraw?"auto":"none";};
-$("statusAddText").onclick=()=>{const t=prompt("Enter text to add to your status:");if(t){const caption=$("mediaStatusCaption");caption.value+=(caption.value?"\\n":"")+t;}};
-$("statusAddSticker").onclick=()=>$("statusEmojiTray").classList.toggle("hidden");
-$("statusCropButton").onclick=()=>{const img=$("statusEditorPreview").querySelector("img");if(!img)return;statusEditorCrop=!statusEditorCrop;img.style.objectFit=statusEditorCrop?"cover":"contain";img.style.transform=statusEditorCrop?"scale(1.12)":"none";$("statusCropButton").classList.toggle("active",statusEditorCrop);};
+$("statusDrawButton").onclick=()=>{
+ statusEditorDraw=!statusEditorDraw;
+ $("statusDrawButton").classList.toggle("active",statusEditorDraw);
+ $("statusDrawPalette").classList.toggle("hidden",!statusEditorDraw);
+ $("statusEmojiTray").classList.add("hidden");
+ if(statusEditorCanvas)statusEditorCanvas.style.pointerEvents=statusEditorDraw?"auto":"none";
+};
+document.querySelectorAll("[data-draw-color]").forEach(button=>button.addEventListener("click",()=>{
+ $("statusDrawColor").value=button.dataset.drawColor;
+ document.querySelectorAll("[data-draw-color]").forEach(item=>item.classList.toggle("selected",item===button));
+}));
+$("statusDrawUndo").onclick=()=>{
+ if(statusEditorCanvas&&statusEditorCtx)statusEditorCtx.clearRect(0,0,statusEditorCanvas.width,statusEditorCanvas.height);
+};
+$("statusAddText").onclick=()=>{const caption=$("mediaStatusCaption");caption.focus();caption.scrollIntoView({block:"nearest",behavior:"smooth"});};
+$("statusAddSticker").onclick=()=>{
+ $("statusEmojiTray").classList.toggle("hidden");
+ $("statusDrawPalette").classList.add("hidden");
+ statusEditorDraw=false;
+ if(statusEditorCanvas)statusEditorCanvas.style.pointerEvents="none";
+};
+$("statusCropButton").onclick=()=>{
+ const img=$("statusEditorPreview").querySelector("img");
+ if(!img)return;
+ $("statusCropControls").classList.remove("hidden");
+ $("statusCropButton").classList.add("active");
+ $("statusDrawPalette").classList.add("hidden");
+ $("statusEmojiTray").classList.add("hidden");
+};
+$("statusCropBack").onclick=()=>{$("statusCropControls").classList.add("hidden");$("statusCropButton").classList.remove("active");};
+$("statusRotateButton").onclick=()=>{
+ const img=$("statusEditorPreview").querySelector("img");
+ if(!img)return;
+ const angle=Number(img.dataset.rotation||0)+90;
+ img.dataset.rotation=String(angle);
+ img.style.transform="rotate("+angle+"deg)";
+};
+$("statusCropApply").onclick=()=>{
+ const img=$("statusEditorPreview").querySelector("img");
+ if(img){statusEditorCrop=true;img.style.objectFit="cover";img.style.transform="scale(1.12) rotate("+(Number(img.dataset.rotation||0))+"deg)";}
+ $("statusCropControls").classList.add("hidden");
+ $("statusCropButton").classList.remove("active");
+};
 $("saveMediaStatus").onclick=async()=>{const caption=$("mediaStatusCaption").value.trim();try{if(statusEditorEditingId){await apiRequest("/api/statuses/"+encodeURIComponent(statusEditorEditingId),{method:"PUT",body:JSON.stringify({text:caption})});}else if(!statusEditorFiles.length){if(!caption){alert("Write something first.");return;}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:caption})});}else{$("myStatusCard").classList.add("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","0%");for(let i=0;i<statusEditorFiles.length;i++){const f=statusEditorFiles[i];$("myStatusCard").style.setProperty("--upload-progress",Math.round(i/statusEditorFiles.length*100)+"%");if(f.size>5*1024*1024)throw new Error(f.name+" is larger than 5 MB.");$("statusUploadProgress").textContent="Uploading "+(i+1)+" of "+statusEditorFiles.length+"…";let data;if(f.type.startsWith("image/")&&($("statusFilter").value!=="none"||statusEditorCrop||statusEditorDraw)){const image=new Image();const objectUrl=URL.createObjectURL(f);await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error("Could not process "+f.name));image.src=objectUrl;});const sourceWidth=image.naturalWidth,sourceHeight=image.naturalHeight,canvas=document.createElement("canvas");if(statusEditorCrop){const side=Math.min(sourceWidth,sourceHeight);canvas.width=side;canvas.height=side;}else{canvas.width=sourceWidth;canvas.height=sourceHeight;}const context=canvas.getContext("2d");context.filter=$("statusFilter").value;if(statusEditorCrop){const side=Math.min(sourceWidth,sourceHeight);context.drawImage(image,(sourceWidth-side)/2,(sourceHeight-side)/2,side,side,0,0,side,side);}else{context.drawImage(image,0,0);}if(statusEditorCanvas&&statusEditorDraw){context.filter="none";context.drawImage(statusEditorCanvas,0,0,canvas.width,canvas.height);}data=canvas.toDataURL("image/jpeg",.92);URL.revokeObjectURL(objectUrl);}else{data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error("Could not read "+f.name));r.readAsDataURL(f);});}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:i===0?caption:"",media_data:data,media_type:f.type.startsWith("video/")?"video":"image"})});}}$("myStatusCard").classList.remove("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","100%");hide($("mediaStatusEditor"));statusEditorFiles=[];statusEditorEditingId=null;await loadStatuses();const mine=(window.kchatStatuses||[]).filter(x=>x.is_mine);renderStatusStories();openStatusViewer(mine,0);}catch(error){$("myStatusCard").classList.remove("is-uploading");alert(error.message||"Could not share status.");$("statusUploadProgress").textContent="Upload failed — "+(error.message||"Try again.");}};
 $("editMyStatusButton").onclick=()=>{const item=statusViewerItems[statusViewerIndex];if(!item?.is_mine)return;closeStatusViewer();openMediaStatusEditor([],item);};
 
