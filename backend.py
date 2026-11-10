@@ -2959,10 +2959,11 @@ async def create_status(request: Request):
         if media_data is not None:
             if not isinstance(media_data, str) or len(media_data) > 7_000_000:
                 return JSONResponse({"error": "Media is too large. Choose a smaller file."}, status_code=413)
-            if not (media_data.startswith("data:image/") or media_data.startswith("data:video/")):
-                return JSONResponse({"error": "Choose an image or video file."}, status_code=400)
-            if media_type not in ("image", "video"):
-                media_type = "video" if media_data.startswith("data:video/") else "image"
+            allowed_media = media_data.startswith("data:image/") or media_data.startswith("data:video/") or media_data.startswith("data:audio/")
+            if not allowed_media:
+                return JSONResponse({"error": "Choose an image, video, or audio recording."}, status_code=400)
+            if media_type not in ("image", "video", "audio"):
+                media_type = "audio" if media_data.startswith("data:audio/") else ("video" if media_data.startswith("data:video/") else "image")
 
         if not text_value and not media_data:
             return JSONResponse({"error": "Write something or choose a photo/video."}, status_code=400)
