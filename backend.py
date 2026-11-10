@@ -2796,6 +2796,18 @@ def ensure_status_table():
             CREATE INDEX IF NOT EXISTS status_updates_owner_expiry_idx
             ON status_updates(owner_id, expires_at DESC)
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS status_views (
+                status_id TEXT NOT NULL REFERENCES status_updates(id) ON DELETE CASCADE,
+                viewer_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (status_id, viewer_id)
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS status_views_status_idx
+            ON status_views(status_id, viewed_at DESC)
+        """)
 
 
 @app.get("/api/statuses")
@@ -2867,12 +2879,53 @@ async def get_statuses(request: Request):
                 "media_type": row["media_type"],
                 "created_at": row["created_at"].isoformat(),
                 "expires_at": row["expires_at"].isoformat(),
-                "is_mine": str(row["owner_id"]) == str(account["id"])
+                "is_mine": str(row["owner_id"]) == str(account["id"]),
+                "view_count": (
+                    conn.execute("SELECT COUNT(*) AS count FROM status_views WHERE status_id = %s", (row["id"],)).fetchone()["count"]
+                    if str(row["owner_id"]) == str(account["id"]) else None
+                ),
+                "viewers": (
+                    [{"username": viewer["username"], "profile_picture": viewer["profile_picture"],
+                      "viewed_at": viewer["viewed_at"].isoformat()}
+                     for viewer in conn.execute("""
+                        SELECT a.username, a.profile_picture, v.viewed_at
+                        FROM status_views v JOIN accounts a ON a.id = v.viewer_id
+                        WHERE v.status_id = %s ORDER BY v.viewed_at DESC
+                     """, (row["id"],)).fetchall()]
+                    if str(row["owner_id"]) == str(account["id"]) else []
+                )
             } for row in visible_rows]
         }
     except Exception as error:
         print("Get statuses error:", error)
         return JSONResponse({"error": "Could not load status updates."}, status_code=500)
+
+
+@app.post("/api/statuses/{status_id}/view")
+async def record_status_view(status_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    try:
+        ensure_status_table()
+        with get_db() as conn:
+            status = conn.execute("""
+                SELECT id, owner_id FROM status_updates
+                WHERE id = %s AND expires_at > NOW()
+            """, (status_id,)).fetchone()
+            if not status:
+                return JSONResponse({"error": "Status not found or expired."}, status_code=404)
+            if str(status["owner_id"]) != str(account["id"]):
+                conn.execute("""
+                    INSERT INTO status_views (status_id, viewer_id)
+                    VALUES (%s, %s)
+                    ON CONFLICT (status_id, viewer_id)
+                    DO UPDATE SET viewed_at = NOW()
+                """, (status_id, account["id"]))
+        return {"success": True}
+    except Exception as error:
+        print("Record status view error:", error)
+        return JSONResponse({"error": "Could not record status view."}, status_code=500)
 
 
 @app.post("/api/statuses")
