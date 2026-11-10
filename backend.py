@@ -1248,7 +1248,20 @@ async def get_inbox(request: Request, include_hidden: bool = False):
                     if row["created_at"] else None
                 ),
                 "last_message_sender": sender,
-                "last_message_status": row["status"],
+                "last_message_status": (
+                    (
+                        "sent"
+                        if not get_privacy_settings(peer_profile["id"]).get("delivery_receipts", True)
+                        else (
+                            "delivered"
+                            if row["status"] == "read"
+                            and not get_privacy_settings(peer_profile["id"]).get("read_receipts", True)
+                            else row["status"]
+                        )
+                    )
+                    if sender.lower() == account["username"].lower() and peer_profile
+                    else row["status"]
+                ),
                 "unread_count": 0,
                 "pinned": pref.get("pinned", False),
                 "hidden": pref.get("hidden", False),
