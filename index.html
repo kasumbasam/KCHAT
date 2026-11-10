@@ -2957,8 +2957,6 @@ $("editProfilePicture").addEventListener("change", event => {
             $("settingsGlobalAvatar").innerHTML = imageMarkup;
             $("profileAvatar").innerHTML = imageMarkup;
             $("settingsProfileAvatar").innerHTML = imageMarkup;
-            if (currentProfile) currentProfile.profile_picture = res;
-            if (typeof renderStatusStories === "function") renderStatusStories();
         };
         reader.readAsDataURL(file);
     }
