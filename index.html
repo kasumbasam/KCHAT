@@ -3004,20 +3004,38 @@ $("deleteMyStatusButton").addEventListener("click",async()=>{
         renderStatusViewer();
     }catch(error){alert(error.message||"Could not delete this status.");}
 });
-$("myStatusCard").addEventListener("click",()=>{
-    const mine=(window.kchatStatuses||[]).filter(item=>item.is_mine);
-    if(mine.length)openStatusViewer(mine);
-    else $("uploadStatusButton").click();
+$("myStatusCard").addEventListener("click",async()=>{
+    // Refresh from the server before deciding whether the viewer is empty.
+    // Never launch the upload picker just because the cached list is stale.
+    const loaded=await loadStatuses();
+    const mine=(loaded||window.kchatStatuses||[]).filter(item=>item.is_mine);
+    if(mine.length){
+        openStatusViewer(mine);
+    }else{
+        alert("You haven't shared a status yet. Use the camera button for a photo/video or the pen button for a written status.");
+    }
 });
 async function loadStatuses(){
     try{
         const result=await apiRequest("/api/statuses");
         window.kchatStatuses=Array.isArray(result.statuses)?result.statuses:[];
         renderStatusStories();
+        return window.kchatStatuses;
     }catch(error){
         console.error("Status loading failed:",error);
         $("otherStatusStories").innerHTML='<div class="status-empty-card">Could not load updates</div>';
+        alert(error.message||"Could not load status updates. Please try again.");
+        return null;
     }
+}
+function showJustCreatedStatus(status){
+    if(!status)return;
+    status.is_mine=true;
+    const existing=(window.kchatStatuses||[]).filter(item=>item.id!==status.id);
+    window.kchatStatuses=[status,...existing];
+    renderStatusStories();
+    const mine=window.kchatStatuses.filter(item=>item.is_mine);
+    openStatusViewer(mine,0);
 }
 function renderStatusStories(){
     const statuses=window.kchatStatuses||[];
@@ -3044,8 +3062,10 @@ $("publishTextStatus").addEventListener("click",async()=>{
     if(!value){alert("Write something for your status first.");return;}
     const button=$("publishTextStatus");button.disabled=true;button.textContent="Sharing...";
     try{
-        await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:value})});
-        $("textStatusInput").value="";hide($("textStatusModal"));await loadStatuses();
+        const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:value})});
+        $("textStatusInput").value="";hide($("textStatusModal"));
+        await loadStatuses();
+        showJustCreatedStatus(result.status);
     }catch(error){alert(error.message||"Could not share status.");}
     finally{button.disabled=false;button.textContent="Share status";}
 });
@@ -3059,8 +3079,9 @@ $("statusFileInput").addEventListener("change",async event=>{
     reader.onload=async()=>{
         const button=$("uploadStatusButton");button.disabled=true;
         try{
-            await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({media_data:reader.result,media_type:file.type.startsWith("video/")?"video":"image"})});
-            await loadStatuses();alert("Your status has been shared.");
+            const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({media_data:reader.result,media_type:file.type.startsWith("video/")?"video":"image"})});
+            await loadStatuses();
+            showJustCreatedStatus(result.status);
         }catch(error){alert(error.message||"Could not upload status.");}
         finally{button.disabled=false;}
     };
