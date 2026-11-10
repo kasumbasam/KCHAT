@@ -3063,8 +3063,10 @@ $("publishTextStatus").addEventListener("click",async()=>{
     const button=$("publishTextStatus");button.disabled=true;button.textContent="Sharing...";
     try{
         const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:value})});
-        $("textStatusInput").value="";hide($("textStatusModal"));
-        await loadStatuses();
+        $("textStatusInput").value="";
+        hide($("textStatusModal"));
+        // The POST response already contains the saved status. Display it
+        // immediately instead of waiting for a second, potentially slow GET.
         showJustCreatedStatus(result.status);
     }catch(error){alert(error.message||"Could not share status.");}
     finally{button.disabled=false;button.textContent="Share status";}
@@ -3080,7 +3082,8 @@ $("statusFileInput").addEventListener("change",async event=>{
         const button=$("uploadStatusButton");button.disabled=true;
         try{
             const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({media_data:reader.result,media_type:file.type.startsWith("video/")?"video":"image"})});
-            await loadStatuses();
+            // Display the saved media directly from the successful POST response.
+            // Do not block the viewer on a second request that downloads every status.
             showJustCreatedStatus(result.status);
         }catch(error){alert(error.message||"Could not upload status.");}
         finally{button.disabled=false;}
