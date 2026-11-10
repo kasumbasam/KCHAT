@@ -1283,6 +1283,26 @@ hr {
 .status-upload-label{min-height:16px;font:12px Arial;color:#25d366}
 @media(min-width:700px){.status-editor-backdrop{background:#000e}.status-editor-backdrop .status-editor-card{height:min(94dvh,900px);max-height:min(94dvh,900px);border-radius:18px;margin:auto}}
 
+
+/* Ensure the text-status editor tools remain visible on every screen size. */
+#textStatusModal .text-status-actions{display:flex!important;visibility:visible!important;opacity:1!important;position:relative!important;z-index:20!important;min-height:76px!important;flex:0 0 76px!important;overflow:visible!important}
+#textStatusModal .text-status-tools{display:flex!important;visibility:visible!important;opacity:1!important;align-items:center!important;gap:7px!important;flex:1 1 auto!important;min-width:0!important;overflow:visible!important}
+#textStatusModal #textStatusAddFile,
+#textStatusModal #textStatusStyleButton,
+#textStatusModal #textStatusEmojiButton,
+#textStatusModal #textStatusVoiceButton,
+#textStatusModal #publishTextStatus{display:grid!important;visibility:visible!important;opacity:1!important;position:relative!important;flex:0 0 44px!important;width:44px!important;height:44px!important;min-width:44px!important;max-width:none!important;pointer-events:auto!important}
+#textStatusModal #textStatusStyleButton{font-size:17px!important;font-weight:800!important;color:#fff!important}
+#textStatusModal #textStatusVoiceButton{font-size:21px!important;color:#fff!important}
+#textStatusModal #publishTextStatus{flex-basis:58px!important;width:58px!important;height:58px!important;min-width:58px!important;background:#25d366!important}
+@media(max-width:380px){
+ #textStatusModal .text-status-tools{gap:4px!important}
+ #textStatusModal #textStatusAddFile,
+ #textStatusModal #textStatusStyleButton,
+ #textStatusModal #textStatusEmojiButton,
+ #textStatusModal #textStatusVoiceButton{flex-basis:40px!important;width:40px!important;height:40px!important;min-width:40px!important}
+}
+
 </style>
 </head>
 
