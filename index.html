@@ -1214,6 +1214,21 @@ hr {
 
 
 /* Full-screen WhatsApp-style status editing layout */
+.status-camera-backdrop{z-index:10050;padding:0!important;background:#000!important}
+.status-camera-screen{width:100%;height:100dvh;max-height:100dvh;background:#000;color:#fff;display:flex;flex-direction:column}
+.status-camera-header{height:64px;flex:0 0 64px;display:grid;grid-template-columns:48px 1fr 48px;align-items:center;padding:0 12px}
+.status-camera-header button{width:42px;height:42px;border:0;border-radius:50%;background:#202326;color:#fff;font-size:25px}
+.status-camera-timer{text-align:center;font:600 19px Arial,sans-serif;font-variant-numeric:tabular-nums}
+#statusCameraFlash{justify-self:end;font-size:22px}
+.status-camera-view{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#090909}
+#statusCameraVideo{width:100%;height:100%;object-fit:cover}
+#statusCameraHint{position:absolute;left:0;right:0;bottom:16px;text-align:center;color:#fff;text-shadow:0 1px 4px #000}
+.status-camera-controls{height:116px;flex:0 0 116px;display:flex;align-items:center;justify-content:space-around;padding:8px 18px}
+.status-camera-controls button{border:0;color:white;background:#222;border-radius:50%;width:48px;height:48px;font-size:25px}
+#captureStatusPhoto{width:72px;height:72px;border:5px solid #fff;background:#fff;box-shadow:inset 0 0 0 3px #222}
+#recordStatusVideo{width:72px;height:72px;border:5px solid #fff;background:#e53935;box-shadow:inset 0 0 0 3px #222}
+#recordStatusVideo.recording{animation:voicePulse 1.1s infinite}
+#finishStatusVideo{width:auto;border-radius:24px;padding:0 17px;background:#25d366;color:#07130b;font-size:14px;font-weight:700}
 .status-editor-backdrop{padding:0;background:#050708}
 .status-editor-backdrop .status-editor-card{width:min(100vw,620px);height:100dvh;max-height:100dvh;border-radius:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));display:flex;flex-direction:column;overflow:hidden;background:#050708}
 .status-editor-top{height:48px;flex:0 0 48px;display:flex;align-items:center;gap:14px}
@@ -1589,6 +1604,14 @@ hr {
   <header><button type="button" id="closeVoiceStatus">×</button><strong>Voice status</strong></header>
   <div class="voice-status-recorder"><div id="voiceStatusTimer">00:00</div><div id="voiceStatusHint">Tap the microphone to start recording</div><button type="button" id="voiceStatusRecord">🎙</button><audio id="voiceStatusPreview" controls class="hidden"></audio></div>
   <footer><button type="button" id="discardVoiceStatus">Discard</button><button type="button" id="shareVoiceStatus" disabled>Share voice status</button></footer>
+ </section>
+</div>
+<!-- LIVE STATUS CAMERA -->
+<div id="statusCameraModal" class="modal-backdrop hidden status-camera-backdrop">
+ <section class="status-camera-screen">
+  <header class="status-camera-header"><button type="button" id="closeStatusCamera" aria-label="Close camera">×</button><div id="statusCameraTimer" class="status-camera-timer">00:00</div><button type="button" id="statusCameraFlash" aria-label="Toggle flash" title="Flash off">⚡</button></header>
+  <div class="status-camera-view"><video id="statusCameraVideo" autoplay playsinline muted></video><div id="statusCameraHint">Camera</div></div>
+  <div class="status-camera-controls"><button type="button" id="switchStatusCamera" aria-label="Switch front or back camera" title="Switch camera">↺</button><button type="button" id="captureStatusPhoto" aria-label="Take photo" title="Take photo">●</button><button type="button" id="recordStatusVideo" aria-label="Start video recording" title="Record video">●</button><button type="button" id="finishStatusVideo" class="hidden">Use video</button></div>
  </section>
 </div>
 <!-- MEDIA STATUS EDITOR -->
@@ -3471,8 +3494,18 @@ $("publishTextStatus").addEventListener("click",async()=>{
     }catch(error){alert(error.message||"Could not share status.");}
     finally{button.disabled=false;}
 });
-$("uploadStatusButton").addEventListener("click",()=>{$("statusFileInput").accept="image/*";$("statusFileInput").click();});
-$("uploadVideoStatus").addEventListener("click",()=>{$("statusFileInput").accept="video/*";$("statusFileInput").click();});
+let statusCameraStream=null,statusCameraFacing="environment",statusCameraMode="photo",statusCameraRecorder=null,statusCameraChunks=[],statusCameraBlob=null,statusCameraClock=null,statusCameraStarted=0,statusCameraTorch=false;
+async function stopStatusCamera(){if(statusCameraClock)clearInterval(statusCameraClock);statusCameraClock=null;if(statusCameraRecorder&&statusCameraRecorder.state==="recording"){statusCameraRecorder.onstop=null;statusCameraRecorder.stop();}statusCameraRecorder=null;if(statusCameraStream){statusCameraStream.getTracks().forEach(track=>track.stop());statusCameraStream=null;}$("statusCameraVideo").srcObject=null;statusCameraTorch=false;$("statusCameraFlash").textContent="⚡";$("statusCameraFlash").title="Flash off";}
+async function startStatusCamera(){await stopStatusCamera();try{statusCameraStream=await navigator.mediaDevices.getUserMedia({audio:statusCameraMode==="video",video:{facingMode:{ideal:statusCameraFacing},width:{ideal:1920},height:{ideal:1080}}});$("statusCameraVideo").srcObject=statusCameraStream;await $("statusCameraVideo").play();$("statusCameraHint").textContent=statusCameraFacing==="user"?"Front camera":"Back camera";$("statusCameraFlash").disabled=false;const track=statusCameraStream.getVideoTracks()[0],caps=track.getCapabilities?track.getCapabilities():{};$("statusCameraFlash").disabled=!caps.torch;$("statusCameraFlash").title=caps.torch?"Flash off":"Flash not supported by this camera";}catch(error){alert("Could not open the camera. Check camera permission and try again.");hide($("statusCameraModal"));await stopStatusCamera();}}
+async function openStatusCamera(mode){statusCameraMode=mode;statusCameraFacing="environment";$("statusCameraTimer").textContent="00:00";$("captureStatusPhoto").classList.toggle("hidden",mode!=="photo");$("recordStatusVideo").classList.toggle("hidden",mode!=="video");$("finishStatusVideo").classList.add("hidden");$("statusCameraHint").textContent=mode==="video"?"Video camera":"Photo camera";show($("statusCameraModal"));await startStatusCamera();}
+$("closeStatusCamera").addEventListener("click",async()=>{await stopStatusCamera();hide($("statusCameraModal"));});
+$("switchStatusCamera").addEventListener("click",async()=>{statusCameraFacing=statusCameraFacing==="environment"?"user":"environment";await startStatusCamera();});
+$("statusCameraFlash").addEventListener("click",async()=>{if(!statusCameraStream)return;const track=statusCameraStream.getVideoTracks()[0];try{await track.applyConstraints({advanced:[{torch:!statusCameraTorch}]});statusCameraTorch=!statusCameraTorch;$("statusCameraFlash").textContent=statusCameraTorch?"⚡":"⚡";$("statusCameraFlash").classList.toggle("flash-on",statusCameraTorch);$("statusCameraFlash").title=statusCameraTorch?"Flash on":"Flash off";}catch(error){alert("Flash is not supported on this camera.");}});
+$("captureStatusPhoto").addEventListener("click",async()=>{const video=$("statusCameraVideo");if(!video.videoWidth)return;const canvas=document.createElement("canvas");canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext("2d").drawImage(video,0,0);const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.94));if(!blob){alert("Could not capture photo.");return;}const file=new File([blob],"kchat-status-photo.jpg",{type:"image/jpeg"});await stopStatusCamera();hide($("statusCameraModal"));openMediaStatusEditor([file]);});
+$("recordStatusVideo").addEventListener("click",()=>{if(statusCameraRecorder&&statusCameraRecorder.state==="recording"){statusCameraRecorder.stop();return;}if(!window.MediaRecorder){alert("Video recording is not supported by this browser.");return;}try{const mime=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"].find(type=>MediaRecorder.isTypeSupported(type));statusCameraChunks=[];statusCameraRecorder=mime?new MediaRecorder(statusCameraStream,{mimeType:mime}):new MediaRecorder(statusCameraStream);statusCameraRecorder.ondataavailable=e=>{if(e.data&&e.data.size)statusCameraChunks.push(e.data);};statusCameraRecorder.onstop=()=>{statusCameraBlob=new Blob(statusCameraChunks,{type:statusCameraRecorder.mimeType||"video/webm"});$("recordStatusVideo").classList.remove("recording");$("statusCameraHint").textContent="Video recorded — choose Use video";$("finishStatusVideo").classList.remove("hidden");if(statusCameraClock)clearInterval(statusCameraClock);};statusCameraRecorder.start();statusCameraStarted=Date.now();$("recordStatusVideo").classList.add("recording");$("statusCameraHint").textContent="Recording… tap the red button to stop";statusCameraClock=setInterval(()=>{const sec=Math.floor((Date.now()-statusCameraStarted)/1000);$("statusCameraTimer").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");},200);}catch(error){alert("Could not start video recording.");}});
+$("finishStatusVideo").addEventListener("click",async()=>{if(!statusCameraBlob)return;if(statusCameraBlob.size>5*1024*1024){alert("Video is larger than 5 MB. Record a shorter video.");return;}const file=new File([statusCameraBlob],"kchat-status-video.webm",{type:statusCameraBlob.type||"video/webm"});await stopStatusCamera();hide($("statusCameraModal"));openMediaStatusEditor([file]);});
+$("uploadStatusButton").addEventListener("click",()=>openStatusCamera("photo"));
+$("uploadVideoStatus").addEventListener("click",()=>openStatusCamera("video"));
 $("openStatusOverview").addEventListener("click",()=>{$("myStatusCard").click();});
 $("statusFormatButton").addEventListener("click",()=>openTextStatus());
 let voiceStatusRecorder=null,voiceStatusChunks=[],voiceStatusBlob=null,voiceStatusClock=null,voiceStatusStarted=0;
