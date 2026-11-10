@@ -124,6 +124,29 @@ def init_db():
         """)
 
         conn.execute("""
+            ALTER TABLE messages
+            ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ
+        """)
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS message_hidden (
+                owner_id BIGINT REFERENCES accounts(id) ON DELETE CASCADE,
+                message_id TEXT REFERENCES messages(id) ON DELETE CASCADE,
+                hidden_at TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (owner_id, message_id)
+            )
+        """)
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS pinned_messages (
+                owner_id BIGINT REFERENCES accounts(id) ON DELETE CASCADE,
+                message_id TEXT REFERENCES messages(id) ON DELETE CASCADE,
+                pinned_at TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (owner_id, message_id)
+            )
+        """)
+
+        conn.execute("""
             CREATE INDEX IF NOT EXISTS messages_room_idx
             ON messages(room, created_at)
         """)
@@ -1571,18 +1594,30 @@ async def get_private_messages(username: str, request: Request):
             return JSONResponse({"error": "This conversation is unavailable."}, status_code=403)
 
         rows = conn.execute("""
-            SELECT * FROM messages
-            WHERE type = 'private'
+            SELECT m.*,
+                (m.edited_at IS NOT NULL) AS edited,
+                EXISTS (
+                    SELECT 1 FROM pinned_messages pm
+                    WHERE pm.message_id = m.id AND pm.owner_id = %s
+                ) AS pinned_by_me
+            FROM messages m
+            WHERE m.type = 'private'
             AND (
-                (LOWER(username) = %s AND LOWER(recipient) = %s)
+                (LOWER(m.username) = %s AND LOWER(m.recipient) = %s)
                 OR
-                (LOWER(username) = %s AND LOWER(recipient) = %s)
+                (LOWER(m.username) = %s AND LOWER(m.recipient) = %s)
             )
-            AND (expires_at IS NULL OR expires_at > NOW())
-            ORDER BY created_at ASC
+            AND (m.expires_at IS NULL OR m.expires_at > NOW())
+            AND NOT EXISTS (
+                SELECT 1 FROM message_hidden mh
+                WHERE mh.message_id = m.id AND mh.owner_id = %s
+            )
+            ORDER BY m.created_at ASC
         """, (
+            account["id"],
             account["username"].lower(), peer["username"].lower(),
-            peer["username"].lower(), account["username"].lower()
+            peer["username"].lower(), account["username"].lower(),
+            account["id"]
         )).fetchall()
 
         unread = []
@@ -1689,6 +1724,128 @@ async def revoke_private_message(message_id: str, request: Request):
         "message": "Message deleted for everyone.",
         "retained_for_recipient": retained
     }
+
+
+
+@app.post("/api/messages/{message_id}/hide")
+async def hide_message_for_me(message_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    with get_db() as conn:
+        message = conn.execute("""
+            SELECT id, type, username, recipient
+            FROM messages WHERE id = %s
+        """, (message_id,)).fetchone()
+        if not message or message["type"] != "private":
+            return JSONResponse({"error": "Message not found."}, status_code=404)
+        participant = account["username"].lower()
+        if participant not in {
+            (message["username"] or "").lower(),
+            (message["recipient"] or "").lower()
+        }:
+            return JSONResponse({"error": "You cannot remove this message."}, status_code=403)
+        conn.execute("""
+            INSERT INTO message_hidden (owner_id, message_id)
+            VALUES (%s, %s) ON CONFLICT DO NOTHING
+        """, (account["id"], message_id))
+
+    return {"success": True, "message": "Message deleted from your conversation."}
+
+
+@app.post("/api/messages/{message_id}/pin")
+async def pin_message_for_me(message_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    pinned = data.get("pinned", True)
+    if not isinstance(pinned, bool):
+        return JSONResponse({"error": "Pinned must be true or false."}, status_code=400)
+
+    with get_db() as conn:
+        message = conn.execute("""
+            SELECT id, type, username, recipient
+            FROM messages WHERE id = %s
+        """, (message_id,)).fetchone()
+        if not message or message["type"] != "private":
+            return JSONResponse({"error": "Message not found."}, status_code=404)
+        participant = account["username"].lower()
+        if participant not in {
+            (message["username"] or "").lower(),
+            (message["recipient"] or "").lower()
+        }:
+            return JSONResponse({"error": "You cannot pin this message."}, status_code=403)
+
+        if pinned:
+            conn.execute("""
+                INSERT INTO pinned_messages (owner_id, message_id)
+                VALUES (%s, %s) ON CONFLICT (owner_id, message_id)
+                DO UPDATE SET pinned_at = NOW()
+            """, (account["id"], message_id))
+        else:
+            conn.execute("""
+                DELETE FROM pinned_messages
+                WHERE owner_id = %s AND message_id = %s
+            """, (account["id"], message_id))
+
+    return {"success": True, "pinned": pinned}
+
+
+@app.put("/api/messages/{message_id}/edit")
+async def edit_private_message(message_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    try:
+        data = await request.json()
+        new_text = str(data.get("text", "")).strip()
+        if not new_text:
+            return JSONResponse({"error": "Message cannot be empty."}, status_code=400)
+        if len(new_text) > 20000:
+            return JSONResponse({"error": "Message is too long."}, status_code=400)
+
+        with get_db() as conn:
+            message = conn.execute("""
+                SELECT id, type, username, recipient, revoked_at, text
+                FROM messages WHERE id = %s
+            """, (message_id,)).fetchone()
+            if not message or message["type"] != "private":
+                return JSONResponse({"error": "Message not found."}, status_code=404)
+            if message["username"].lower() != account["username"].lower():
+                return JSONResponse({"error": "You can only edit messages you sent."}, status_code=403)
+            if message["revoked_at"]:
+                return JSONResponse({"error": "A deleted message cannot be edited."}, status_code=409)
+            if str(message["text"]).startswith("data:image/"):
+                return JSONResponse({"error": "Photo messages cannot be edited."}, status_code=400)
+
+            conn.execute("""
+                UPDATE messages SET text = %s, edited_at = NOW()
+                WHERE id = %s
+            """, (new_text, message_id))
+
+        event = {
+            "type": "message_edited",
+            "id": message_id,
+            "text": new_text,
+            "edited": True
+        }
+        for websocket in connected_sockets_for(message["recipient"]):
+            try:
+                await websocket.send_json(event)
+            except Exception as error:
+                print("Message edit notification error:", error)
+
+        return {"success": True, "text": new_text, "edited": True}
+    except Exception as error:
+        print("Message edit error:", error)
+        return JSONResponse({"error": "Could not edit this message."}, status_code=500)
 
 
 @app.post("/api/messages")
@@ -2054,6 +2211,8 @@ def message_from_row(row):
         "to": row["recipient"],
         "text": row["text"],
         "status": row["status"],
+        "edited": bool(row.get("edited_at")),
+        "pinned_by_me": bool(row.get("pinned_by_me", False)),
         "revoked": bool(row.get("revoked_at")),
         "revoked_at": (
             row["revoked_at"].isoformat()
