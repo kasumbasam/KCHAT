@@ -2826,7 +2826,9 @@ async def get_statuses(request: Request):
 
         visible_rows = []
         for row in rows:
-            is_mine = row["username"].lower() == account["username"].lower()
+            # Use the immutable account ID to identify the viewer's own
+            # statuses. Usernames can change in case or spelling.
+            is_mine = str(row["owner_id"]) == str(account["id"])
             if not is_mine:
                 owner_privacy = get_privacy_settings(row["owner_id"])
                 audience = owner_privacy.get("status_audience", "all_contacts")
@@ -2850,7 +2852,7 @@ async def get_statuses(request: Request):
                 "media_type": row["media_type"],
                 "created_at": row["created_at"].isoformat(),
                 "expires_at": row["expires_at"].isoformat(),
-                "is_mine": row["username"].lower() == account["username"].lower()
+                "is_mine": str(row["owner_id"]) == str(account["id"])
             } for row in visible_rows]
         }
     except Exception as error:
