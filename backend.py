@@ -668,10 +668,18 @@ async def match_phone_contacts(request: Request):
                 "error": "Send a list of up to 500 phone numbers."
             }, status_code=400)
 
-        keys = list(dict.fromkeys(
-            key for key in (phone_key(value) for value in supplied)
-            if key
-        ))
+        keys = set()
+        for value in supplied:
+            key = phone_key(value)
+            if not key:
+                continue
+            keys.add(key)
+            # Match common Ugandan phonebook formats (07... and +2567...).
+            if len(key) == 10 and key.startswith("0"):
+                keys.add("256" + key[1:])
+            elif len(key) == 12 and key.startswith("256"):
+                keys.add("0" + key[3:])
+        keys = sorted(keys)
 
         if not keys:
             return {"matches": []}
@@ -679,7 +687,7 @@ async def match_phone_contacts(request: Request):
         placeholders = ", ".join(["%s"] * len(keys))
         with get_db() as conn:
             rows = conn.execute(f"""
-                SELECT id, username, phone_number, profile_picture, about
+                SELECT id, username, phone_number, phone_key, profile_picture, about
                 FROM accounts
                 WHERE phone_key IN ({placeholders})
                 AND id != %s
@@ -696,6 +704,7 @@ async def match_phone_contacts(request: Request):
                 {
                     "username": row["username"],
                     "phone_number": row["phone_number"],
+                    "phone_key": row["phone_key"],
                     "profile_picture": row["profile_picture"],
                     "about": row["about"]
                 }
