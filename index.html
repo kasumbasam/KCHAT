@@ -766,6 +766,55 @@ hr {
     font-size:23px;
     padding:0 5px;
 }
+.settings-profile-header {
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:18px 8px 22px;
+    margin:0 0 8px;
+    border-bottom:1px solid var(--border);
+}
+.settings-profile-avatar {
+    width:76px;
+    height:76px;
+    min-width:76px;
+    border-radius:50%;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--panel2);
+    color:var(--text);
+    font-size:30px;
+    font-weight:600;
+}
+.settings-profile-avatar img {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    border-radius:50%;
+}
+.settings-profile-details {
+    flex:1;
+    min-width:0;
+}
+.settings-profile-name {
+    font-size:20px;
+    font-weight:700;
+    overflow-wrap:anywhere;
+}
+.settings-profile-username,
+.settings-profile-phone,
+.settings-profile-mood {
+    display:block;
+    color:var(--muted);
+    font-size:13px;
+    margin-top:4px;
+    overflow-wrap:anywhere;
+}
+.settings-profile-mood {
+    color:var(--accent);
+}
 
 .settings-row small {
     display:block;
@@ -1164,6 +1213,16 @@ hr {
         <div class="panel-heading">
             <button class="icon-btn" id="closeSettingsButton">←</button>
             <h2>Profile Centre</h2>
+        </div>
+
+        <div class="settings-profile-header" id="settingsProfileHeader">
+            <div class="settings-profile-avatar" id="settingsProfileAvatar">S</div>
+            <div class="settings-profile-details">
+                <div class="settings-profile-name" id="settingsProfileName">Your name</div>
+                <small class="settings-profile-username" id="settingsProfileUsername">@username</small>
+                <small class="settings-profile-phone" id="settingsProfilePhone">Phone number not set</small>
+                <small class="settings-profile-mood" id="settingsProfileMood">Current mood · Available</small>
+            </div>
         </div>
 
         <div class="settings-row settings-option" id="subOpenMyProfile">
@@ -2010,18 +2069,25 @@ async function loadMyProfile() {
 
     $("labelGlobalName").textContent = currentUser;
     $("labelGlobalMood").textContent = currentProfile.about || "Current mood · Available";
+    $("settingsProfileName").textContent = currentProfile.display_name || currentProfile.name || currentUser;
+    $("settingsProfileUsername").textContent = "@" + currentUser;
+    $("settingsProfilePhone").textContent = currentProfile.phone_number || "Phone number not set";
+    $("settingsProfileMood").textContent = currentProfile.about || "Current mood · Available";
     $("profileDisplayName").textContent = currentUser;
     $("editProfileUsername").value = currentUser;
     $("editProfileAbout").value = currentProfile.about || "Current mood · Available";
 
     const picture = currentProfile.profile_picture;
     if (picture) {
-        $("settingsGlobalAvatar").innerHTML = `<img src="${escapeHTML(picture)}" alt="Profile">`;
-        $("profileAvatar").innerHTML = `<img src="${escapeHTML(picture)}" alt="Profile">`;
+        const imageMarkup = `<img src="${escapeHTML(picture)}" alt="Profile">`;
+        $("settingsGlobalAvatar").innerHTML = imageMarkup;
+        $("profileAvatar").innerHTML = imageMarkup;
+        $("settingsProfileAvatar").innerHTML = imageMarkup;
     } else {
         const initial = currentUser.charAt(0).toUpperCase();
         $("settingsGlobalAvatar").textContent = initial;
         $("profileAvatar").textContent = initial;
+        $("settingsProfileAvatar").textContent = initial;
     }
 }
 
