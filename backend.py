@@ -2570,7 +2570,30 @@ async def chat(websocket: WebSocket, room: str):
                 print(username, "logged out")
                 break
 
-            if message_type == "chat":
+            if message_type == "typing":
+                recipient = str(data.get("to", "")).strip()[:30]
+                active = data.get("active") is True
+                if not recipient or recipient.lower() == username.lower():
+                    continue
+                with get_db() as conn:
+                    target = conn.execute("""
+                        SELECT id, username FROM accounts
+                        WHERE username_key = %s
+                    """, (recipient.lower(),)).fetchone()
+                if not target or users_blocked(account["id"], target["id"]):
+                    continue
+                event = {
+                    "type": "typing",
+                    "username": username,
+                    "active": active
+                }
+                for target_socket in connected_sockets_for(target["username"]):
+                    try:
+                        await target_socket.send_json(event)
+                    except Exception as error:
+                        print("Typing notification error:", error)
+
+            elif message_type == "chat":
                 message = str(data.get("text", "")).strip()
 
                 if not message:
