@@ -1237,7 +1237,11 @@ async def get_inbox(request: Request, include_hidden: bool = False):
                 "about": (
                     "" if restricted else peer_profile.get("about", "")
                 ),
-                "last_message": row["text"],
+                "last_message": (
+                    "📷 Photo"
+                    if str(row["text"]).startswith("data:image/")
+                    else row["text"]
+                ),
                 "last_message_id": row["id"],
                 "last_message_time": (
                     row["created_at"].isoformat()
@@ -1510,6 +1514,30 @@ async def search_messages(
 
 # ---------------- PRIVATE MESSAGE HISTORY AND DELIVERY ----------------
 
+@app.get("/api/presence/{username}")
+async def get_contact_presence(username: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    peer_name = username.strip()[:30]
+    with get_db() as conn:
+        peer = conn.execute("""
+            SELECT id, username FROM accounts
+            WHERE username_key = %s
+        """, (peer_name.lower(),)).fetchone()
+
+    if not peer:
+        return JSONResponse({"error": "User not found."}, status_code=404)
+
+    allowed = can_view_presence(peer["id"], account["id"])
+    return {
+        "success": True,
+        "username": peer["username"],
+        "online": bool(allowed and is_user_online(peer["username"]))
+    }
+
+
 @app.get("/api/messages/{username}")
 async def get_private_messages(username: str, request: Request):
     account = get_account_from_request(request)
@@ -1660,8 +1688,20 @@ async def send_private_message(request: Request):
         data = await request.json()
         recipient_name = str(data.get("recipient", data.get("to", ""))).strip()[:30]
         message_text = str(data.get("text", "")).strip()
+        is_image = bool(re.fullmatch(
+            r"data:image/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}",
+            message_text
+        ))
         if not recipient_name or not message_text:
             return JSONResponse({"error": "Choose a recipient and enter a message."}, status_code=400)
+        if is_image and len(message_text) > 3_400_000:
+            return JSONResponse({
+                "error": "That photo is too large after compression. Choose a smaller photo."
+            }, status_code=413)
+        if not is_image and len(message_text) > 10000:
+            return JSONResponse({
+                "error": "Messages cannot exceed 10,000 characters."
+            }, status_code=413)
         if recipient_name.lower() == account["username"].lower():
             return JSONResponse({"error": "You cannot message yourself."}, status_code=400)
 
@@ -1681,7 +1721,7 @@ async def send_private_message(request: Request):
             "type": "private",
             "username": account["username"],
             "to": recipient,
-            "text": message_text[:10000],
+            "text": message_text if is_image else message_text[:10000],
             "status": "sent"
         }
         item = save_message(item, private_room)
@@ -2106,13 +2146,15 @@ async def send_contact_presence(account, websocket):
 
     for row in rows:
         username = row["username"]
-        if not can_view_presence(row["id"], account["id"]):
-            continue
+        visible_online = bool(
+            can_view_presence(row["id"], account["id"])
+            and is_user_online(username)
+        )
         try:
             await websocket.send_json({
                 "type": "presence",
                 "username": username,
-                "online": is_user_online(username)
+                "online": visible_online
             })
         except Exception as error:
             print("Initial presence error:", error)
