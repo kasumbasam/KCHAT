@@ -2015,21 +2015,36 @@ function hide(element) {
  * still opens even if another navigation handler fails.
  */
 function openKchatUpdatesScreen() {
+    const app = $("appScreen");
+    const status = $("statusScreen");
+    const main = $("mainChatArea");
+    if (!app || !status || !main) {
+        console.error("KCHAT Updates navigation: required screen element is missing.", { app: !!app, status: !!status, main: !!main });
+        return;
+    }
+
     activeTab = "status";
-    $("appScreen").classList.remove("mobile-chat-open");
-    $("appScreen").classList.add("status-open");
+    app.classList.remove("mobile-chat-open");
+    app.classList.add("status-open");
+    main.style.setProperty("display", "flex", "important");
+    status.classList.remove("hidden");
+    status.style.setProperty("display", "flex", "important");
+    status.style.setProperty("visibility", "visible", "important");
+    status.style.setProperty("z-index", "9999", "important");
+
     document.querySelectorAll(".whatsapp-tab-btn").forEach(button => {
         button.classList.toggle("active", button.dataset.tab === "status");
     });
     hide($("chatScreen"));
     hide($("welcomeScreen"));
-    show($("statusScreen"));
+
     if (typeof loadStatuses === "function") loadStatuses();
     if (typeof loadChannels === "function") loadChannels();
 }
 
 document.addEventListener("click", event => {
-    const statusButton = event.target.closest('.whatsapp-tab-btn[data-tab="status"], [data-main-nav="status"]');
+    const target = event.target instanceof Element ? event.target : event.target && event.target.parentElement;
+    const statusButton = target && target.closest('.whatsapp-tab-btn[data-tab="status"], [data-main-nav="status"]');
     if (!statusButton) return;
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -2993,13 +3008,13 @@ document.querySelectorAll(".whatsapp-tab-btn").forEach(button => {
         button.classList.add("active");
         activeTab = button.dataset.tab;
         if (activeTab === "status") {
-            hide($("chatScreen"));
-            hide($("welcomeScreen"));
-            show($("statusScreen"));
-            loadStatuses();
-            loadChannels();
+            openKchatUpdatesScreen();
             return;
         }
+        $("appScreen").classList.remove("status-open");
+        $("statusScreen").style.removeProperty("display");
+        $("statusScreen").style.removeProperty("visibility");
+        $("statusScreen").style.removeProperty("z-index");
         hide($("statusScreen"));
         if (activeTab === "chat" || activeTab === "call") {
             if (currentChat) show($("chatScreen"));
@@ -3041,7 +3056,11 @@ async function openChat(username) {
 }
 
 $("backToChats").addEventListener("click", () => {
-    $("appScreen").classList.remove("mobile-chat-open");
+    $("appScreen").classList.remove("mobile-chat-open", "status-open");
+    $("statusScreen").style.removeProperty("display");
+    $("statusScreen").style.removeProperty("visibility");
+    $("statusScreen").style.removeProperty("z-index");
+    hide($("statusScreen"));
 });
 
 async function loadMessages(username) {
