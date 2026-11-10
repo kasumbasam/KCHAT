@@ -732,6 +732,7 @@ hr {
 .status-viewer-side{position:absolute;top:0;bottom:0;width:30%;z-index:1;border:0;background:transparent}
 .status-viewer-side.previous{left:0}
 .status-viewer-side.next{right:0}
+.viewed-by-button{border:0;background:transparent;color:#fff;padding:7px 12px;border-radius:18px;font-size:15px}.viewed-by-button[hidden]{display:none!important}.viewed-by-button:hover{background:#ffffff18}
 .status-viewer-footer{min-height:38px;text-align:center;color:#cbd2d6;font-size:13px;padding-top:10px}
 
 @media(min-width:751px){.status-screen{left:370px}.status-bottom-nav{display:none}}
@@ -1424,7 +1425,7 @@ hr {
                     </div>
                 </header>
                 <div class="status-page-scroll">
-                    <div class="status-section-title">Status</div>
+                    <div class="status-section-title">Recent updates</div>
                     <div class="status-stories" id="statusStories">
                         <button class="my-status-card" id="myStatusCard">
                             <div class="my-status-photo" id="myStatusPhoto"><span id="myStatusInitial">S</span></div>
@@ -1450,7 +1451,7 @@ hr {
                 <nav class="status-bottom-nav" aria-label="Main navigation">
                     <button data-main-nav="chat"><span>▤</span>Chats</button>
                     <button class="active" data-main-nav="status"><span>◉</span>Updates</button>
-                    <button data-main-nav="communities"><span>♧</span>Communities</button>
+                    
                     <button data-main-nav="call"><span>♧</span>Calls</button>
                 </nav>
                 <input id="statusFileInput" type="file" accept="image/*,video/*" multiple class="hidden">
@@ -1523,14 +1524,14 @@ hr {
             <div id="statusViewerAvatar" class="status-viewer-avatar">S</div>
             <div><strong id="statusViewerName">My status</strong><small id="statusViewerTime"></small></div>
         </div>
-        <button type="button" id="editMyStatusButton" aria-label="Edit this status" title="Edit status">✎</button><button type="button" id="deleteMyStatusButton" aria-label="Delete this status" title="Delete status">⋮</button>
+        <button type="button" id="shareMyStatusButton" aria-label="Share this status" title="Share status"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.7 10.7 6.6-4.4m-6.6 7 6.6 4.4"/></svg></button><button type="button" id="editMyStatusButton" aria-label="Edit this status" title="Edit status">✎</button><button type="button" id="deleteMyStatusButton" aria-label="Delete this status" title="Delete status">⌫</button>
     </header>
     <div class="status-viewer-stage" id="statusViewerStage">
         <button type="button" class="status-viewer-side previous" id="previousStatusButton" aria-label="Previous status"></button>
         <div id="statusViewerContent" class="status-viewer-content"></div>
         <button type="button" class="status-viewer-side next" id="nextStatusButton" aria-label="Next status"></button>
     </div>
-    <footer class="status-viewer-footer" id="statusViewerFooter"></footer>
+    <footer class="status-viewer-footer" id="statusViewerFooter"><button type="button" id="viewedByButton" class="viewed-by-button" hidden>◉ Viewed by 0</button><span id="statusViewerPosition"></span></footer>
 </div>
 
 <!-- UPDATES MENU -->
@@ -3044,7 +3045,11 @@ function renderStatusViewer() {
     $("statusViewerName").textContent=item.is_mine?"My status":(item.username||"Status");
     $("statusViewerTime").textContent=item.created_at?new Date(item.created_at).toLocaleString():"";
     $("statusViewerAvatar").textContent=(item.username||currentUser||"S").charAt(0).toUpperCase();
-    $("statusViewerFooter").textContent=(statusViewerIndex+1)+" of "+statusViewerItems.length;
+    $("statusViewerFooter").querySelector("#statusViewerPosition").textContent=(statusViewerIndex+1)+" of "+statusViewerItems.length;
+    const viewedButton=$("viewedByButton");
+    viewedButton.hidden=!item.is_mine;
+    viewedButton.textContent="◉ Viewed by "+Number(item.view_count||0);
+    viewedButton.dataset.statusId=item.id;
     $("deleteMyStatusButton").classList.toggle("hidden",!item.is_mine);
     $("statusViewerProgress").replaceChildren();
     statusViewerItems.forEach((entry,index)=>{
@@ -3070,6 +3075,26 @@ function updateCurrentStatusProgress(duration){
     const fill=bar.querySelector(".status-progress-fill");
     if(fill)fill.style.animationDuration=duration+"ms";
 }
+$("shareMyStatusButton").addEventListener("click",async event=>{
+    event.stopPropagation();
+    const item=statusViewerItems[statusViewerIndex];
+    if(!item)return;
+    const shareUrl=location.origin+"/";
+    const shareData={title:"KCHAT status",text:item.text||"Check out this KCHAT status",url:shareUrl};
+    try{
+        if(navigator.share) await navigator.share(shareData);
+        else if(navigator.clipboard){await navigator.clipboard.writeText((item.text?item.text+" ":"")+shareUrl);alert("Status link copied.");}
+        else alert("Sharing is not supported on this browser.");
+    }catch(error){if(error.name!=="AbortError")alert("Could not share this status.");}
+});
+$("viewedByButton").addEventListener("click",event=>{
+    event.stopPropagation();
+    const item=statusViewerItems.find(entry=>entry.id===$("viewedByButton").dataset.statusId);
+    if(!item||!item.is_mine)return;
+    const viewers=Array.isArray(item.viewers)?item.viewers:[];
+    const lines=viewers.length?viewers.map(viewer=>viewer.username+" · "+new Date(viewer.viewed_at).toLocaleString()).join("\\n"):"No views yet.";
+    alert("Viewed by ("+viewers.length+")\\n\\n"+lines);
+});
 function openStatusViewer(items,index=0) {
     clearStatusViewerTimer();
     statusViewerItems=items||[];
@@ -3263,6 +3288,7 @@ function renderStatusStories(){
         if(!selected)return;
         const personStatuses=statuses.filter(status=>!status.is_mine&&status.username===selected.username);
         openStatusViewer(personStatuses,Math.max(0,personStatuses.findIndex(status=>status.id===selected.id)));
+        apiRequest("/api/statuses/"+encodeURIComponent(selected.id)+"/view",{method:"POST"}).catch(error=>console.warn("Status view not recorded:",error));
     }));
 }
 
