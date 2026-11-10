@@ -2824,6 +2824,21 @@ async def get_statuses(request: Request):
                 ORDER BY s.created_at DESC
             """, (account["id"], account["id"])).fetchall()
 
+        privacy = get_privacy_settings(account["id"])
+        audience = privacy.get("status_audience", "all_contacts")
+        excluded = {str(name).lower() for name in privacy.get("status_excluded", [])}
+        allowed = {str(name).lower() for name in privacy.get("status_allowed", [])}
+
+        visible_rows = []
+        for row in rows:
+            is_mine = row["username"].lower() == account["username"].lower()
+            if not is_mine:
+                if audience == "my_contacts_except" and row["username"].lower() in excluded:
+                    continue
+                if audience == "only_share_with" and row["username"].lower() not in allowed:
+                    continue
+            visible_rows.append(row)
+
         return {
             "success": True,
             "statuses": [{
@@ -2836,7 +2851,7 @@ async def get_statuses(request: Request):
                 "created_at": row["created_at"].isoformat(),
                 "expires_at": row["expires_at"].isoformat(),
                 "is_mine": row["username"].lower() == account["username"].lower()
-            } for row in rows]
+            } for row in visible_rows]
         }
     except Exception as error:
         print("Get statuses error:", error)
