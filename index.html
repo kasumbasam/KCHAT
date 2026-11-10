@@ -2003,6 +2003,31 @@ function hide(element) {
     if (element) element.classList.add("hidden");
 }
 
+/*
+ * Central Updates navigation handler.
+ * Capture the tap before any other tab handlers so the Updates screen
+ * still opens even if another navigation handler fails.
+ */
+function openKchatUpdatesScreen() {
+    activeTab = "status";
+    document.querySelectorAll(".whatsapp-tab-btn").forEach(button => {
+        button.classList.toggle("active", button.dataset.tab === "status");
+    });
+    hide($("chatScreen"));
+    hide($("welcomeScreen"));
+    show($("statusScreen"));
+    if (typeof loadStatuses === "function") loadStatuses();
+    if (typeof loadChannels === "function") loadChannels();
+}
+
+document.addEventListener("click", event => {
+    const statusButton = event.target.closest('.whatsapp-tab-btn[data-tab="status"], [data-main-nav="status"]');
+    if (!statusButton) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    openKchatUpdatesScreen();
+}, true);
+
 function showMessage(element, message, error = false) {
     if (!element) return;
     element.textContent = message;
