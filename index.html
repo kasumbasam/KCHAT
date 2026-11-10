@@ -335,6 +335,17 @@ hr {
 .chat-item-name {
     font-weight:bold;
     margin-bottom:6px;
+    display:flex;
+    align-items:center;
+    gap:7px;
+}
+.chat-pin-indicator {
+    color:var(--muted);
+    font-size:13px;
+    flex:0 0 auto;
+}
+.chat-item.is-pinned {
+    background:color-mix(in srgb, var(--panel2) 48%, transparent);
 }
 
 .chat-item-preview {
@@ -2373,10 +2384,10 @@ function renderContacts() {
             : "";
 
         return `
-            <div class="chat-item" data-username="${escapeHTML(name)}">
+            <div class="chat-item${contact.pinned ? " is-pinned" : ""}" data-username="${escapeHTML(name)}">
                 <div class="avatar">${avatarContent}</div>
                 <div class="chat-item-info">
-                    <div class="chat-item-name">${escapeHTML(name)}</div>
+                    <div class="chat-item-name"><span>${escapeHTML(name)}</span>${contact.pinned ? '<span class="chat-pin-indicator" title="Pinned chat" aria-label="Pinned chat">📌</span>' : ""}</div>
                     <div class="chat-item-preview"><span>${report}</span><span>${escapeHTML(preview)}</span></div>
                 </div>
                 <div class="chat-item-time">
@@ -2416,6 +2427,7 @@ document.querySelectorAll(".filter-btn").forEach(button => {
 async function openChat(username) {
     if (!username) return;
     currentChat = username;
+    updateChatMenuPinLabel();
     $("activeChatName").textContent = username;
     $("activeChatAvatar").textContent = username.charAt(0).toUpperCase();
     $("activeChatStatus").textContent = onlineUsers.has(username.toLowerCase()) ? "Online" : "Offline";
@@ -2792,6 +2804,38 @@ $("chatMoreButton").addEventListener("click", (e) => {
     e.stopPropagation();
     $("chatMenu").classList.toggle("hidden");
 });
+
+// Pin or unpin the current conversation for this account only.
+$("chatMenuPin").addEventListener("click", async () => {
+    const username = currentChat;
+    if (!username) return;
+    const contact = contacts.find(item => contactName(item).toLowerCase() === username.toLowerCase());
+    const shouldPin = !(contact && contact.pinned === true);
+    const button = $("chatMenuPin");
+    button.disabled = true;
+    try {
+        const result = await apiRequest("/api/chats/" + encodeURIComponent(username) + "/settings", {
+            method: "PUT",
+            body: JSON.stringify({ pinned: shouldPin })
+        });
+        if (!result || result.success !== true) {
+            throw new Error(result?.error || "KCHAT could not update this chat pin.");
+        }
+        if (contact) contact.pinned = shouldPin;
+        button.textContent = shouldPin ? "Unpin conversation" : "Pin conversation";
+        $("chatMenu").classList.add("hidden");
+        await loadContacts();
+    } catch (error) {
+        alert(error.message || "Could not update pinned chat.");
+    } finally {
+        button.disabled = false;
+    }
+});
+
+function updateChatMenuPinLabel() {
+    const contact = contacts.find(item => contactName(item).toLowerCase() === String(currentChat || "").toLowerCase());
+    $("chatMenuPin").textContent = contact && contact.pinned === true ? "Unpin conversation" : "Pin conversation";
+}
 
 // Click anywhere on screen to close dropdown menus (WhatsApp style)
 document.addEventListener("click", (e) => {
