@@ -668,19 +668,24 @@ hr {
 .updates-header{height:70px;flex:0 0 70px;display:flex;align-items:center;justify-content:space-between;padding:0 20px 0 28px;background:#080d10}
 .updates-header h1{font-size:31px;font-weight:500;margin:0}
 .updates-header-actions{display:flex;gap:8px}
-.status-page-scroll{flex:1;overflow-y:auto;padding:12px 18px 105px}
-.status-section-title,.channels-heading h2{font-size:24px;font-weight:600;margin:8px 0 16px}
-.status-stories{display:flex;gap:12px;overflow-x:auto;padding:2px 0 18px;min-height:250px}
-.my-status-card,.status-story-card{position:relative;flex:0 0 158px;height:238px;border:0;border-radius:22px;overflow:hidden;background:#151b1f;color:#fff;text-align:left;padding:0}
-.my-status-photo{position:absolute;top:20px;left:50%;transform:translateX(-50%);width:92px;height:92px;border:4px solid #25d366;border-radius:50%;display:grid;place-items:center;background:#303a40;font-size:34px;overflow:hidden}
+.status-page-scroll{flex:1;overflow-y:auto;padding:10px 0 105px}
+.status-section-title{font-size:19px;font-weight:600;color:#aeb8bd;margin:17px 18px 8px}
+.status-stories{display:flex;flex-direction:column;gap:0;min-height:0}
+.my-status-card,.status-story-card{position:relative;width:100%;min-height:78px;display:flex;align-items:center;gap:14px;padding:10px 18px;border:0;border-radius:0;background:transparent;color:#f5f7f8;text-align:left;overflow:hidden}
+.my-status-photo,.status-story-avatar{position:relative;left:auto;top:auto;transform:none;width:54px;height:54px;flex:0 0 54px;border:3px solid #25d366;border-radius:50%;display:grid;place-items:center;background:#263238;font:600 21px Arial,sans-serif;overflow:hidden}
 .my-status-photo img,.status-story-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-.status-plus{position:absolute;top:78px;left:calc(50% + 17px);width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#25d366;color:#06130b;font:700 29px Arial;border:3px solid #080d10}
-.status-card-caption{position:absolute;left:14px;bottom:13px;font-size:19px}
-.other-status-stories{display:flex;gap:12px}
-.status-story-card{background:linear-gradient(160deg,#34434b,#11191d)}
-.status-story-avatar{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:84px;height:84px;border:4px solid #25d366;border-radius:50%;display:grid;place-items:center;background:#252d31;overflow:hidden}
-.status-story-name{position:absolute;bottom:13px;left:14px;font-size:19px}
-.status-empty-card{width:158px;height:238px;flex:0 0 158px;border-radius:22px;background:#11171b;display:grid;place-items:center;text-align:center;padding:15px;color:#7e898e;font-size:16px}
+.my-status-photo{border-color:#59656b}
+.my-status-photo.has-status{border-color:#25d366}
+.my-status-add{position:absolute;left:57px;top:48px;width:21px;height:21px;border:2px solid #080d10;border-radius:50%;display:grid;place-items:center;background:#25d366;color:#07130b;font:700 17px Arial,sans-serif}
+.my-status-copy,.status-story-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
+.my-status-copy strong,.status-story-name{font:600 17px Arial,sans-serif;color:#f5f7f8}
+.my-status-copy small,.status-story-time{font:14px Arial,sans-serif;color:#879197}
+.other-status-stories{display:flex;flex-direction:column}
+.status-story-card{min-height:76px}
+.status-story-avatar{border:3px solid #25d366}
+.status-empty-card{min-height:62px;display:flex;align-items:center;padding:0 18px;color:#7e898e;font:14px Arial,sans-serif;border-bottom:1px solid #ffffff0c}
+.status-plus{display:none}
+.status-card-caption{display:none}
 .channels-heading{display:flex;align-items:center;justify-content:space-between;margin:12px 0}
 .channels-heading h2{margin:0}
 .text-action{background:none;border:0;color:#25d366;font-size:17px}
@@ -698,11 +703,12 @@ hr {
 .channels-empty strong{color:#f5f7f8;font-size:20px}
 .channels-empty small{max-width:280px;font-size:15px}
 .channels-empty button{border:0;border-radius:20px;background:#25d366;color:#07130b;padding:9px 18px;margin-top:8px}
-.chat-status-actions{position:relative;display:flex;justify-content:flex-end;align-items:flex-end;gap:10px;padding:7px 12px 10px;background:var(--panel);border-top:1px solid var(--border);z-index:8}
-.status-create-bar{position:absolute;right:82px;bottom:8px;left:auto;width:min(360px,calc(100vw - 120px));min-height:64px;display:flex;align-items:center;justify-content:space-around;gap:2px;padding:7px 8px;background:#080d10;border:1px solid #ffffff20;border-radius:16px;box-shadow:0 8px 24px #0009;z-index:9}
+.chat-status-actions{position:absolute;right:18px;bottom:98px;display:flex;justify-content:flex-end;align-items:flex-end;gap:10px;padding:0;background:transparent;border:0;z-index:25;pointer-events:none}
+.chat-status-actions button{pointer-events:auto}
+.status-create-bar{position:absolute;right:68px;bottom:0;left:auto;width:min(360px,calc(100vw - 105px));min-height:64px;display:flex;align-items:center;justify-content:space-around;gap:2px;padding:7px 8px;background:#202c32;border:1px solid #ffffff20;border-radius:16px;box-shadow:0 8px 24px #0009;z-index:26}
 .status-create-bar:not(.is-open){display:none}
 .status-create-bar.is-open{display:flex}
-.status-fab-stack{position:relative;right:auto;bottom:auto;z-index:10;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.status-fab-stack{position:relative;right:auto;bottom:auto;z-index:27;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
 .status-fab{display:grid;place-items:center;border:0;border-radius:50%;box-shadow:0 3px 10px #0008;cursor:pointer}
 .status-fab svg{width:25px;height:25px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .status-camera-fab{width:48px;height:48px;background:#263238;color:#f5f7f8}
@@ -774,7 +780,7 @@ hr {
 .status-viewer-footer{min-height:38px;text-align:center;color:#cbd2d6;font-size:13px;padding-top:10px}
 
 @media(min-width:751px){.status-screen{left:370px}.status-bottom-nav{display:none}}
-@media(max-width:750px){.status-screen{left:0}.status-page-scroll{padding-left:14px;padding-right:14px}.updates-header{padding-left:18px}.my-status-card,.status-story-card,.status-empty-card{flex-basis:145px;height:225px}.status-camera-fab{width:82px;height:82px}.status-floating-actions{bottom:95px;right:16px}.status-bottom-nav{height:78px;flex-basis:78px}}
+@media(max-width:750px){.status-screen{left:0}.status-page-scroll{padding-left:14px;padding-right:14px}.updates-header{padding-left:18px}.my-status-card,.status-story-card{min-height:76px}.status-camera-fab{width:48px;height:48px}.status-pen-fab{width:56px;height:56px}.chat-status-actions{right:14px;bottom:94px}.status-bottom-nav{height:78px;flex-basis:78px}}
 
 .message-composer {
     position:relative;
@@ -1502,7 +1508,37 @@ hr {
                         <button type="button" class="emoji-choice" data-emoji="😀">😀</button><button type="button" class="emoji-choice" data-emoji="😃">😃</button><button type="button" class="emoji-choice" data-emoji="😄">😄</button><button type="button" class="emoji-choice" data-emoji="😁">😁</button><button type="button" class="emoji-choice" data-emoji="😆">😆</button><button type="button" class="emoji-choice" data-emoji="😅">😅</button><button type="button" class="emoji-choice" data-emoji="😂">😂</button><button type="button" class="emoji-choice" data-emoji="🙂">🙂</button><button type="button" class="emoji-choice" data-emoji="😉">😉</button><button type="button" class="emoji-choice" data-emoji="😊">😊</button><button type="button" class="emoji-choice" data-emoji="😍">😍</button><button type="button" class="emoji-choice" data-emoji="🥰">🥰</button><button type="button" class="emoji-choice" data-emoji="😘">😘</button><button type="button" class="emoji-choice" data-emoji="😎">😎</button><button type="button" class="emoji-choice" data-emoji="🤔">🤔</button><button type="button" class="emoji-choice" data-emoji="😭">😭</button><button type="button" class="emoji-choice" data-emoji="😡">😡</button><button type="button" class="emoji-choice" data-emoji="👍">👍</button><button type="button" class="emoji-choice" data-emoji="👎">👎</button><button type="button" class="emoji-choice" data-emoji="👋">👋</button><button type="button" class="emoji-choice" data-emoji="🙏">🙏</button><button type="button" class="emoji-choice" data-emoji="❤️">❤️</button><button type="button" class="emoji-choice" data-emoji="💙">💙</button><button type="button" class="emoji-choice" data-emoji="💚">💚</button><button type="button" class="emoji-choice" data-emoji="🎉">🎉</button><button type="button" class="emoji-choice" data-emoji="🔥">🔥</button><button type="button" class="emoji-choice" data-emoji="✨">✨</button><button type="button" class="emoji-choice" data-emoji="💯">💯</button><button type="button" class="emoji-choice" data-emoji="😂">😂</button><button type="button" class="emoji-choice" data-emoji="🤝">🤝</button>
                     </div>
                 </div>
-                <div class="chat-status-actions" aria-label="Status shortcuts">
+                <section id="statusScreen" class="status-screen hidden">
+                <header class="updates-header">
+                    <h1>Updates</h1>
+                    <div class="updates-header-actions">
+                        <button class="icon-btn" id="updatesSearchButton" aria-label="Search updates" title="Search"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></button>
+                        <button class="icon-btn" id="updatesMenuButton" aria-label="Updates menu" title="More">⋮</button>
+                    </div>
+                </header>
+                <div class="status-page-scroll">
+                    <div class="status-section-title">Status</div>
+                    <div class="status-stories" id="statusStories">
+                        <button class="my-status-card" id="myStatusCard">
+                            <span class="my-status-photo" id="myStatusPhoto"><span id="myStatusInitial">S</span></span>
+                            <span class="my-status-add">+</span>
+                            <span class="my-status-copy"><strong id="myStatusTitle">My status</strong><small id="myStatusSubtitle">Tap to add status</small></span>
+                        </button>
+                    </div>
+                    <div class="status-section-title">Recent updates</div>
+                    <div id="otherStatusStories" class="other-status-stories">
+                        <div class="status-empty-card">No recent updates</div>
+                    </div>
+                    <div class="status-stories"                     </div>
+                    <div class="channels-heading">
+                        <h2>Channels</h2>
+                        <button class="text-action" id="exploreChannelsButton">Explore more</button>
+                    </div>
+                    <div id="channelList" class="channel-list">
+                        <div class="channels-empty"><span>◉</span><strong>Discover channels</strong><small>Follow channels to see news, creators and updates here.</small><button id="channelsExploreEmpty">Explore channels</button></div>
+                    </div>
+                </div>
+<div class="chat-status-actions" aria-label="Status shortcuts">
                 <div class="status-create-bar" aria-label="Create a status">
                     <button type="button" id="recordVoiceStatus" class="status-create-option"><span class="status-create-icon">🎙</span><span>Voice</span></button>
                     <button type="button" id="openStatusOverview" class="status-create-option"><span class="status-create-icon">◉</span><span>Status</span></button>
@@ -1522,35 +1558,7 @@ hr {
                 </div>
             </div>
 
-            <section id="statusScreen" class="status-screen hidden">
-                <header class="updates-header">
-                    <h1>Updates</h1>
-                    <div class="updates-header-actions">
-                        <button class="icon-btn" id="updatesSearchButton" aria-label="Search updates" title="Search"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></button>
-                        <button class="icon-btn" id="updatesMenuButton" aria-label="Updates menu" title="More">⋮</button>
-                    </div>
-                </header>
-                <div class="status-page-scroll">
-                    <div class="status-section-title">Recent updates</div>
-                    <div class="status-stories" id="statusStories">
-                        <button class="my-status-card" id="myStatusCard">
-                            <div class="my-status-photo" id="myStatusPhoto"><span id="myStatusInitial">S</span></div>
-                            <span class="status-plus">+</span>
-                            <span class="status-card-caption">My status</span>
-                        </button>
-                        <div id="otherStatusStories" class="other-status-stories">
-                            <div class="status-empty-card">No recent updates</div>
-                        </div>
-                    </div>
-                    <div class="channels-heading">
-                        <h2>Channels</h2>
-                        <button class="text-action" id="exploreChannelsButton">Explore more</button>
-                    </div>
-                    <div id="channelList" class="channel-list">
-                        <div class="channels-empty"><span>◉</span><strong>Discover channels</strong><small>Follow channels to see news, creators and updates here.</small><button id="channelsExploreEmpty">Explore channels</button></div>
-                    </div>
-                </div>
-                <nav class="status-bottom-nav" aria-label="Main navigation">
+                            <nav class="status-bottom-nav" aria-label="Main navigation">
                     <button data-main-nav="chat"><span>▤</span>Chats</button>
                     <button class="active" data-main-nav="status"><span>◉</span>Updates</button>
                     
@@ -3486,10 +3494,18 @@ function renderStatusStories(){
     const others=statuses.filter(item=>!item.is_mine);
     const photo=currentProfile?.profile_picture;
     $("myStatusPhoto").innerHTML=photo?'<img src="'+escapeHTML(photo)+'" alt="My profile">':'<span id="myStatusInitial">'+escapeHTML((currentUser||"S").charAt(0).toUpperCase())+'</span>';
-    $("myStatusCard").querySelector(".status-card-caption").textContent=mine.length?"My status · "+mine.length:"My status";
-    $("otherStatusStories").innerHTML=others.length?others.map(item=>{
+    $("myStatusPhoto").classList.toggle("has-status",mine.length>0);
+    $("myStatusTitle").textContent=mine.length?"My status · "+mine.length:"My status";
+    $("myStatusSubtitle").textContent=mine.length?"Tap to view your updates":"Tap to add status";
+    const latestByUser=new Map();
+    others.forEach(item=>{
+        const key=item.username||"";
+        if(!latestByUser.has(key))latestByUser.set(key,item);
+    });
+    $("otherStatusStories").innerHTML=latestByUser.size?Array.from(latestByUser.values()).map(item=>{
         const pic=item.profile_picture?'<img src="'+escapeHTML(item.profile_picture)+'" alt="">':escapeHTML((item.username||"?").charAt(0).toUpperCase());
-        return '<button class="status-story-card" type="button" data-status-id="'+escapeHTML(item.id)+'"><span class="status-story-avatar">'+pic+'</span><span class="status-story-name">'+escapeHTML(item.username)+'</span></button>';
+        const time=item.created_at?new Date(item.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"";
+        return '<button class="status-story-card" type="button" data-status-id="'+escapeHTML(item.id)+'"><span class="status-story-avatar">'+pic+'</span><span class="status-story-copy"><span class="status-story-name">'+escapeHTML(item.username)+'</span><span class="status-story-time">'+escapeHTML(time)+'</span></span></button>';
     }).join(""):'<div class="status-empty-card">No recent updates</div>';
     $("otherStatusStories").querySelectorAll("[data-status-id]").forEach(card=>card.addEventListener("click",()=>{
         const selected=statuses.find(status=>status.id===card.dataset.statusId);
