@@ -1303,6 +1303,21 @@ hr {
  #textStatusModal #textStatusVoiceButton{flex-basis:40px!important;width:40px!important;height:40px!important;min-width:40px!important}
 }
 
+
+/* Text-status layout: Aa and emoji in the top toolbar; writing area centred. */
+#textStatusModal .text-status-header{justify-content:space-between!important;gap:12px!important}
+#textStatusModal .text-status-top-tools{display:flex!important;align-items:center!important;gap:8px!important}
+#textStatusModal .text-status-top-tools button{width:42px!important;height:42px!important;min-width:42px!important;border:0!important;border-radius:50%!important;background:#00000028!important;color:#fff!important;display:grid!important;place-items:center!important}
+#textStatusModal #textStatusStyleButton{font:800 17px Arial,sans-serif!important}
+#textStatusModal #textStatusEmojiButton{font:27px Arial,sans-serif!important}
+#textStatusModal .text-status-writing-area{align-items:center!important;justify-content:center!important;padding:0 4px!important}
+#textStatusModal #textStatusInput{align-self:stretch!important;text-align:center!important;display:block!important;padding:18px 8px!important}
+#textStatusModal .text-status-emoji-tray{top:66px!important;bottom:auto!important;z-index:30!important}
+#textStatusModal .text-status-actions{justify-content:space-between!important}
+@media(max-width:380px){
+ #textStatusModal .text-status-top-tools{gap:5px!important}
+ #textStatusModal .text-status-top-tools button{width:38px!important;height:38px!important;min-width:38px!important}
+}
 </style>
 </head>
 
@@ -1622,13 +1637,14 @@ hr {
     <section class="text-status-card" aria-label="Create a text status">
         <header class="text-status-header">
             <button type="button" id="cancelTextStatus" aria-label="Close text status">×</button>
-            <strong>Text status</strong>
-            <button type="button" id="changeTextStatusBackground" aria-label="Change background" title="Change background">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18h1.2a2 2 0 0 0 1.4-3.4 1.7 1.7 0 0 1 1.2-2.9H18a3 3 0 0 0 3-3c0-4.8-4-8.7-9-8.7Z"/><circle cx="7.5" cy="10" r="1"/><circle cx="11" cy="6.8" r="1"/><circle cx="16" cy="8" r="1"/></svg>
-            </button>
+            <div class="text-status-top-tools">
+                <button type="button" id="changeTextStatusBackground" aria-label="Change background" title="Change background">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18h1.2a2 2 0 0 0 1.4-3.4 1.7 1.7 0 0 1 1.2-2.9H18a3 3 0 0 0 3-3c0-4.8-4-8.7-9-8.7Z"/><circle cx="7.5" cy="10" r="1"/><circle cx="11" cy="6.8" r="1"/><circle cx="16" cy="8" r="1"/></svg>
+                </button>
+            </div>
         </header>
         <div class="text-status-writing-area" id="textStatusWritingArea">
-            <textarea id="textStatusInput" maxlength="700" placeholder="Type a status" aria-label="Write your status"></textarea>
+            <textarea id="textStatusInput" maxlength="700" placeholder="Type status" aria-label="Write your status"></textarea>
             <button type="button" class="text-status-at-button" id="textStatusAtButton" aria-label="Mention a person or group">@</button>
             <div id="textStatusMentionList" class="status-mention-list hidden"></div>
         </div>
