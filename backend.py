@@ -652,6 +652,64 @@ async def contacts(request: Request):
     return {"contacts": [row["username"] for row in rows]}
 
 
+@app.post("/api/contacts/match")
+async def match_phone_contacts(request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    try:
+        data = await request.json()
+        supplied = data.get("phone_numbers", [])
+
+        if not isinstance(supplied, list) or len(supplied) > 500:
+            return JSONResponse({
+                "error": "Send a list of up to 500 phone numbers."
+            }, status_code=400)
+
+        keys = list(dict.fromkeys(
+            key for key in (phone_key(value) for value in supplied)
+            if key
+        ))
+
+        if not keys:
+            return {"matches": []}
+
+        placeholders = ", ".join(["%s"] * len(keys))
+        with get_db() as conn:
+            rows = conn.execute(f"""
+                SELECT id, username, phone_number, profile_picture, about
+                FROM accounts
+                WHERE phone_key IN ({placeholders})
+                AND id != %s
+                AND NOT EXISTS (
+                    SELECT 1 FROM blocked_users
+                    WHERE (owner_id = %s AND blocked_id = accounts.id)
+                       OR (owner_id = accounts.id AND blocked_id = %s)
+                )
+                ORDER BY username
+            """, (*keys, account["id"], account["id"], account["id"])).fetchall()
+
+        return {
+            "matches": [
+                {
+                    "username": row["username"],
+                    "phone_number": row["phone_number"],
+                    "profile_picture": row["profile_picture"],
+                    "about": row["about"]
+                }
+                for row in rows
+            ]
+        }
+
+    except Exception as error:
+        print("Phone contact matching error:", error)
+        return JSONResponse({
+            "error": "Could not match phone contacts."
+        }, status_code=500)
+
+
 @app.post("/api/contacts")
 async def add_contact(request: Request):
     account = get_account_from_request(request)
