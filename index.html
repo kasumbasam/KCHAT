@@ -1184,6 +1184,38 @@ hr {
 .status-editor-canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
 .status-editor-top{display:flex;justify-content:space-between;align-items:center}
 
+
+/* Full-screen WhatsApp-style status editing layout */
+.status-editor-backdrop{padding:0;background:#050708}
+.status-editor-backdrop .status-editor-card{width:min(100vw,620px);height:100dvh;max-height:100dvh;border-radius:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));display:flex;flex-direction:column;overflow:hidden;background:#050708}
+.status-editor-top{height:48px;flex:0 0 48px;display:flex;align-items:center;gap:14px}
+.status-editor-top strong{font:600 18px Arial,sans-serif;flex:1}
+.status-editor-top button{border:0;background:transparent;color:#fff;font:20px Arial,sans-serif;padding:8px}
+#saveMediaStatus{background:#25d366;color:#06130b;border-radius:22px;padding:9px 18px;font-weight:700}
+.status-editor-preview-wrap{position:relative;flex:1;min-height:180px;margin:8px 0;overflow:hidden;border-radius:16px;background:#11191d}
+.status-editor-preview{position:absolute;inset:0;height:auto;margin:0;border-radius:16px;background:#11191d}
+.status-editor-preview img,.status-editor-preview video{width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain}
+.status-editor-floating-tools{position:absolute;right:12px;top:14px;z-index:4;display:flex;flex-direction:column;gap:10px}
+.status-editor-floating-tools button{width:42px;height:42px;padding:0;border-radius:50%;background:#111b;color:#fff;border:1px solid #ffffff55;font:22px Arial,sans-serif}
+.status-editor-floating-tools button.active{background:#25d366;color:#06130b}
+.status-emoji-tray{position:absolute;z-index:6;right:62px;top:12px;max-width:calc(100% - 80px);display:flex;flex-wrap:wrap;gap:5px;padding:8px;border-radius:14px;background:#182126}
+.status-emoji-tray button{border:0;background:#29343a;border-radius:9px;padding:7px;font:24px Arial}
+.status-filter-tray{position:absolute;z-index:5;left:0;right:0;bottom:0;padding:14px 8px 12px;background:linear-gradient(transparent,#000e 18%,#000f)}
+.status-filter-hint{text-align:center;color:#fff;font:12px Arial;margin-bottom:8px}
+.status-filter-options{display:flex;gap:10px;overflow-x:auto;padding:3px 2px}
+.status-filter-options button{flex:0 0 62px;display:flex;flex-direction:column;align-items:center;gap:5px;border:0;background:transparent;color:#fff;font:11px Arial}
+.filter-swatch{width:52px;height:52px;border-radius:50%;border:2px solid #ffffff88;background:linear-gradient(135deg,#526a75,#d6b8a0)}
+.filter-pop{background:linear-gradient(135deg,#f76b45,#36c9b0)}.filter-bw{filter:grayscale(1);background:linear-gradient(135deg,#222,#ddd)}.filter-cool{background:linear-gradient(135deg,#7cc8f2,#263c79)}.filter-chrome{background:linear-gradient(135deg,#c7d1d6,#52616a)}.filter-film{background:linear-gradient(135deg,#b58c61,#384b3d)}
+.status-editor-adjustments{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:4px 0}
+.status-editor-adjustments label{display:flex;align-items:center;gap:5px;font:12px Arial;color:#9ca9ae}
+.status-editor-adjustments select{width:auto;margin:0;padding:6px;background:#1a252a;color:#fff;border:1px solid #ffffff30;border-radius:8px;font:12px Arial}
+.status-editor-adjustments button{margin-left:auto;border:0;border-radius:18px;padding:8px 13px;background:#1a252a;color:#fff;font:13px Arial}
+.status-editor-caption{align-items:center;margin-top:8px}
+.status-editor-caption textarea{margin:0;min-height:46px;max-height:86px;padding:11px 13px;border-radius:24px;background:#1a252a;color:#fff;border:0;font:15px Arial}
+.status-editor-caption .status-at-button,.status-file-button{flex:0 0 40px;width:40px;height:40px;border-radius:50%;border:0;background:#1a252a;color:#fff;font:20px Arial}
+.status-upload-label{min-height:16px;font:12px Arial;color:#25d366}
+@media(min-width:700px){.status-editor-backdrop{background:#000e}.status-editor-backdrop .status-editor-card{height:min(94dvh,900px);max-height:min(94dvh,900px);border-radius:18px;margin:auto}}
+
 </style>
 </head>
 
@@ -1501,17 +1533,22 @@ hr {
 
 
 <!-- MEDIA STATUS EDITOR -->
-<div id="mediaStatusEditor" class="modal-backdrop hidden">
+<div id="mediaStatusEditor" class="modal-backdrop hidden status-editor-backdrop">
  <div class="status-editor-card">
   <div class="status-editor-top"><button type="button" id="discardStatusEdit" aria-label="Discard">✕</button><strong>Edit status</strong><button type="button" id="saveMediaStatus">Share</button></div>
-  <div id="statusEditorPreview" class="status-editor-preview"></div>
-  <div class="status-editor-tools">
-   <button type="button" id="statusDrawButton">✎ Pencil</button><select id="statusDrawColor" aria-label="Pen colour"><option value="#ffffff">White</option><option value="#ff5252">Red</option><option value="#ffeb3b">Yellow</option><option value="#25d366">Green</option><option value="#70d6ff">Blue</option><option value="#ff69b4">Pink</option></select>
-   <select id="statusPenSize" aria-label="Pen size"><option value="3">Small</option><option value="7" selected>Medium</option><option value="13">Large</option></select>
-   <button type="button" id="statusAddText">Aa Text</button><button type="button" id="statusAddSticker">Sticker</button><button type="button" id="statusCropButton">Crop</button>
+  <div class="status-editor-preview-wrap"><div id="statusEditorPreview" class="status-editor-preview"></div>
+   <div class="status-editor-floating-tools">
+    <button type="button" id="statusCropButton" title="Crop">▧</button><button type="button" id="statusAddSticker" title="Sticker and emoji">☻</button><button type="button" id="statusDrawButton" title="Pen">✎</button><button type="button" id="statusAddText" title="Add text">T</button>
+   </div>
+   <div id="statusEmojiTray" class="status-emoji-tray hidden"><button type="button" data-status-emoji="❤️">❤️</button><button type="button" data-status-emoji="😂">😂</button><button type="button" data-status-emoji="😍">😍</button><button type="button" data-status-emoji="🔥">🔥</button><button type="button" data-status-emoji="✨">✨</button><button type="button" data-status-emoji="🥰">🥰</button><button type="button" data-status-emoji="👍">👍</button><button type="button" data-status-emoji="🎉">🎉</button></div>
+   <div id="statusFilterTray" class="status-filter-tray hidden"><div class="status-filter-hint">Swipe up to view filters</div><div class="status-filter-options">
+    <button type="button" data-filter-value="none"><span class="filter-swatch filter-none"></span>None</button><button type="button" data-filter-value="saturate(1.65) contrast(1.08)"><span class="filter-swatch filter-pop"></span>Pop</button><button type="button" data-filter-value="grayscale(1)"><span class="filter-swatch filter-bw"></span>B&amp;W</button><button type="button" data-filter-value="saturate(1.12) hue-rotate(12deg)"><span class="filter-swatch filter-cool"></span>Cool</button><button type="button" data-filter-value="contrast(1.28) saturate(.78)"><span class="filter-swatch filter-chrome"></span>Chrome</button><button type="button" data-filter-value="sepia(.22) contrast(1.12) saturate(.82)"><span class="filter-swatch filter-film"></span>Film</button>
+   </div></div>
   </div>
-  <div class="status-editor-tools"><select id="statusFilter" aria-label="Colour filter"><option value="none">Original</option><option value="grayscale(1)">B&W</option><option value="sepia(.8)">Vintage</option><option value="saturate(1.8)">Vivid</option><option value="contrast(1.25)">Contrast</option></select><button type="button" id="addAnotherStatusMedia">＋ Add photo/video</button><input id="anotherStatusFile" type="file" accept="image/*,video/*" multiple class="hidden"></div>
-  <div class="status-mention-composer"><textarea id="mediaStatusCaption" rows="2" maxlength="700" placeholder="Add a caption… Type @ to mention a person or group"></textarea><button type="button" class="status-at-button" id="mediaStatusAtButton" aria-label="Mention a person or group">@</button></div><div id="statusMentionList" class="status-mention-list hidden"></div><div id="statusUploadProgress" class="status-upload-label"></div>
+  <div class="status-editor-adjustments"><label>Pen colour <select id="statusDrawColor"><option value="#ffffff">White</option><option value="#ff5252">Red</option><option value="#ffeb3b">Yellow</option><option value="#25d366">Green</option><option value="#70d6ff">Blue</option><option value="#ff69b4">Pink</option></select></label><label>Pen size <select id="statusPenSize"><option value="3">Small</option><option value="7" selected>Medium</option><option value="13">Large</option></select></label><button type="button" id="addAnotherStatusMedia" title="Add another photo or video">＋ Add file</button><input id="anotherStatusFile" type="file" accept="image/*,video/*" multiple class="hidden"></div>
+  <div class="status-mention-composer status-editor-caption"><textarea id="mediaStatusCaption" rows="2" maxlength="700" placeholder="Add a caption… Type @ to mention someone"></textarea><button type="button" class="status-at-button" id="mediaStatusAtButton" aria-label="Mention a person or group">@</button><button type="button" class="status-file-button" id="statusFileShortcut" aria-label="Add another file">＋</button></div>
+  <div id="statusMentionList" class="status-mention-list hidden"></div><div id="statusUploadProgress" class="status-upload-label"></div>
+  <select id="statusFilter" class="hidden" aria-label="Status filter"><option value="none">None</option><option value="saturate(1.65) contrast(1.08)">Pop</option><option value="grayscale(1)">B&amp;W</option><option value="saturate(1.12) hue-rotate(12deg)">Cool</option><option value="contrast(1.28) saturate(.78)">Chrome</option><option value="sepia(.22) contrast(1.12) saturate(.82)">Film</option></select>
  </div>
 </div>
 
@@ -3272,6 +3309,14 @@ $("discardStatusEdit").onclick=()=>{hide($("mediaStatusEditor"));statusEditorFil
 $("addAnotherStatusMedia").onclick=()=>$("anotherStatusFile").click();
 $("anotherStatusFile").onchange=e=>{statusEditorFiles.push(...Array.from(e.target.files||[]));e.target.value="";if(statusEditorFiles.length)setupStatusEditorPreview(statusEditorFiles[0]);$("statusUploadProgress").textContent=statusEditorFiles.length+" item(s) selected";};
 $("statusFilter").onchange=()=>{const img=$("statusEditorPreview").querySelector("img");if(img)img.style.filter=$("statusFilter").value;};
+$("statusAddSticker").onclick=()=>$("statusEmojiTray").classList.toggle("hidden");
+document.querySelectorAll("[data-status-emoji]").forEach(button=>button.addEventListener("click",()=>{$("mediaStatusCaption").value+=button.dataset.statusEmoji;$("statusEmojiTray").classList.add("hidden");}));
+$("statusFileShortcut").onclick=()=>$("anotherStatusFile").click();
+document.querySelectorAll("[data-filter-value]").forEach(button=>button.addEventListener("click",()=>{$("statusFilter").value=button.dataset.filterValue;$("statusFilter").dispatchEvent(new Event("change"));document.querySelectorAll("[data-filter-value]").forEach(item=>item.classList.toggle("active",item===button));}));
+let statusFilterSwipeStart=0;
+$("statusEditorPreview").addEventListener("touchstart",event=>{statusFilterSwipeStart=event.changedTouches[0].clientY;},{passive:true});
+$("statusEditorPreview").addEventListener("touchend",event=>{const movement=statusFilterSwipeStart-event.changedTouches[0].clientY;if(movement>45)$("statusFilterTray").classList.remove("hidden");else if(movement< -45)$("statusFilterTray").classList.add("hidden");},{passive:true});
+
 $("statusDrawButton").onclick=()=>{statusEditorDraw=!statusEditorDraw;$("statusDrawButton").classList.toggle("active",statusEditorDraw);if(statusEditorCanvas)statusEditorCanvas.style.pointerEvents=statusEditorDraw?"auto":"none";};
 $("statusAddText").onclick=()=>{const t=prompt("Enter text to add to your status:");if(t){const caption=$("mediaStatusCaption");caption.value+=(caption.value?"\\n":"")+t;}};
 $("statusAddSticker").onclick=()=>{const s=prompt("Choose a sticker or emoji:","❤️");if(s)$("mediaStatusCaption").value+=s;};
