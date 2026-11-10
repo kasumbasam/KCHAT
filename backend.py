@@ -2927,6 +2927,30 @@ async def create_status(request: Request):
         return JSONResponse({"error": "Could not share this status."}, status_code=500)
 
 
+
+
+@app.put("/api/statuses/{status_id}")
+async def update_status(status_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    try:
+        data = await request.json()
+        text_value = str(data.get("text", "")).strip()[:700]
+        ensure_status_table()
+        with get_db() as conn:
+            row = conn.execute("""
+                UPDATE status_updates SET text = %s
+                WHERE id = %s AND owner_id = %s AND expires_at > NOW()
+                RETURNING id, text, created_at, expires_at, media_data, media_type
+            """, (text_value, status_id, account["id"])).fetchone()
+        if not row:
+            return JSONResponse({"error": "Status not found or expired."}, status_code=404)
+        return {"success": True, "status": {"id": row["id"], "username": account["username"], "text": row["text"], "media_data": row["media_data"], "media_type": row["media_type"], "created_at": row["created_at"].isoformat(), "expires_at": row["expires_at"].isoformat(), "is_mine": True}}
+    except Exception as error:
+        print("Update status error:", error)
+        return JSONResponse({"error": "Could not update this status."}, status_code=500)
+
 @app.delete("/api/statuses/{status_id}")
 async def delete_status(status_id: str, request: Request):
     account = get_account_from_request(request)
