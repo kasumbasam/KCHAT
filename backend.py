@@ -2810,6 +2810,20 @@ def ensure_status_table():
         """)
 
 
+def get_status_view_details(status_id):
+    with get_db() as conn:
+        viewers = conn.execute("""
+            SELECT a.username, a.profile_picture, v.viewed_at
+            FROM status_views v JOIN accounts a ON a.id = v.viewer_id
+            WHERE v.status_id = %s ORDER BY v.viewed_at DESC
+        """, (status_id,)).fetchall()
+    return {
+        "count": len(viewers),
+        "viewers": [{"username": viewer["username"], "profile_picture": viewer["profile_picture"],
+                     "viewed_at": viewer["viewed_at"].isoformat()} for viewer in viewers]
+    }
+
+
 @app.get("/api/statuses")
 async def get_statuses(request: Request):
     account = get_account_from_request(request)
@@ -2881,17 +2895,11 @@ async def get_statuses(request: Request):
                 "expires_at": row["expires_at"].isoformat(),
                 "is_mine": str(row["owner_id"]) == str(account["id"]),
                 "view_count": (
-                    conn.execute("SELECT COUNT(*) AS count FROM status_views WHERE status_id = %s", (row["id"],)).fetchone()["count"]
+                    get_status_view_details(row["id"])["count"]
                     if str(row["owner_id"]) == str(account["id"]) else None
                 ),
                 "viewers": (
-                    [{"username": viewer["username"], "profile_picture": viewer["profile_picture"],
-                      "viewed_at": viewer["viewed_at"].isoformat()}
-                     for viewer in conn.execute("""
-                        SELECT a.username, a.profile_picture, v.viewed_at
-                        FROM status_views v JOIN accounts a ON a.id = v.viewer_id
-                        WHERE v.status_id = %s ORDER BY v.viewed_at DESC
-                     """, (row["id"],)).fetchall()]
+                    get_status_view_details(row["id"])["viewers"]
                     if str(row["owner_id"]) == str(account["id"]) else []
                 )
             } for row in visible_rows]
