@@ -2776,6 +2776,147 @@ async def chat(websocket: WebSocket, room: str):
 
         await send_online_users(room)
         # ============================================================
+# KCHAT STATUS UPDATES (24-HOUR STORIES)
+# ============================================================
+
+def ensure_status_table():
+    with get_db() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS status_updates (
+                id TEXT PRIMARY KEY,
+                owner_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                text TEXT NOT NULL DEFAULT '',
+                media_data TEXT,
+                media_type TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '24 hours')
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS status_updates_owner_expiry_idx
+            ON status_updates(owner_id, expires_at DESC)
+        """)
+
+
+@app.get("/api/statuses")
+async def get_statuses(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    try:
+        ensure_status_table()
+        with get_db() as conn:
+            rows = conn.execute("""
+                SELECT s.id, a.username, a.profile_picture, s.text,
+                       s.media_data, s.media_type, s.created_at,
+                       s.expires_at
+                FROM status_updates s
+                JOIN accounts a ON a.id = s.owner_id
+                WHERE s.expires_at > NOW()
+                  AND (
+                    s.owner_id = %s
+                    OR s.owner_id IN (
+                        SELECT contact_id FROM contacts
+                        WHERE owner_id = %s
+                    )
+                  )
+                ORDER BY s.created_at DESC
+            """, (account["id"], account["id"])).fetchall()
+
+        return {
+            "success": True,
+            "statuses": [{
+                "id": row["id"],
+                "username": row["username"],
+                "profile_picture": row["profile_picture"],
+                "text": row["text"],
+                "media_data": row["media_data"],
+                "media_type": row["media_type"],
+                "created_at": row["created_at"].isoformat(),
+                "expires_at": row["expires_at"].isoformat(),
+                "is_mine": row["username"].lower() == account["username"].lower()
+            } for row in rows]
+        }
+    except Exception as error:
+        print("Get statuses error:", error)
+        return JSONResponse({"error": "Could not load status updates."}, status_code=500)
+
+
+@app.post("/api/statuses")
+async def create_status(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    try:
+        data = await request.json()
+        text_value = str(data.get("text", "")).strip()[:700]
+        media_data = data.get("media_data")
+        media_type = data.get("media_type")
+
+        if media_data is not None:
+            if not isinstance(media_data, str) or len(media_data) > 7_000_000:
+                return JSONResponse({"error": "Media is too large. Choose a smaller file."}, status_code=413)
+            if not (media_data.startswith("data:image/") or media_data.startswith("data:video/")):
+                return JSONResponse({"error": "Choose an image or video file."}, status_code=400)
+            if media_type not in ("image", "video"):
+                media_type = "video" if media_data.startswith("data:video/") else "image"
+
+        if not text_value and not media_data:
+            return JSONResponse({"error": "Write something or choose a photo/video."}, status_code=400)
+
+        ensure_status_table()
+        status_id = uuid.uuid4().hex
+        with get_db() as conn:
+            row = conn.execute("""
+                INSERT INTO status_updates
+                    (id, owner_id, text, media_data, media_type)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING created_at, expires_at
+            """, (status_id, account["id"], text_value, media_data, media_type)).fetchone()
+
+        return {
+            "success": True,
+            "message": "Status shared.",
+            "status": {
+                "id": status_id,
+                "username": account["username"],
+                "text": text_value,
+                "media_data": media_data,
+                "media_type": media_type,
+                "created_at": row["created_at"].isoformat(),
+                "expires_at": row["expires_at"].isoformat(),
+                "is_mine": True
+            }
+        }
+    except Exception as error:
+        print("Create status error:", error)
+        return JSONResponse({"error": "Could not share this status."}, status_code=500)
+
+
+@app.delete("/api/statuses/{status_id}")
+async def delete_status(status_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    try:
+        ensure_status_table()
+        with get_db() as conn:
+            result = conn.execute("""
+                DELETE FROM status_updates
+                WHERE id = %s AND owner_id = %s
+                RETURNING id
+            """, (status_id, account["id"])).fetchone()
+        if not result:
+            return JSONResponse({"error": "Status not found."}, status_code=404)
+        return {"success": True, "message": "Status deleted."}
+    except Exception as error:
+        print("Delete status error:", error)
+        return JSONResponse({"error": "Could not delete this status."}, status_code=500)
+
+
+# ============================================================
 # KCHAT PRIVACY AND SECURITY SETTINGS
 # ============================================================
 
