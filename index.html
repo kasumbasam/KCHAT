@@ -721,12 +721,50 @@ hr {
     gap:12px;
     text-align:left;
     padding:15px 12px;
-    margin:5px 0;
-    background:var(--panel2);
-    border:1px solid var(--border);
+    margin:0;
+    background:transparent;
+    border:0;
+    border-bottom:1px solid var(--border);
     color:var(--text);
-    border-radius:9px;
+    border-radius:0;
     cursor:pointer;
+}
+.settings-row:hover {
+    background:var(--panel2);
+}
+.settings-option {
+    justify-content:flex-start;
+    min-height:76px;
+    padding:13px 4px;
+    gap:16px;
+}
+.settings-option-copy {
+    flex:1;
+    min-width:0;
+}
+.settings-option-title {
+    font-size:16px;
+    font-weight:600;
+}
+.settings-option small {
+    font-size:13px;
+    line-height:1.4;
+    margin-top:4px;
+}
+.settings-option-icon {
+    width:28px;
+    min-width:28px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--muted);
+    font-size:22px;
+    line-height:1;
+}
+.settings-option-arrow {
+    color:var(--muted);
+    font-size:23px;
+    padding:0 5px;
 }
 
 .settings-row small {
@@ -1128,77 +1166,86 @@ hr {
             <h2>Profile Centre</h2>
         </div>
 
-        <div class="settings-row" id="subOpenMyProfile">
-            <div>
-                <div style="font-weight:bold;">My Profile</div>
+        <div class="settings-row settings-option" id="subOpenMyProfile">
+            <span class="settings-option-icon" aria-hidden="true">♙</span>
+            <div class="settings-option-copy">
+                <div class="settings-option-title">My Profile</div>
                 <small>Profile picture, name and About</small>
             </div>
-            <span>›</span>
+            <span class="settings-option-arrow" aria-hidden="true">›</span>
         </div>
 
-        <div class="settings-row" id="subOpenDevices">
-            <div>
-                <div style="font-weight:bold;">Linked Devices</div>
+        <div class="settings-row settings-option" id="subOpenDevices">
+            <span class="settings-option-icon" aria-hidden="true">▣</span>
+            <div class="settings-option-copy">
+                <div class="settings-option-title">Linked Devices</div>
                 <small>Connect and manage devices</small>
             </div>
-            <span>›</span>
+            <span class="settings-option-arrow" aria-hidden="true">›</span>
         </div>
 
-        <div class="settings-row" id="subOpenSecurity">
-            <div>
-                <div style="font-weight:bold;">Account & Security</div>
+        <div class="settings-row settings-option" id="subOpenSecurity">
+            <span class="settings-option-icon" aria-hidden="true">⌑</span>
+            <div class="settings-option-copy">
+                <div class="settings-option-title">Account & Security</div>
                 <small>Password, security and mobile number</small>
             </div>
-            <span>›</span>
+            <span class="settings-option-arrow" aria-hidden="true">›</span>
         </div>
 
-        <div class="settings-row" id="subOpenPrivacy">
-            <div>
-                <div style="font-weight:bold;">Privacy</div>
+        <div class="settings-row settings-option" id="subOpenPrivacy">
+            <span class="settings-option-icon" aria-hidden="true">◉</span>
+            <div class="settings-option-copy">
+                <div class="settings-option-title">Privacy</div>
                 <small>Blocked users and disappearing messages</small>
             </div>
-            <span>›</span>
+            <span class="settings-option-arrow" aria-hidden="true">›</span>
         </div>
 
-        <div class="settings-row" id="subOpenLists">
-            <div>
-                <div style="font-weight:bold;">Custom Chat Lists</div>
+        <div class="settings-row settings-option" id="subOpenLists">
+            <span class="settings-option-icon" aria-hidden="true">☷</span>
+            <div class="settings-option-copy">
+                <div class="settings-option-title">Custom Chat Lists</div>
                 <small>Create and organise chat filters</small>
             </div>
-            <span>›</span>
+            <span class="settings-option-arrow" aria-hidden="true">›</span>
         </div>
 
-        <div class="settings-row" id="subOpenChats">
-            <div>
-                <div style="font-weight:bold;">Chats & Backups</div>
+        <div class="settings-row settings-option" id="subOpenChats">
+            <span class="settings-option-icon" aria-hidden="true">▤</span>
+            <div class="settings-option-copy">
+                <div class="settings-option-title">Chats & Backups</div>
                 <small>Backups and export chat history</small>
             </div>
-            <span>›</span>
+            <span class="settings-option-arrow" aria-hidden="true">›</span>
         </div>
 
-        <!-- NEW WALLPAPER SETTINGS ROW ADDED HERE -->
-        <div class="settings-row" id="subOpenWallpaper">
-            <div>
-                <div style="font-weight:bold;">Wallpaper</div>
+        <div class="settings-row settings-option" id="subOpenWallpaper">
+            <span class="settings-option-icon" aria-hidden="true">▧</span>
+            <div class="settings-option-copy">
+                <div class="settings-option-title">Wallpaper</div>
                 <small>Change chat background from gallery</small>
             </div>
-            <span>›</span>
-        </div>
-        <input id="wallpaperFileInput" type="file" accept="image/*" class="hidden">
+            <span class="settings-option-arrow" aria-hidden="true">›</span>
+        </div>\n        <input id="wallpaperFileInput" type="file" accept="image/*" class="hidden">
 
-        <div class="settings-row" id="subOpenAppearance">
-            <div>
-                <div style="font-weight:bold;">Appearance</div>
+        <div class="settings-row settings-option" id="subOpenAppearance">
+            <span class="settings-option-icon" aria-hidden="true">◐</span>
+            <div class="settings-option-copy">
+                <div class="settings-option-title">Appearance</div>
                 <small>Themes and colour schemes</small>
             </div>
-            <span>›</span>
+            <span class="settings-option-arrow" aria-hidden="true">›</span>
         </div>
 
-        <div class="settings-row" style="display:block;">
-            <div style="font-weight:bold;">KCHAT Do Not Disturb</div>
-            <small class="muted">Pause live chat connection and stop new live messages without switching off your phone's internet.</small>
-            <button class="secondary-btn" id="toggleKchatDnd" style="width:100%;margin-top:12px;">Pause KCHAT connection</button>
-            <small id="kchatDndStatus" class="muted" style="display:block;margin-top:8px;">Live connection is active.</small>
+        <div class="settings-row settings-option" style="display:flex;align-items:center;">
+            <span class="settings-option-icon" aria-hidden="true">◌</span>
+            <div class="settings-option-copy">
+                <div class="settings-option-title">KCHAT Do Not Disturb</div>
+                <small class="muted">Pause live chat connection and stop new live messages without switching off your phone's internet.</small>
+                <button class="secondary-btn" id="toggleKchatDnd" style="width:100%;margin-top:12px;">Pause KCHAT connection</button>
+                <small id="kchatDndStatus" class="muted" style="display:block;margin-top:8px;">Live connection is active.</small>
+            </div>
         </div>
 
         <button class="danger-btn" id="settingsLogoutButton" style="width:100%;margin-top:25px;">
