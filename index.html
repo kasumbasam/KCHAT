@@ -3023,7 +3023,7 @@ async function matchDeviceContacts() {
             method: "POST",
             body: JSON.stringify({ phone_numbers: list.map(item => item.phone) })
         });
-        const registered = new Map((result.matches || []).map(item => [normalizeDevicePhone(item.phone_number), item]));
+        const registered = new Map((result.matches || []).map(item => [String(item.phone_key || normalizeDevicePhone(item.phone_number)), item]));
         matchedDeviceContacts = list.map(item => ({
             ...item,
             account: registered.get(item.key) || null
