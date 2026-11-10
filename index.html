@@ -708,6 +708,29 @@ hr {
 .status-bottom-nav button.active{color:#25d366}
 .status-bottom-nav button.active span{background:#123c2a;border-radius:30px;padding:5px 25px}
 .text-status-card textarea{min-height:150px;background:#151b1f;color:white}
+
+.status-viewer{position:fixed;inset:0;z-index:10020;background:#050708;color:#fff;display:flex;flex-direction:column;padding:12px max(12px,env(safe-area-inset-left)) max(12px,env(safe-area-inset-bottom));}
+.status-viewer.hidden{display:none}
+.status-viewer-progress{display:flex;gap:4px;height:3px;flex:0 0 3px;margin:4px 0 12px}
+.status-viewer-progress span{height:3px;flex:1;background:#ffffff55;border-radius:4px}
+.status-viewer-progress span.active{background:#25d366}
+.status-viewer-header{display:flex;align-items:center;gap:12px;min-height:54px;z-index:2}
+.status-viewer-header>button{width:42px;height:42px;border:0;background:#ffffff18;color:#fff;border-radius:50%;font-size:28px}
+.status-viewer-owner{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.status-viewer-owner>div:last-child{display:flex;flex-direction:column;gap:3px}
+.status-viewer-owner strong{font-size:16px}
+.status-viewer-owner small{color:#c1c8cc;font-size:12px}
+.status-viewer-avatar{width:38px;height:38px;border-radius:50%;background:#263238;display:grid;place-items:center;overflow:hidden}
+.status-viewer-avatar img{width:100%;height:100%;object-fit:cover}
+.status-viewer-stage{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.status-viewer-content{width:100%;height:100%;display:flex;align-items:center;justify-content:center;white-space:pre-wrap;text-align:center;overflow:hidden}
+.status-viewer-content img,.status-viewer-content video{max-width:100%;max-height:100%;object-fit:contain}
+.status-viewer-content .status-viewer-text{font-size:clamp(25px,6vw,42px);line-height:1.35;padding:28px;overflow-wrap:anywhere}
+.status-viewer-side{position:absolute;top:0;bottom:0;width:30%;z-index:1;border:0;background:transparent}
+.status-viewer-side.previous{left:0}
+.status-viewer-side.next{right:0}
+.status-viewer-footer{min-height:38px;text-align:center;color:#cbd2d6;font-size:13px;padding-top:10px}
+
 @media(min-width:751px){.status-screen{left:370px}.status-bottom-nav{display:none}}
 @media(max-width:750px){.status-screen{left:0}.status-page-scroll{padding-left:14px;padding-right:14px}.updates-header{padding-left:18px}.my-status-card,.status-story-card,.status-empty-card{flex-basis:145px;height:225px}.status-camera-fab{width:82px;height:82px}.status-floating-actions{bottom:95px;right:16px}.status-bottom-nav{height:78px;flex-basis:78px}}
 
@@ -1442,6 +1465,25 @@ hr {
         <textarea id="textStatusInput" maxlength="700" rows="5" placeholder="What's on your mind?"></textarea>
         <div class="modal-actions"><button class="secondary-btn" id="cancelTextStatus">Cancel</button><button class="primary-btn" id="publishTextStatus">Share status</button></div>
     </div>
+</div>
+
+<!-- STATUS VIEWER -->
+<div id="statusViewer" class="status-viewer hidden" aria-label="Status viewer">
+    <div class="status-viewer-progress" id="statusViewerProgress"></div>
+    <header class="status-viewer-header">
+        <button type="button" id="closeStatusViewer" aria-label="Close status viewer">×</button>
+        <div class="status-viewer-owner">
+            <div id="statusViewerAvatar" class="status-viewer-avatar">S</div>
+            <div><strong id="statusViewerName">My status</strong><small id="statusViewerTime"></small></div>
+        </div>
+        <button type="button" id="deleteMyStatusButton" aria-label="Delete this status" title="Delete status">⋮</button>
+    </header>
+    <div class="status-viewer-stage" id="statusViewerStage">
+        <button type="button" class="status-viewer-side previous" id="previousStatusButton" aria-label="Previous status"></button>
+        <div id="statusViewerContent" class="status-viewer-content"></div>
+        <button type="button" class="status-viewer-side next" id="nextStatusButton" aria-label="Next status"></button>
+    </div>
+    <footer class="status-viewer-footer" id="statusViewerFooter"></footer>
 </div>
 
 <!-- UPDATES MENU -->
@@ -2891,14 +2933,81 @@ document.addEventListener("click",event=>{
 });
 function openTextStatus(){hide($("updatesMenu"));show($("textStatusModal"));$("textStatusInput").focus();}
 $("writeStatusButton").addEventListener("click",openTextStatus);
+let statusViewerItems = [];
+let statusViewerIndex = 0;
+
+function closeStatusViewer() {
+    const viewer=$("statusViewer");
+    const video=viewer.querySelector("video");
+    if(video) video.pause();
+    hide(viewer);
+}
+function renderStatusViewer() {
+    const item=statusViewerItems[statusViewerIndex];
+    if(!item){closeStatusViewer();return;}
+    const content=$("statusViewerContent");
+    content.replaceChildren();
+    if(item.media_data && item.media_type==="video"){
+        const video=document.createElement("video");
+        video.src=item.media_data;video.controls=true;video.autoplay=true;video.playsInline=true;
+        content.appendChild(video);
+    }else if(item.media_data){
+        const image=document.createElement("img");
+        image.src=item.media_data;image.alt="Status photo";
+        content.appendChild(image);
+    }else{
+        const text=document.createElement("div");
+        text.className="status-viewer-text";
+        text.textContent=item.text||"";
+        content.appendChild(text);
+    }
+    $("statusViewerName").textContent=item.is_mine?"My status":(item.username||"Status");
+    $("statusViewerTime").textContent=item.created_at?new Date(item.created_at).toLocaleString():"";
+    $("statusViewerAvatar").textContent=(item.username||currentUser||"S").charAt(0).toUpperCase();
+    $("statusViewerFooter").textContent=(statusViewerIndex+1)+" of "+statusViewerItems.length;
+    $("deleteMyStatusButton").classList.toggle("hidden",!item.is_mine);
+    $("statusViewerProgress").replaceChildren();
+    statusViewerItems.forEach((entry,index)=>{
+        const bar=document.createElement("span");
+        if(index<=statusViewerIndex)bar.classList.add("active");
+        $("statusViewerProgress").appendChild(bar);
+    });
+}
+function openStatusViewer(items,index=0) {
+    statusViewerItems=items||[];
+    statusViewerIndex=Math.max(0,Math.min(index,statusViewerItems.length-1));
+    if(!statusViewerItems.length)return;
+    show($("statusViewer"));
+    renderStatusViewer();
+}
+function moveStatusViewer(direction) {
+    const next=statusViewerIndex+direction;
+    if(next<0||next>=statusViewerItems.length){closeStatusViewer();return;}
+    const video=$("statusViewer").querySelector("video");
+    if(video)video.pause();
+    statusViewerIndex=next;
+    renderStatusViewer();
+}
+$("closeStatusViewer").addEventListener("click",closeStatusViewer);
+$("previousStatusButton").addEventListener("click",()=>moveStatusViewer(-1));
+$("nextStatusButton").addEventListener("click",()=>moveStatusViewer(1));
+$("deleteMyStatusButton").addEventListener("click",async()=>{
+    const item=statusViewerItems[statusViewerIndex];
+    if(!item||!item.is_mine)return;
+    if(!confirm("Delete this status update?"))return;
+    try{
+        await apiRequest("/api/statuses/"+encodeURIComponent(item.id),{method:"DELETE"});
+        await loadStatuses();
+        statusViewerItems=statusViewerItems.filter(entry=>entry.id!==item.id);
+        if(!statusViewerItems.length){closeStatusViewer();return;}
+        statusViewerIndex=Math.min(statusViewerIndex,statusViewerItems.length-1);
+        renderStatusViewer();
+    }catch(error){alert(error.message||"Could not delete this status.");}
+});
 $("myStatusCard").addEventListener("click",()=>{
     const mine=(window.kchatStatuses||[]).filter(item=>item.is_mine);
-    if(mine.length) {
-        const latest=mine[0];
-        alert(latest.text || (latest.media_type==="video" ? "You have a video status." : "You have a photo status."));
-    } else {
-        $("uploadStatusButton").click();
-    }
+    if(mine.length)openStatusViewer(mine);
+    else $("uploadStatusButton").click();
 });
 async function loadStatuses(){
     try{
@@ -2922,12 +3031,10 @@ function renderStatusStories(){
         return '<button class="status-story-card" type="button" data-status-id="'+escapeHTML(item.id)+'"><span class="status-story-avatar">'+pic+'</span><span class="status-story-name">'+escapeHTML(item.username)+'</span></button>';
     }).join(""):'<div class="status-empty-card">No recent updates</div>';
     $("otherStatusStories").querySelectorAll("[data-status-id]").forEach(card=>card.addEventListener("click",()=>{
-        const item=statuses.find(status=>status.id===card.dataset.statusId);
-        if(!item)return;
-        if(item.media_data){
-            const viewer=window.open();
-            if(viewer){viewer.document.write(item.media_type==="video"?'<video controls autoplay style="max-width:100%;max-height:90vh" src="'+item.media_data+'"></video>':'<img style="max-width:100%;max-height:90vh" src="'+item.media_data+'">');}
-        }else alert(item.text||"Status update");
+        const selected=statuses.find(status=>status.id===card.dataset.statusId);
+        if(!selected)return;
+        const personStatuses=statuses.filter(status=>!status.is_mine&&status.username===selected.username);
+        openStatusViewer(personStatuses,Math.max(0,personStatuses.findIndex(status=>status.id===selected.id)));
     }));
 }
 
