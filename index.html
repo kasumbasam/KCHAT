@@ -662,6 +662,54 @@ hr {
     margin:2px 0 5px;
 }
 
+/* WhatsApp-style Updates page */
+.status-screen{position:fixed;inset:0;z-index:15;background:#080d10;color:#f5f7f8;display:flex;flex-direction:column;overflow:hidden}
+.updates-header{height:70px;flex:0 0 70px;display:flex;align-items:center;justify-content:space-between;padding:0 20px 0 28px;background:#080d10}
+.updates-header h1{font-size:31px;font-weight:500;margin:0}
+.updates-header-actions{display:flex;gap:8px}
+.status-page-scroll{flex:1;overflow-y:auto;padding:12px 18px 105px}
+.status-section-title,.channels-heading h2{font-size:24px;font-weight:600;margin:8px 0 16px}
+.status-stories{display:flex;gap:12px;overflow-x:auto;padding:2px 0 18px;min-height:250px}
+.my-status-card,.status-story-card{position:relative;flex:0 0 158px;height:238px;border:0;border-radius:22px;overflow:hidden;background:#151b1f;color:#fff;text-align:left;padding:0}
+.my-status-photo{position:absolute;top:20px;left:50%;transform:translateX(-50%);width:92px;height:92px;border:4px solid #25d366;border-radius:50%;display:grid;place-items:center;background:#303a40;font-size:34px;overflow:hidden}
+.my-status-photo img,.status-story-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.status-plus{position:absolute;top:78px;left:calc(50% + 17px);width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#25d366;color:#06130b;font:700 29px Arial;border:3px solid #080d10}
+.status-card-caption{position:absolute;left:14px;bottom:13px;font-size:19px}
+.other-status-stories{display:flex;gap:12px}
+.status-story-card{background:linear-gradient(160deg,#34434b,#11191d)}
+.status-story-avatar{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:84px;height:84px;border:4px solid #25d366;border-radius:50%;display:grid;place-items:center;background:#252d31;overflow:hidden}
+.status-story-name{position:absolute;bottom:13px;left:14px;font-size:19px}
+.status-empty-card{width:158px;height:238px;flex:0 0 158px;border-radius:22px;background:#11171b;display:grid;place-items:center;text-align:center;padding:15px;color:#7e898e;font-size:16px}
+.channels-heading{display:flex;align-items:center;justify-content:space-between;margin:12px 0}
+.channels-heading h2{margin:0}
+.text-action{background:none;border:0;color:#25d366;font-size:17px}
+.channel-list{display:flex;flex-direction:column}
+.channel-row{display:flex;align-items:center;gap:14px;padding:15px 2px;border-bottom:1px solid #ffffff0c;min-height:94px}
+.channel-avatar{width:62px;height:62px;flex:0 0 62px;border-radius:50%;background:#132b38;display:grid;place-items:center;overflow:hidden;font-size:25px}
+.channel-avatar img{width:100%;height:100%;object-fit:cover}
+.channel-copy{flex:1;min-width:0}
+.channel-name{font-size:20px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.channel-preview{font-size:16px;color:#879197;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px}
+.channel-time{font-size:13px;color:#25d366;white-space:nowrap}
+.channel-unread{background:#25d366;color:#06130b;border-radius:20px;padding:5px 9px;font-size:13px}
+.channels-empty{min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#849097;text-align:center}
+.channels-empty>span{font-size:40px;color:#25d366}
+.channels-empty strong{color:#f5f7f8;font-size:20px}
+.channels-empty small{max-width:280px;font-size:15px}
+.channels-empty button{border:0;border-radius:20px;background:#25d366;color:#07130b;padding:9px 18px;margin-top:8px}
+.status-floating-actions{position:absolute;right:22px;bottom:92px;display:flex;flex-direction:column;align-items:flex-end;gap:16px}
+.status-pen-fab,.status-camera-fab{border:0;display:grid;place-items:center;box-shadow:0 5px 18px #0008}
+.status-pen-fab{width:68px;height:68px;border-radius:20px;background:#1d272b;color:#f4f7f8}
+.status-camera-fab{width:92px;height:92px;border-radius:28px;background:#25d366;color:#06130b}
+.status-bottom-nav{height:82px;flex:0 0 82px;display:flex;justify-content:space-around;align-items:center;background:#080d10;border-top:1px solid #ffffff0d;padding-bottom:env(safe-area-inset-bottom)}
+.status-bottom-nav button{flex:1;height:100%;border:0;background:transparent;color:#e4e9eb;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:16px}
+.status-bottom-nav button span{font:28px Arial}
+.status-bottom-nav button.active{color:#25d366}
+.status-bottom-nav button.active span{background:#123c2a;border-radius:30px;padding:5px 25px}
+.text-status-card textarea{min-height:150px;background:#151b1f;color:white}
+@media(min-width:751px){.status-screen{left:370px}.status-bottom-nav{display:none}}
+@media(max-width:750px){.status-screen{left:0}.status-page-scroll{padding-left:14px;padding-right:14px}.updates-header{padding-left:18px}.my-status-card,.status-story-card,.status-empty-card{flex-basis:145px;height:225px}.status-camera-fab{width:82px;height:82px}.status-floating-actions{bottom:95px;right:16px}.status-bottom-nav{height:78px;flex-basis:78px}}
+
 .message-composer {
     position:relative;
     display:flex;
@@ -1306,10 +1354,67 @@ hr {
                     </div>
                 </div>
             </div>
+
+            <section id="statusScreen" class="status-screen hidden">
+                <header class="updates-header">
+                    <h1>Updates</h1>
+                    <div class="updates-header-actions">
+                        <button class="icon-btn" id="updatesSearchButton" aria-label="Search updates" title="Search"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></button>
+                        <button class="icon-btn" id="updatesMenuButton" aria-label="Updates menu" title="More">⋮</button>
+                    </div>
+                </header>
+                <div class="status-page-scroll">
+                    <div class="status-section-title">Status</div>
+                    <div class="status-stories" id="statusStories">
+                        <button class="my-status-card" id="myStatusCard">
+                            <div class="my-status-photo" id="myStatusPhoto"><span id="myStatusInitial">S</span></div>
+                            <span class="status-plus">+</span>
+                            <span class="status-card-caption">My status</span>
+                        </button>
+                        <div id="otherStatusStories" class="other-status-stories">
+                            <div class="status-empty-card">No recent updates</div>
+                        </div>
+                    </div>
+                    <div class="channels-heading">
+                        <h2>Channels</h2>
+                        <button class="text-action" id="exploreChannelsButton">Explore more</button>
+                    </div>
+                    <div id="channelList" class="channel-list">
+                        <div class="channels-empty"><span>◉</span><strong>Discover channels</strong><small>Follow channels to see news, creators and updates here.</small><button id="channelsExploreEmpty">Explore channels</button></div>
+                    </div>
+                </div>
+                <div class="status-floating-actions">
+                    <button id="writeStatusButton" class="status-pen-fab" title="Write a text status" aria-label="Write a text status"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m14 5 5 5M4 20l4.5-1 11-11a2.1 2.1 0 0 0-3-3l-11 11L4 20Z"/></svg></button>
+                    <button id="uploadStatusButton" class="status-camera-fab" title="Add photo or video status" aria-label="Add photo or video status"><svg viewBox="0 0 24 24" width="29" height="29" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4H10L8.5 6H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.5L14 4Z"/><circle cx="12" cy="13" r="3.5"/><path d="M19 2v4m-2-2h4"/></svg></button>
+                </div>
+                <nav class="status-bottom-nav" aria-label="Main navigation">
+                    <button data-main-nav="chat"><span>▤</span>Chats</button>
+                    <button class="active" data-main-nav="status"><span>◉</span>Updates</button>
+                    <button data-main-nav="communities"><span>♧</span>Communities</button>
+                    <button data-main-nav="call"><span>♧</span>Calls</button>
+                </nav>
+            </section>
         </main>
 
     </div>
 </section>
+
+<!-- TEXT STATUS EDITOR -->
+<div id="textStatusModal" class="modal-backdrop hidden">
+    <div class="modal-card text-status-card">
+        <h2>Write a status</h2>
+        <textarea id="textStatusInput" maxlength="700" rows="5" placeholder="What's on your mind?"></textarea>
+        <div class="modal-actions"><button class="secondary-btn" id="cancelTextStatus">Cancel</button><button class="primary-btn" id="publishTextStatus">Share status</button></div>
+    </div>
+</div>
+
+<!-- UPDATES MENU -->
+<div id="updatesMenu" class="menu-popup hidden">
+    <button id="createChannelMenu">Create channel</button>
+    <button id="statusPrivacyMenu">Status privacy</button>
+    <button id="starredUpdatesMenu">Starred</button>
+    <button id="updatesSettingsMenu">Settings</button>
+</div>
 
 <!-- MAIN MENU -->
 <div id="mainMenu" class="menu-popup hidden">
@@ -2676,12 +2781,66 @@ function renderContacts() {
 
 $("chatSearch").addEventListener("input", renderContacts);
 
+function showUpdatesMenu() {
+    const menu=$("updatesMenu");
+    menu.classList.toggle("hidden");
+}
+$("updatesMenuButton").addEventListener("click",showUpdatesMenu);
+document.addEventListener("click",event=>{
+    if(!event.target.closest("#updatesMenu")&&!event.target.closest("#updatesMenuButton")) hide($("updatesMenu"));
+});
+function openTextStatus(){hide($("updatesMenu"));show($("textStatusModal"));$("textStatusInput").focus();}
+$("writeStatusButton").addEventListener("click",openTextStatus);
+$("myStatusCard").addEventListener("click",()=>{$("uploadStatusButton").click();});
+$("cancelTextStatus").addEventListener("click",()=>hide($("textStatusModal")));
+$("publishTextStatus").addEventListener("click",()=>{
+    const value=$("textStatusInput").value.trim();
+    if(!value){alert("Write something for your status first.");return;}
+    alert("The text status composer is ready. Status publishing needs the status-sharing service to be added to KCHAT's backend.");
+});
+$("uploadStatusButton").addEventListener("click",()=>{
+    const picker=$("mediaFileInput");
+    picker.setAttribute("accept","image/*,video/*");
+    picker.removeAttribute("capture");
+    picker.click();
+});
+$("exploreChannelsButton").addEventListener("click",()=>alert("Channel discovery will appear here when channel services are enabled."));
+$("channelsExploreEmpty").addEventListener("click",()=>alert("Channel discovery will appear here when channel services are enabled."));
+$("createChannelMenu").addEventListener("click",()=>{hide($("updatesMenu"));alert("Channel creation needs the channel service to be added to KCHAT's backend.");});
+$("statusPrivacyMenu").addEventListener("click",()=>{hide($("updatesMenu"));openSettings();});
+$("starredUpdatesMenu").addEventListener("click",()=>{hide($("updatesMenu"));alert("Starred status updates will appear here after status sharing is enabled.");});
+$("updatesSettingsMenu").addEventListener("click",()=>{hide($("updatesMenu"));openSettings();});
+document.querySelectorAll("[data-main-nav]").forEach(button=>button.addEventListener("click",()=>{
+    const tab=button.dataset.mainNav;
+    if(tab==="status")return;
+    document.querySelectorAll(".whatsapp-tab-btn").forEach(item=>item.classList.toggle("active",item.dataset.tab===tab));
+    activeTab=tab;
+    hide($("statusScreen"));
+    if(tab==="chat"||tab==="call"){
+        if(currentChat)show($("chatScreen"));else show($("welcomeScreen"));
+        renderContacts();
+    } else {
+        alert("Communities view is not available yet.");
+    }
+}));
+
 // WhatsApp Tabs (CHAT, CALLS, STATUS) Switching Logic
 document.querySelectorAll(".whatsapp-tab-btn").forEach(button => {
     button.addEventListener("click", () => {
         document.querySelectorAll(".whatsapp-tab-btn").forEach(item => item.classList.remove("active"));
         button.classList.add("active");
         activeTab = button.dataset.tab;
+        if (activeTab === "status") {
+            hide($("chatScreen"));
+            hide($("welcomeScreen"));
+            show($("statusScreen"));
+            return;
+        }
+        hide($("statusScreen"));
+        if (activeTab === "chat" || activeTab === "call") {
+            if (currentChat) show($("chatScreen"));
+            else show($("welcomeScreen"));
+        }
         renderContacts();
     });
 });
