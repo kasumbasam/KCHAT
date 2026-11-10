@@ -705,9 +705,6 @@ hr {
 .channels-empty button{border:0;border-radius:20px;background:#25d366;color:#07130b;padding:9px 18px;margin-top:8px}
 .chat-status-actions{position:absolute;right:18px;bottom:98px;display:flex;justify-content:flex-end;align-items:flex-end;gap:10px;padding:0;background:transparent;border:0;z-index:25;pointer-events:none}
 .chat-status-actions button{pointer-events:auto}
-.status-create-bar{position:absolute;right:68px;bottom:0;left:auto;width:min(360px,calc(100vw - 105px));min-height:64px;display:flex;align-items:center;justify-content:space-around;gap:2px;padding:7px 8px;background:#202c32;border:1px solid #ffffff20;border-radius:16px;box-shadow:0 8px 24px #0009;z-index:26}
-.status-create-bar:not(.is-open){display:none}
-.status-create-bar.is-open{display:flex}
 .status-fab-stack{position:relative;right:auto;bottom:auto;z-index:27;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
 .status-fab{display:grid;place-items:center;border:0;border-radius:50%;box-shadow:0 3px 10px #0008;cursor:pointer}
 .status-fab svg{width:25px;height:25px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
@@ -1540,18 +1537,11 @@ hr {
                     </div>
                 </div>
 <div class="chat-status-actions" aria-label="Status shortcuts">
-                <div class="status-create-bar" aria-label="Create a status">
-                    <button type="button" id="recordVoiceStatus" class="status-create-option"><span class="status-create-icon">🎙</span><span>Voice</span></button>
-                    <button type="button" id="openStatusOverview" class="status-create-option"><span class="status-create-icon">◉</span><span>Status</span></button>
-                    <button type="button" id="writeStatusButton" class="status-create-option"><span class="status-create-icon">T</span><span>Text</span></button>
-                    <button type="button" id="uploadVideoStatus" class="status-create-option"><span class="status-create-icon">▣</span><span>Video</span></button>
-                    <button type="button" id="statusFormatButton" class="status-format-option" aria-label="Text format">Aa</button>
-                </div>
                 <div class="status-fab-stack" aria-label="Create status">
                     <button type="button" class="status-fab status-camera-fab" id="quickStatusCameraButton" aria-label="Open camera" title="Camera">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h3l1.5-2h7l1.5 2h3A1.5 1.5 0 0 1 21.5 9v9A1.5 1.5 0 0 1 20 19.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z"/><circle cx="12" cy="13.5" r="4"/></svg>
                     </button>
-                    <button type="button" class="status-fab status-pen-fab" id="statusCreateMenuButton" aria-label="Create status" title="Create status" aria-expanded="false">
+                    <button type="button" class="status-fab status-pen-fab" id="statusCreateMenuButton" aria-label="Write a text status" title="Write a text status">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16.5-.9 4.4 4.4-.9L19.8 7.7a2.5 2.5 0 0 0-3.5-3.5L4 16.5Z"/><path d="m14.8 5.7 3.5 3.5"/></svg>
                     </button>
                 </div>
@@ -3166,7 +3156,6 @@ $("textStatusInput").addEventListener("blur",()=>{
 });
 $("changeTextStatusBackground").addEventListener("click",()=>setTextStatusBackground(textStatusBackgroundIndex+1));
 $("textStatusAddFile").addEventListener("click",()=>$("statusFileInput").click());
-$("writeStatusButton").addEventListener("click",openTextStatus);
 let statusViewerItems = [];
 let statusViewerIndex = 0;
 let statusViewerTimer = null;
@@ -3540,28 +3529,11 @@ $("statusCameraFlash").addEventListener("click",async()=>{if(!statusCameraStream
 $("captureStatusPhoto").addEventListener("click",async()=>{const video=$("statusCameraVideo");if(!video.videoWidth)return;const canvas=document.createElement("canvas");canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext("2d").drawImage(video,0,0);const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.94));if(!blob){alert("Could not capture photo.");return;}const file=new File([blob],"kchat-status-photo.jpg",{type:"image/jpeg"});await stopStatusCamera();hide($("statusCameraModal"));openMediaStatusEditor([file]);});
 $("recordStatusVideo").addEventListener("click",()=>{if(statusCameraRecorder&&statusCameraRecorder.state==="recording"){statusCameraRecorder.stop();return;}if(!window.MediaRecorder){alert("Video recording is not supported by this browser.");return;}try{const mime=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"].find(type=>MediaRecorder.isTypeSupported(type));statusCameraChunks=[];statusCameraRecorder=mime?new MediaRecorder(statusCameraStream,{mimeType:mime}):new MediaRecorder(statusCameraStream);statusCameraRecorder.ondataavailable=e=>{if(e.data&&e.data.size)statusCameraChunks.push(e.data);};statusCameraRecorder.onstop=()=>{statusCameraBlob=new Blob(statusCameraChunks,{type:statusCameraRecorder.mimeType||"video/webm"});$("recordStatusVideo").classList.remove("recording");$("statusCameraHint").textContent="Video recorded — choose Use video";$("finishStatusVideo").classList.remove("hidden");if(statusCameraClock)clearInterval(statusCameraClock);};statusCameraRecorder.start();statusCameraStarted=Date.now();$("recordStatusVideo").classList.add("recording");$("statusCameraHint").textContent="Recording… tap the red button to stop";statusCameraClock=setInterval(()=>{const sec=Math.floor((Date.now()-statusCameraStarted)/1000);$("statusCameraTimer").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");},200);}catch(error){alert("Could not start video recording.");}});
 $("finishStatusVideo").addEventListener("click",async()=>{if(!statusCameraBlob)return;if(statusCameraBlob.size>5*1024*1024){alert("Video is larger than 5 MB. Record a shorter video.");return;}const file=new File([statusCameraBlob],"kchat-status-video.webm",{type:statusCameraBlob.type||"video/webm"});await stopStatusCamera();hide($("statusCameraModal"));openMediaStatusEditor([file]);});
-$("uploadVideoStatus").addEventListener("click",()=>openStatusCamera("video"));
-
-// WhatsApp-style floating camera and pencil actions at the bottom-right of Updates.
-$("statusCreateMenuButton").addEventListener("click",()=>{
-    const bar=document.querySelector(".chat-status-actions .status-create-bar");
-    const opened=bar.classList.toggle("is-open");
-    $("statusCreateMenuButton").classList.toggle("is-active",opened);
-    $("statusCreateMenuButton").setAttribute("aria-expanded",String(opened));
-});
+// WhatsApp-style floating camera and direct text-status pencil.
+$("statusCreateMenuButton").addEventListener("click",()=>openTextStatus());
 $("quickStatusCameraButton").addEventListener("click",()=>openStatusCamera("photo"));
-document.querySelector(".chat-status-actions .status-create-bar").addEventListener("click",event=>{
-    const option=event.target.closest("button");
-    if(!option)return;
-    document.querySelector(".chat-status-actions .status-create-bar").classList.remove("is-open");
-    $("statusCreateMenuButton").classList.remove("is-active");
-    $("statusCreateMenuButton").setAttribute("aria-expanded","false");
-});
-$("openStatusOverview").addEventListener("click",()=>{$("myStatusCard").click();});
-$("statusFormatButton").addEventListener("click",()=>openTextStatus());
 let voiceStatusRecorder=null,voiceStatusChunks=[],voiceStatusBlob=null,voiceStatusClock=null,voiceStatusStarted=0;
 function resetVoiceStatus(){if(voiceStatusClock)clearInterval(voiceStatusClock);voiceStatusClock=null;voiceStatusBlob=null;voiceStatusChunks=[];$("voiceStatusPreview").classList.add("hidden");$("voiceStatusPreview").removeAttribute("src");$("voiceStatusTimer").textContent="00:00";$("voiceStatusHint").textContent="Tap the microphone to start recording";$("shareVoiceStatus").disabled=true;voiceStatusRecorder=null;}
-$("recordVoiceStatus").addEventListener("click",()=>{resetVoiceStatus();show($("voiceStatusModal"));});
 $("closeVoiceStatus").addEventListener("click",()=>{if(voiceStatusRecorder&&voiceStatusRecorder.state==="recording")voiceStatusRecorder.stop();hide($("voiceStatusModal"));});
 $("discardVoiceStatus").addEventListener("click",()=>{if(voiceStatusRecorder&&voiceStatusRecorder.state==="recording")voiceStatusRecorder.stop();resetVoiceStatus();});
 $("voiceStatusRecord").addEventListener("click",async()=>{
