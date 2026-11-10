@@ -1616,6 +1616,8 @@ async function login() {
     button.disabled = true;
     button.textContent = "Logging in...";
 
+    // Only an error from /api/login should be treated as an authentication failure.
+    // Profile/contact loading happens after authentication and must not erase a valid session.
     try {
         const data = await apiRequest("/api/login", {
             method: "POST",
@@ -1630,15 +1632,27 @@ async function login() {
         currentUser = data.username;
         localStorage.setItem("kchat_token", authToken);
         localStorage.setItem("kchat_username", currentUser);
-
-        await startKChat();
     } catch (error) {
         authToken = "";
         currentUser = "";
         localStorage.removeItem("kchat_token");
         localStorage.removeItem("kchat_username");
-        setAuthMessage(error.message || "Login failed. Check your connection and try again.");
         showLogin();
+        setAuthMessage(error.message || "Login failed. Check your phone number, password and connection.");
+        button.disabled = false;
+        button.textContent = "Login";
+        return;
+    }
+
+    // Authentication succeeded. Keep the token even if a secondary startup request fails.
+    try {
+        await startKChat();
+    } catch (error) {
+        console.error("KCHAT signed in, but startup data did not fully load:", error);
+        showApplication();
+        await loadContacts();
+        connectWebSocket();
+        alert("You are signed in, but some profile information did not load. Your login has been kept. Please refresh KCHAT or try again shortly.");
     } finally {
         button.disabled = false;
         button.textContent = "Login";
