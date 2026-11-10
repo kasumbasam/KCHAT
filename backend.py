@@ -2793,6 +2793,10 @@ def ensure_status_table():
             )
         """)
         conn.execute("""
+            ALTER TABLE status_updates
+            ADD COLUMN IF NOT EXISTS background TEXT NOT NULL DEFAULT '#546E7A'
+        """)
+        conn.execute("""
             CREATE INDEX IF NOT EXISTS status_updates_owner_expiry_idx
             ON status_updates(owner_id, expires_at DESC)
         """)
@@ -2838,7 +2842,7 @@ async def get_statuses(request: Request):
         with get_db() as conn:
             own_rows = conn.execute("""
                 SELECT s.id, s.owner_id, a.username, a.profile_picture, s.text,
-                       s.media_data, s.media_type, s.created_at, s.expires_at
+                       s.media_data, s.media_type, s.background, s.created_at, s.expires_at
                 FROM status_updates s
                 JOIN accounts a ON a.id = s.owner_id
                 WHERE s.owner_id = %s AND s.expires_at > NOW()
@@ -2850,7 +2854,7 @@ async def get_statuses(request: Request):
             with get_db() as conn:
                 contact_rows = conn.execute("""
                     SELECT s.id, s.owner_id, a.username, a.profile_picture, s.text,
-                           s.media_data, s.media_type, s.created_at, s.expires_at
+                           s.media_data, s.media_type, s.background, s.created_at, s.expires_at
                     FROM status_updates s
                     JOIN accounts a ON a.id = s.owner_id
                     JOIN contacts c ON c.contact_id = s.owner_id
@@ -2891,6 +2895,7 @@ async def get_statuses(request: Request):
                 "text": row["text"],
                 "media_data": row["media_data"],
                 "media_type": row["media_type"],
+                "background": row["background"] or "#546E7A",
                 "created_at": row["created_at"].isoformat(),
                 "expires_at": row["expires_at"].isoformat(),
                 "is_mine": str(row["owner_id"]) == str(account["id"]),
@@ -2947,6 +2952,9 @@ async def create_status(request: Request):
         text_value = str(data.get("text", "")).strip()[:700]
         media_data = data.get("media_data")
         media_type = data.get("media_type")
+        background = str(data.get("background") or "#546E7A")
+        if not re.fullmatch(r"#[0-9A-Fa-f]{6}", background):
+            background = "#546E7A"
 
         if media_data is not None:
             if not isinstance(media_data, str) or len(media_data) > 7_000_000:
@@ -2964,10 +2972,10 @@ async def create_status(request: Request):
         with get_db() as conn:
             row = conn.execute("""
                 INSERT INTO status_updates
-                    (id, owner_id, text, media_data, media_type)
-                VALUES (%s, %s, %s, %s, %s)
+                    (id, owner_id, text, media_data, media_type, background)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 RETURNING created_at, expires_at
-            """, (status_id, account["id"], text_value, media_data, media_type)).fetchone()
+            """, (status_id, account["id"], text_value, media_data, media_type, background)).fetchone()
 
         return {
             "success": True,
@@ -2978,6 +2986,7 @@ async def create_status(request: Request):
                 "text": text_value,
                 "media_data": media_data,
                 "media_type": media_type,
+                "background": background,
                 "created_at": row["created_at"].isoformat(),
                 "expires_at": row["expires_at"].isoformat(),
                 "is_mine": True
@@ -2998,16 +3007,19 @@ async def update_status(status_id: str, request: Request):
     try:
         data = await request.json()
         text_value = str(data.get("text", "")).strip()[:700]
+        background = str(data.get("background") or "#546E7A")
+        if not re.fullmatch(r"#[0-9A-Fa-f]{6}", background):
+            background = "#546E7A"
         ensure_status_table()
         with get_db() as conn:
             row = conn.execute("""
-                UPDATE status_updates SET text = %s
+                UPDATE status_updates SET text = %s, background = %s
                 WHERE id = %s AND owner_id = %s AND expires_at > NOW()
-                RETURNING id, text, created_at, expires_at, media_data, media_type
-            """, (text_value, status_id, account["id"])).fetchone()
+                RETURNING id, text, created_at, expires_at, media_data, media_type, background
+            """, (text_value, background, status_id, account["id"])).fetchone()
         if not row:
             return JSONResponse({"error": "Status not found or expired."}, status_code=404)
-        return {"success": True, "status": {"id": row["id"], "username": account["username"], "text": row["text"], "media_data": row["media_data"], "media_type": row["media_type"], "created_at": row["created_at"].isoformat(), "expires_at": row["expires_at"].isoformat(), "is_mine": True}}
+        return {"success": True, "status": {"id": row["id"], "username": account["username"], "text": row["text"], "media_data": row["media_data"], "media_type": row["media_type"], "background": row["background"] or "#546E7A", "created_at": row["created_at"].isoformat(), "expires_at": row["expires_at"].isoformat(), "is_mine": True}}
     except Exception as error:
         print("Update status error:", error)
         return JSONResponse({"error": "Could not update this status."}, status_code=500)
