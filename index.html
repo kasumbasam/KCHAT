@@ -1129,12 +1129,9 @@ hr {
         </div>
 
         <div class="settings-row" id="subOpenMyProfile">
-            <div style="display:flex;align-items:center;gap:12px;">
-                <div class="avatar" id="settingsMenuAvatar" style="width:50px;height:50px;font-size:22px;">S</div>
-                <div>
-                    <div style="font-weight:bold;">My Profile</div>
-                    <small>Profile picture, name and About</small>
-                </div>
+            <div>
+                <div style="font-weight:bold;">My Profile</div>
+                <small>Profile picture, name and About</small>
             </div>
             <span>›</span>
         </div>
@@ -1973,12 +1970,10 @@ async function loadMyProfile() {
     const picture = currentProfile.profile_picture;
     if (picture) {
         $("settingsGlobalAvatar").innerHTML = `<img src="${escapeHTML(picture)}" alt="Profile">`;
-        $("settingsMenuAvatar").innerHTML = `<img src="${escapeHTML(picture)}" alt="Profile">`;
         $("profileAvatar").innerHTML = `<img src="${escapeHTML(picture)}" alt="Profile">`;
     } else {
         const initial = currentUser.charAt(0).toUpperCase();
         $("settingsGlobalAvatar").textContent = initial;
-        $("settingsMenuAvatar").textContent = initial;
         $("profileAvatar").textContent = initial;
     }
 }
@@ -2135,7 +2130,6 @@ $("editProfilePicture").addEventListener("change", event => {
         reader.onload = e => {
             const res = e.target.result;
             $("settingsGlobalAvatar").innerHTML = `<img src="${escapeHTML(res)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
-            $("settingsMenuAvatar").innerHTML = `<img src="${escapeHTML(res)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
             $("profileAvatar").innerHTML = `<img src="${escapeHTML(res)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
         };
         reader.readAsDataURL(file);
@@ -2180,7 +2174,6 @@ $("saveProfileButton").addEventListener("click", async () => {
         if (update.profile_picture) {
             const imageMarkup = `<img src="${escapeHTML(update.profile_picture)}" alt="Profile" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
             $("settingsGlobalAvatar").innerHTML = imageMarkup;
-            $("settingsMenuAvatar").innerHTML = imageMarkup;
             $("profileAvatar").innerHTML = imageMarkup;
         }
         $("editProfilePicture").value = "";
