@@ -712,8 +712,11 @@ hr {
 .status-viewer{position:fixed;inset:0;z-index:10020;background:#050708;color:#fff;display:flex;flex-direction:column;padding:12px max(12px,env(safe-area-inset-left)) max(12px,env(safe-area-inset-bottom));}
 .status-viewer.hidden{display:none}
 .status-viewer-progress{display:flex;gap:4px;height:3px;flex:0 0 3px;margin:4px 0 12px}
-.status-viewer-progress span{height:3px;flex:1;background:#ffffff55;border-radius:4px}
-.status-viewer-progress span.active{background:#25d366}
+.status-viewer-progress span{height:3px;flex:1;background:#ffffff55;border-radius:4px;overflow:hidden}
+.status-viewer-progress span .status-progress-fill{display:block;width:0;height:100%;background:#25d366;border-radius:4px}
+.status-viewer-progress span.completed .status-progress-fill{width:100%}
+.status-viewer-progress span.current .status-progress-fill{animation:status-progress-run linear forwards}
+@keyframes status-progress-run{from{width:0}to{width:100%}}
 .status-viewer-header{display:flex;align-items:center;gap:12px;min-height:54px;z-index:2}
 .status-viewer-header>button{width:42px;height:42px;border:0;background:#ffffff18;color:#fff;border-radius:50%;font-size:28px}
 .status-viewer-owner{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
@@ -2979,22 +2982,55 @@ function openTextStatus(){hide($("updatesMenu"));show($("textStatusModal"));$("t
 $("writeStatusButton").addEventListener("click",openTextStatus);
 let statusViewerItems = [];
 let statusViewerIndex = 0;
+let statusViewerTimer = null;
+const STATUS_IMAGE_DURATION = 5000;
 
+function clearStatusViewerTimer() {
+    if (statusViewerTimer !== null) {
+        clearTimeout(statusViewerTimer);
+        statusViewerTimer = null;
+    }
+}
 function closeStatusViewer() {
+    clearStatusViewerTimer();
     const viewer=$("statusViewer");
     const video=viewer.querySelector("video");
     if(video) video.pause();
     hide(viewer);
 }
+function scheduleStatusAdvance(duration) {
+    clearStatusViewerTimer();
+    if (!statusViewerItems[statusViewerIndex] || statusViewerItems[statusViewerIndex].id === "status-loading") return;
+    statusViewerTimer = setTimeout(() => moveStatusViewer(1), Math.max(500, duration));
+}
 function renderStatusViewer() {
+    clearStatusViewerTimer();
     const item=statusViewerItems[statusViewerIndex];
     if(!item){closeStatusViewer();return;}
     const content=$("statusViewerContent");
     content.replaceChildren();
-    if(item.media_data && item.media_type==="video"){
+    let duration=STATUS_IMAGE_DURATION;
+    if(item.id === "status-loading") {
+        duration=0;
+    } else if(item.media_data && item.media_type==="video"){
         const video=document.createElement("video");
-        video.src=item.media_data;video.controls=true;video.autoplay=true;video.playsInline=true;
+        video.src=item.media_data;
+        video.autoplay=true;
+        video.playsInline=true;
+        video.controls=false;
+        video.onloadedmetadata=()=>{
+            if(statusViewerItems[statusViewerIndex]!==item)return;
+            if(Number.isFinite(video.duration)&&video.duration>0){
+                duration=video.duration*1000;
+                updateCurrentStatusProgress(duration);
+                scheduleStatusAdvance(duration);
+            }
+        };
+        video.onended=()=>moveStatusViewer(1);
+        video.onerror=()=>scheduleStatusAdvance(STATUS_IMAGE_DURATION);
         content.appendChild(video);
+        const playAttempt=video.play();
+        if(playAttempt&&typeof playAttempt.catch==="function")playAttempt.catch(()=>{});
     }else if(item.media_data){
         const image=document.createElement("img");
         image.src=item.media_data;image.alt="Status photo";
@@ -3013,11 +3049,29 @@ function renderStatusViewer() {
     $("statusViewerProgress").replaceChildren();
     statusViewerItems.forEach((entry,index)=>{
         const bar=document.createElement("span");
-        if(index<=statusViewerIndex)bar.classList.add("active");
+        const fill=document.createElement("i");
+        fill.className="status-progress-fill";
+        bar.appendChild(fill);
+        if(index<statusViewerIndex)bar.classList.add("completed");
+        if(index===statusViewerIndex && duration>0){
+            bar.classList.add("current");
+            fill.style.animationDuration=duration+"ms";
+        }
         $("statusViewerProgress").appendChild(bar);
     });
+    if(duration>0 && !(item.media_data && item.media_type==="video")){
+        scheduleStatusAdvance(duration);
+    }
+}
+function updateCurrentStatusProgress(duration){
+    const bar=$("statusViewerProgress").children[statusViewerIndex];
+    if(!bar)return;
+    bar.classList.add("current");
+    const fill=bar.querySelector(".status-progress-fill");
+    if(fill)fill.style.animationDuration=duration+"ms";
 }
 function openStatusViewer(items,index=0) {
+    clearStatusViewerTimer();
     statusViewerItems=items||[];
     statusViewerIndex=Math.max(0,Math.min(index,statusViewerItems.length-1));
     if(!statusViewerItems.length)return;
@@ -3025,6 +3079,7 @@ function openStatusViewer(items,index=0) {
     renderStatusViewer();
 }
 function moveStatusViewer(direction) {
+    clearStatusViewerTimer();
     const next=statusViewerIndex+direction;
     if(next<0||next>=statusViewerItems.length){closeStatusViewer();return;}
     const video=$("statusViewer").querySelector("video");
@@ -3033,8 +3088,13 @@ function moveStatusViewer(direction) {
     renderStatusViewer();
 }
 $("closeStatusViewer").addEventListener("click",closeStatusViewer);
-$("previousStatusButton").addEventListener("click",()=>moveStatusViewer(-1));
-$("nextStatusButton").addEventListener("click",()=>moveStatusViewer(1));
+// A tap anywhere on the status itself skips forward. Statuses also advance automatically.
+$("statusViewerStage").addEventListener("click",event=>{
+    if(event.target.closest("video"))return;
+    moveStatusViewer(1);
+});
+$("previousStatusButton").addEventListener("click",event=>event.stopPropagation());
+$("nextStatusButton").addEventListener("click",event=>event.stopPropagation());
 $("deleteMyStatusButton").addEventListener("click",async()=>{
     const item=statusViewerItems[statusViewerIndex];
     if(!item||!item.is_mine)return;
