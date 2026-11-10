@@ -1153,6 +1153,24 @@ hr {
         display:none;
     }
 }
+
+/* Status editor and upload ring */
+.my-status-photo{border-color:#ffffff35;position:absolute}
+.my-status-card.has-status .my-status-photo{border:4px solid #25d366;padding:3px}
+.my-status-card.is-uploading .my-status-photo{border:4px solid transparent;background:conic-gradient(#25d366 var(--upload-progress,0%),#ffffff35 0);padding:4px}
+.my-status-card.is-uploading .my-status-photo:after{content:'↑';position:absolute;inset:0;display:grid;place-items:center;background:#0008;border-radius:50%;font-size:22px}
+.status-editor-card{width:min(94vw,560px);max-height:92vh;overflow:auto;background:#10171b;color:#fff;border-radius:20px;padding:16px}
+.status-editor-preview{position:relative;height:min(48vh,420px);background:#050708;border-radius:14px;display:grid;place-items:center;overflow:hidden;margin:12px 0}
+.status-editor-preview img,.status-editor-preview video{max-width:100%;max-height:100%;object-fit:contain}
+.status-editor-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.status-editor-tools button,.status-editor-tools select{border:1px solid #ffffff2b;border-radius:12px;background:#202a30;color:#fff;padding:9px 12px}
+.status-editor-tools button.active{background:#25d366;color:#06130b}
+.status-mention-list{max-height:150px;overflow:auto;background:#202a30;border-radius:10px;margin-top:5px}
+.status-mention-list button{display:block;width:100%;padding:9px;text-align:left;background:none;color:white;border:0}
+.status-upload-label{font-size:12px;color:#25d366;margin-top:5px}
+.status-editor-canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.status-editor-top{display:flex;justify-content:space-between;align-items:center}
+
 </style>
 </head>
 
@@ -1423,7 +1441,7 @@ hr {
                     <button data-main-nav="communities"><span>♧</span>Communities</button>
                     <button data-main-nav="call"><span>♧</span>Calls</button>
                 </nav>
-                <input id="statusFileInput" type="file" accept="image/*,video/*" class="hidden">
+                <input id="statusFileInput" type="file" accept="image/*,video/*" multiple class="hidden">
             </section>
         </main>
 
@@ -1467,6 +1485,22 @@ hr {
     </div>
 </div>
 
+
+<!-- MEDIA STATUS EDITOR -->
+<div id="mediaStatusEditor" class="modal-backdrop hidden">
+ <div class="status-editor-card">
+  <div class="status-editor-top"><button type="button" id="discardStatusEdit" aria-label="Discard">✕</button><strong>Edit status</strong><button type="button" id="saveMediaStatus">Share</button></div>
+  <div id="statusEditorPreview" class="status-editor-preview"></div>
+  <div class="status-editor-tools">
+   <button type="button" id="statusDrawButton">✎ Pencil</button><select id="statusDrawColor" aria-label="Pen colour"><option value="#ffffff">White</option><option value="#ff5252">Red</option><option value="#ffeb3b">Yellow</option><option value="#25d366">Green</option><option value="#70d6ff">Blue</option><option value="#ff69b4">Pink</option></select>
+   <select id="statusPenSize" aria-label="Pen size"><option value="3">Small</option><option value="7" selected>Medium</option><option value="13">Large</option></select>
+   <button type="button" id="statusAddText">Aa Text</button><button type="button" id="statusAddSticker">Sticker</button><button type="button" id="statusCropButton">Crop</button>
+  </div>
+  <div class="status-editor-tools"><select id="statusFilter" aria-label="Colour filter"><option value="none">Original</option><option value="grayscale(1)">B&W</option><option value="sepia(.8)">Vintage</option><option value="saturate(1.8)">Vivid</option><option value="contrast(1.25)">Contrast</option></select><button type="button" id="addAnotherStatusMedia">＋ Add photo/video</button><input id="anotherStatusFile" type="file" accept="image/*,video/*" multiple class="hidden"></div>
+  <textarea id="mediaStatusCaption" rows="2" maxlength="700" placeholder="Add a caption… Use @ to mention someone"></textarea><div id="statusMentionList" class="status-mention-list hidden"></div><div id="statusUploadProgress" class="status-upload-label"></div>
+ </div>
+</div>
+
 <!-- STATUS VIEWER -->
 <div id="statusViewer" class="status-viewer hidden" aria-label="Status viewer">
     <div class="status-viewer-progress" id="statusViewerProgress"></div>
@@ -1476,7 +1510,7 @@ hr {
             <div id="statusViewerAvatar" class="status-viewer-avatar">S</div>
             <div><strong id="statusViewerName">My status</strong><small id="statusViewerTime"></small></div>
         </div>
-        <button type="button" id="deleteMyStatusButton" aria-label="Delete this status" title="Delete status">⋮</button>
+        <button type="button" id="editMyStatusButton" aria-label="Edit this status" title="Edit status">✎</button><button type="button" id="deleteMyStatusButton" aria-label="Delete this status" title="Delete status">⋮</button>
     </header>
     <div class="status-viewer-stage" id="statusViewerStage">
         <button type="button" class="status-viewer-side previous" id="previousStatusButton" aria-label="Previous status"></button>
@@ -3028,6 +3062,25 @@ async function loadStatuses(){
         return null;
     }
 }
+
+// Status editor: multi-file publishing, upload progress, @mentions and media tools.
+let statusEditorFiles=[];let statusEditorEditingId=null;let statusEditorDraw=false;let statusEditorCanvas=null;let statusEditorCtx=null;let statusEditorCrop=false;
+function statusMentionMatches(prefix){return (contacts||[]).filter(c=>String(c.username||c.name||c.contact_username||"").toLowerCase().includes(prefix.toLowerCase())).slice(0,8);}
+function updateStatusMentions(){const input=$("mediaStatusCaption"), box=$("statusMentionList"), before=input.value.slice(0,input.selectionStart), match=before.match(/@([\\w .-]*)$/);if(!match){hide(box);return;}const list=statusMentionMatches(match[1].trim());box.innerHTML=list.map(c=>{const n=c.username||c.name||c.contact_username;return '<button type="button" data-mention="'+escapeHTML(n)+'">@'+escapeHTML(n)+'</button>';}).join("")||'<button type="button" disabled>No matching contacts</button>';show(box);box.querySelectorAll("[data-mention]").forEach(btn=>btn.onclick=()=>{const start=input.selectionStart, m=before.match(/@([\\w .-]*)$/);input.value=input.value.slice(0,start-m[0].length)+"@"+btn.dataset.mention+" "+input.value.slice(start);input.focus();hide(box);});}
+$("mediaStatusCaption").addEventListener("input",updateStatusMentions);
+function setupStatusEditorPreview(file){const box=$("statusEditorPreview");box.replaceChildren();statusEditorCanvas=null;let media;if(file.type.startsWith("video/")){media=document.createElement("video");media.controls=true;media.src=URL.createObjectURL(file);}else{media=document.createElement("img");media.src=URL.createObjectURL(file);media.style.filter=$("statusFilter").value;}box.appendChild(media);const canvas=document.createElement("canvas");canvas.className="status-editor-canvas";canvas.width=box.clientWidth||500;canvas.height=box.clientHeight||350;box.appendChild(canvas);statusEditorCanvas=canvas;statusEditorCtx=canvas.getContext("2d");canvas.style.pointerEvents=statusEditorDraw?"auto":"none";canvas.onpointerdown=e=>{if(!statusEditorDraw)return;canvas.setPointerCapture(e.pointerId);const r=canvas.getBoundingClientRect();statusEditorCtx.beginPath();statusEditorCtx.moveTo(e.clientX-r.left,e.clientY-r.top);statusEditorCtx.strokeStyle=$("statusDrawColor").value;statusEditorCtx.lineWidth=Number($("statusPenSize").value);statusEditorCtx.lineCap="round";};canvas.onpointermove=e=>{if(!statusEditorDraw||!e.buttons)return;const r=canvas.getBoundingClientRect();statusEditorCtx.lineTo(e.clientX-r.left,e.clientY-r.top);statusEditorCtx.stroke();};}
+function openMediaStatusEditor(files,editing=null){statusEditorFiles=Array.from(files||[]);statusEditorEditingId=editing?.id||null;$("mediaStatusCaption").value=editing?.text||"";if(statusEditorFiles.length)setupStatusEditorPreview(statusEditorFiles[0]);else if(editing?.media_data){const blob=fetch(editing.media_data).then(r=>r.blob()).then(b=>{const f=new File([b],editing.media_type==="video"?"status.mp4":"status.jpg",{type:b.type});statusEditorFiles=[f];setupStatusEditorPreview(f);});}else $("statusEditorPreview").textContent="Written status";$("statusUploadProgress").textContent="";show($("mediaStatusEditor"));}
+$("discardStatusEdit").onclick=()=>{hide($("mediaStatusEditor"));statusEditorFiles=[];statusEditorEditingId=null;};
+$("addAnotherStatusMedia").onclick=()=>$("anotherStatusFile").click();
+$("anotherStatusFile").onchange=e=>{statusEditorFiles.push(...Array.from(e.target.files||[]));e.target.value="";if(statusEditorFiles.length)setupStatusEditorPreview(statusEditorFiles[0]);$("statusUploadProgress").textContent=statusEditorFiles.length+" item(s) selected";};
+$("statusFilter").onchange=()=>{const img=$("statusEditorPreview").querySelector("img");if(img)img.style.filter=$("statusFilter").value;};
+$("statusDrawButton").onclick=()=>{statusEditorDraw=!statusEditorDraw;$("statusDrawButton").classList.toggle("active",statusEditorDraw);if(statusEditorCanvas)statusEditorCanvas.style.pointerEvents=statusEditorDraw?"auto":"none";};
+$("statusAddText").onclick=()=>{const t=prompt("Enter text to add to your status:");if(t){const caption=$("mediaStatusCaption");caption.value+=(caption.value?"\\n":"")+t;}};
+$("statusAddSticker").onclick=()=>{const s=prompt("Choose a sticker or emoji:","❤️");if(s)$("mediaStatusCaption").value+=s;};
+$("statusCropButton").onclick=()=>{const img=$("statusEditorPreview").querySelector("img");if(!img)return;statusEditorCrop=!statusEditorCrop;img.style.objectFit=statusEditorCrop?"cover":"contain";img.style.transform=statusEditorCrop?"scale(1.12)":"none";$("statusCropButton").classList.toggle("active",statusEditorCrop);};
+$("saveMediaStatus").onclick=async()=>{const caption=$("mediaStatusCaption").value.trim();try{if(statusEditorEditingId){await apiRequest("/api/statuses/"+encodeURIComponent(statusEditorEditingId),{method:"PUT",body:JSON.stringify({text:caption})});}else if(!statusEditorFiles.length){if(!caption){alert("Write something first.");return;}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:caption})});}else{for(let i=0;i<statusEditorFiles.length;i++){const f=statusEditorFiles[i];if(f.size>5*1024*1024)throw new Error(f.name+" is larger than 5 MB.");$("statusUploadProgress").textContent="Uploading "+(i+1)+" of "+statusEditorFiles.length+"…";const data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error("Could not read "+f.name));r.readAsDataURL(f);});await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:i===0?caption:"",media_data:data,media_type:f.type.startsWith("video/")?"video":"image"})});}}hide($("mediaStatusEditor"));statusEditorFiles=[];statusEditorEditingId=null;await loadStatuses();const mine=(window.kchatStatuses||[]).filter(x=>x.is_mine);renderStatusStories();openStatusViewer(mine,0);}catch(error){alert(error.message||"Could not share status.");$("statusUploadProgress").textContent="Upload failed — "+(error.message||"Try again.");}};
+$("editMyStatusButton").onclick=()=>{const item=statusViewerItems[statusViewerIndex];if(!item?.is_mine)return;closeStatusViewer();openMediaStatusEditor([],item);};
+
 function showJustCreatedStatus(status){
     if(!status)return;
     status.is_mine=true;
@@ -3072,25 +3125,7 @@ $("publishTextStatus").addEventListener("click",async()=>{
     finally{button.disabled=false;button.textContent="Share status";}
 });
 $("uploadStatusButton").addEventListener("click",()=>$("statusFileInput").click());
-$("statusFileInput").addEventListener("change",async event=>{
-    const file=event.target.files?.[0];event.target.value="";
-    if(!file)return;
-    if(!file.type.startsWith("image/")&&!file.type.startsWith("video/")){alert("Choose an image or video.");return;}
-    if(file.size>5*1024*1024){alert("Choose a file smaller than 5 MB for status.");return;}
-    const reader=new FileReader();
-    reader.onload=async()=>{
-        const button=$("uploadStatusButton");button.disabled=true;
-        try{
-            const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({media_data:reader.result,media_type:file.type.startsWith("video/")?"video":"image"})});
-            // Display the saved media directly from the successful POST response.
-            // Do not block the viewer on a second request that downloads every status.
-            showJustCreatedStatus(result.status);
-        }catch(error){alert(error.message||"Could not upload status.");}
-        finally{button.disabled=false;}
-    };
-    reader.onerror=()=>alert("Could not read that file.");
-    reader.readAsDataURL(file);
-});
+$("statusFileInput").addEventListener("change",event=>{const files=Array.from(event.target.files||[]);event.target.value="";if(!files.length)return;const invalid=files.find(f=>!f.type.startsWith("image/")&&!f.type.startsWith("video/"));if(invalid){alert("Choose images or videos only.");return;}openMediaStatusEditor(files);});
 $("exploreChannelsButton").addEventListener("click",loadChannels);
 $("channelsExploreEmpty").addEventListener("click",loadChannels);
 $("createChannelMenu").addEventListener("click",()=>{hide($("updatesMenu"));show($("createChannelModal"));$("newChannelName").focus();});
