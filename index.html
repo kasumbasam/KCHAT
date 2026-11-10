@@ -1366,6 +1366,18 @@ hr {
  .status-draw-palette{left:6px;gap:8px}
 }
 
+/* Status media editor refinements requested by the user. */
+.status-editor-adjustments #addAnotherStatusMedia{display:none!important}
+.status-editor-bottom-left{margin-right:auto;justify-content:flex-start}
+.status-editor-bottom-left #discardStatusEdit{order:0;margin:0;min-width:92px;background:#202326;color:#fff}
+.status-editor-bottom-left #statusFileShortcut{order:1}
+.status-draw-palette{display:flex!important;visibility:visible;pointer-events:auto}
+.status-draw-palette.hidden{display:none!important}
+.status-draw-palette button[data-draw-color]{display:block!important;opacity:1!important;visibility:visible!important;background:var(--draw-colour)!important;border:2px solid #fff!important;box-shadow:0 1px 4px #000!important;pointer-events:auto!important}
+.status-draw-palette button.selected{outline:3px solid #25d366!important;outline-offset:3px}
+.status-media-text-overlay{position:absolute;z-index:11;left:50%;top:48%;min-width:90px;max-width:85%;padding:6px 10px;color:#fff;background:#0006;border-radius:7px;text-align:center;font:700 28px Arial,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;outline:1px dashed #ffffff99;touch-action:none;user-select:text;cursor:move;transform:translate(-50%,-50%)}
+.status-media-text-overlay:empty:before{content:attr(data-placeholder);color:#ffffffbb}
+.status-media-text-overlay:focus{outline:2px solid #25d366}
 </style>
 </head>
 
@@ -1753,9 +1765,9 @@ hr {
     <button type="button" data-filter-value="none"><span class="filter-swatch filter-none"></span>None</button><button type="button" data-filter-value="saturate(1.65) contrast(1.08)"><span class="filter-swatch filter-pop"></span>Pop</button><button type="button" data-filter-value="grayscale(1)"><span class="filter-swatch filter-bw"></span>B&amp;W</button><button type="button" data-filter-value="saturate(1.12) hue-rotate(12deg)"><span class="filter-swatch filter-cool"></span>Cool</button><button type="button" data-filter-value="contrast(1.28) saturate(.78)"><span class="filter-swatch filter-chrome"></span>Chrome</button><button type="button" data-filter-value="sepia(.22) contrast(1.12) saturate(.82)"><span class="filter-swatch filter-film"></span>Film</button>
    </div></div>
   </div>
-  <div class="status-editor-adjustments"><label>Pen colour <select id="statusDrawColor"><option value="#ffffff">White</option><option value="#ff5252">Red</option><option value="#ffeb3b">Yellow</option><option value="#25d366">Green</option><option value="#70d6ff">Blue</option><option value="#ff69b4">Pink</option></select></label><label>Pen size <select id="statusPenSize"><option value="3">Small</option><option value="7" selected>Medium</option><option value="13">Large</option></select></label><button type="button" id="addAnotherStatusMedia" title="Add another photo or video" aria-label="Add another file">＋</button><input id="anotherStatusFile" type="file" accept="image/*,video/*" multiple class="hidden"></div>
+  <div class="status-editor-adjustments"><label>Pen colour <select id="statusDrawColor"><option value="#ffffff">White</option><option value="#ff3b30">Red</option><option value="#ffcc00">Yellow</option><option value="#34c759">Green</option><option value="#0a84ff">Blue</option><option value="#ff2d55">Pink</option><option value="#bf5af2">Purple</option><option value="#111111">Black</option></select></label><label>Pen size <select id="statusPenSize"><option value="3">Small</option><option value="7" selected>Medium</option><option value="13">Large</option></select></label><input id="anotherStatusFile" type="file" accept="image/*,video/*" multiple class="hidden"></div>
   <div class="status-mention-composer status-editor-caption"><textarea id="mediaStatusCaption" rows="2" maxlength="700" placeholder="Add a caption…"></textarea><button type="button" class="status-at-button" id="mediaStatusAtButton" aria-label="Mention a person or group">@</button></div>
-  <div class="status-editor-bottom"><div class="status-editor-bottom-left"><button type="button" id="statusFileShortcut" aria-label="Add file" title="Add another photo or video"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><button type="button" id="discardStatusEdit" aria-label="Discard status" title="Discard">Discard</button></div><button type="button" id="saveMediaStatus" aria-label="Share status" title="Share"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>
+  <div class="status-editor-bottom"><div class="status-editor-bottom-left"><button type="button" id="discardStatusEdit" aria-label="Discard status" title="Discard">Discard</button><button type="button" id="statusFileShortcut" aria-label="Add file" title="Add another photo or video"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div><button type="button" id="saveMediaStatus" aria-label="Share status" title="Share"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>
   <div id="statusMentionList" class="status-mention-list hidden"></div><div id="statusUploadProgress" class="status-upload-label"></div>
   <select id="statusFilter" class="hidden" aria-label="Status filter"><option value="none">None</option><option value="saturate(1.65) contrast(1.08)">Pop</option><option value="grayscale(1)">B&amp;W</option><option value="saturate(1.12) hue-rotate(12deg)">Cool</option><option value="contrast(1.28) saturate(.78)">Chrome</option><option value="sepia(.22) contrast(1.12) saturate(.82)">Film</option></select>
  </div>
@@ -3560,6 +3572,7 @@ function setupStatusMentionComposer(inputId,boxId,buttonId){
         box.querySelectorAll("[data-mention-name]").forEach(btn=>btn.onclick=()=>{
             const cursor=input.selectionStart,active=input.value.slice(0,cursor).match(/@([\\w .-]*)$/);
             if(!active)return;
+            if(inputId==="mediaStatusCaption"){window.kchatStatusMentions=window.kchatStatusMentions||[];const item={kind:btn.dataset.mentionKind,name:btn.dataset.mentionName};if(!window.kchatStatusMentions.some(x=>x.kind===item.kind&&x.name===item.name))window.kchatStatusMentions.push(item);input.value=input.value.replace(/@([\\w .-]*)$/,"").trimEnd();hide(box);$("statusUploadProgress").textContent="Selected mention: "+item.name;return;}
             const token="@"+btn.dataset.mentionName;
             input.value=input.value.slice(0,cursor-active[0].length)+token+" "+input.value.slice(cursor);
             input.focus();const next=cursor-active[0].length+token.length+1;input.setSelectionRange(next,next);hide(box);
@@ -3581,32 +3594,13 @@ function redrawStatusEditorCanvas(){if(!statusEditorCanvas||!statusEditorCtx)ret
 function setupStatusEditorPreview(file){const box=$("statusEditorPreview");box.replaceChildren();statusEditorCanvas=null;statusEditorStrokes=[];statusEditorCurrentStroke=null;let media;if(file.type.startsWith("video/")){media=document.createElement("video");media.controls=true;media.src=URL.createObjectURL(file);}else{media=document.createElement("img");media.src=URL.createObjectURL(file);media.style.filter=$("statusFilter").value;}box.appendChild(media);const canvas=document.createElement("canvas");canvas.className="status-editor-canvas";canvas.width=box.clientWidth||500;canvas.height=box.clientHeight||350;box.appendChild(canvas);statusEditorCanvas=canvas;statusEditorCtx=canvas.getContext("2d");canvas.style.pointerEvents=statusEditorDraw?"auto":"none";canvas.onpointerdown=e=>{if(!statusEditorDraw)return;canvas.setPointerCapture(e.pointerId);const r=canvas.getBoundingClientRect();statusEditorCurrentStroke={color:$("statusDrawColor").value,size:Number($("statusPenSize").value),points:[{x:e.clientX-r.left,y:e.clientY-r.top}]};statusEditorStrokes.push(statusEditorCurrentStroke);redrawStatusEditorCanvas();};canvas.onpointermove=e=>{if(!statusEditorDraw||!statusEditorCurrentStroke||!e.buttons)return;const r=canvas.getBoundingClientRect();statusEditorCurrentStroke.points.push({x:e.clientX-r.left,y:e.clientY-r.top});redrawStatusEditorCanvas();};canvas.onpointerup=()=>{statusEditorCurrentStroke=null;};canvas.onpointercancel=()=>{statusEditorCurrentStroke=null;};}
 function openMediaStatusEditor(files,editing=null){statusEditorFiles=Array.from(files||[]);statusEditorEditingId=editing?.id||null;$("mediaStatusCaption").value=editing?.text||"";if(statusEditorFiles.length)setupStatusEditorPreview(statusEditorFiles[0]);else if(editing?.media_data){const blob=fetch(editing.media_data).then(r=>r.blob()).then(b=>{const f=new File([b],editing.media_type==="video"?"status.mp4":"status.jpg",{type:b.type});statusEditorFiles=[f];setupStatusEditorPreview(f);});}else $("statusEditorPreview").textContent="Written status";$("statusUploadProgress").textContent="";show($("mediaStatusEditor"));}
 $("discardStatusEdit").onclick=()=>{hide($("mediaStatusEditor"));statusEditorFiles=[];statusEditorEditingId=null;};
-$("addAnotherStatusMedia").onclick=()=>$("anotherStatusFile").click();
+
 $("anotherStatusFile").onchange=e=>{statusEditorFiles.push(...Array.from(e.target.files||[]));e.target.value="";if(statusEditorFiles.length)setupStatusEditorPreview(statusEditorFiles[0]);$("statusUploadProgress").textContent=statusEditorFiles.length+" item(s) selected";};
 $("statusFilter").onchange=()=>{const img=$("statusEditorPreview").querySelector("img");if(img)img.style.filter=$("statusFilter").value;};
 
-document.querySelectorAll("[data-status-emoji]").forEach(button=>button.addEventListener("click",()=>{
- const box=$("statusEditorPreview");
- const sticker=document.createElement("div");
- sticker.className="status-sticker-overlay";
- sticker.textContent=button.dataset.statusEmoji;
- sticker.style.left="50%";sticker.style.top="48%";
- box.appendChild(sticker);
- $("statusEmojiTray").classList.add("hidden");
- let dragging=false,dx=0,dy=0;
- sticker.addEventListener("pointerdown",event=>{
-  dragging=true;sticker.setPointerCapture(event.pointerId);
-  const r=sticker.getBoundingClientRect();dx=event.clientX-r.left;dy=event.clientY-r.top;
- });
- sticker.addEventListener("pointermove",event=>{
-  if(!dragging)return;
-  const r=box.getBoundingClientRect();
-  sticker.style.left=(event.clientX-r.left-dx+sticker.offsetWidth/2)+"px";
-  sticker.style.top=(event.clientY-r.top-dy+sticker.offsetHeight/2)+"px";
- });
- sticker.addEventListener("pointerup",()=>dragging=false);
- sticker.addEventListener("pointercancel",()=>dragging=false);
-}));
+function makeStatusOverlayTransform(el){const x=Number(el.dataset.x||0),y=Number(el.dataset.y||0),scale=Number(el.dataset.scale||1),rotation=Number(el.dataset.rotation||0);el.style.transform="translate(-50%,-50%) translate("+x+"px,"+y+"px) rotate("+rotation+"deg) scale("+scale+")";}
+function enableStatusOverlayGestures(el){let pts=new Map(),start=null;el.addEventListener("pointerdown",e=>{e.preventDefault();el.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pts.size===1)start={x:e.clientX,y:e.clientY,x0:Number(el.dataset.x||0),y0:Number(el.dataset.y||0)};if(pts.size===2){const p=[...pts.values()];start={multi:true,d:Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y),a:Math.atan2(p[1].y-p[0].y,p[1].x-p[0].x),scale:Number(el.dataset.scale||1),rotation:Number(el.dataset.rotation||0)};}});el.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pts.size===2&&start&&start.multi){const p=[...pts.values()],d=Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y),a=Math.atan2(p[1].y-p[0].y,p[1].x-p[0].x);el.dataset.scale=Math.max(.35,Math.min(4,start.scale*d/Math.max(1,start.d)));el.dataset.rotation=start.rotation+(a-start.a)*180/Math.PI;makeStatusOverlayTransform(el);}else if(pts.size===1&&start&&!start.multi){el.dataset.x=start.x0+e.clientX-start.x;el.dataset.y=start.y0+e.clientY-start.y;makeStatusOverlayTransform(el);}});const end=e=>{pts.delete(e.pointerId);if(!pts.size)start=null;};el.addEventListener("pointerup",end);el.addEventListener("pointercancel",end);}
+document.querySelectorAll("[data-status-emoji]").forEach(button=>button.addEventListener("click",()=>{const box=$("statusEditorPreview"),sticker=document.createElement("div");sticker.className="status-sticker-overlay";sticker.textContent=button.dataset.statusEmoji;sticker.style.left="50%";sticker.style.top="48%";box.appendChild(sticker);enableStatusOverlayGestures(sticker);$("statusEmojiTray").classList.add("hidden");}));
 $("statusFileShortcut").onclick=()=>$("anotherStatusFile").click();
 document.querySelectorAll("[data-filter-value]").forEach(button=>button.addEventListener("click",()=>{$("statusFilter").value=button.dataset.filterValue;$("statusFilter").dispatchEvent(new Event("change"));document.querySelectorAll("[data-filter-value]").forEach(item=>item.classList.toggle("active",item===button));}));
 let statusFilterSwipeStart=0;
@@ -3621,12 +3615,10 @@ $("statusDrawButton").onclick=()=>{
  $("statusEmojiTray").classList.add("hidden");
  if(statusEditorCanvas)statusEditorCanvas.style.pointerEvents=statusEditorDraw?"auto":"none";
 };
-document.querySelectorAll("[data-draw-color]").forEach(button=>button.addEventListener("click",()=>{
- $("statusDrawColor").value=button.dataset.drawColor;
- document.querySelectorAll("[data-draw-color]").forEach(item=>item.classList.toggle("selected",item===button));
-}));
+document.querySelectorAll("[data-draw-color]").forEach(button=>button.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();$("statusDrawColor").value=button.dataset.drawColor;document.querySelectorAll("[data-draw-color]").forEach(item=>item.classList.toggle("selected",item===button));$("statusDrawPalette").classList.remove("hidden");statusEditorDraw=true;$("statusDrawButton").classList.add("active");if(statusEditorCanvas)statusEditorCanvas.style.pointerEvents="auto";}));
+$("statusDrawColor").addEventListener("change",()=>document.querySelectorAll("[data-draw-color]").forEach(item=>item.classList.toggle("selected",item.dataset.drawColor===$("statusDrawColor").value)));
 $("statusDrawUndo").onclick=()=>{if(statusEditorStrokes.length){statusEditorStrokes.pop();redrawStatusEditorCanvas();}};
-$("statusAddText").onclick=()=>{const caption=$("mediaStatusCaption");caption.focus();caption.scrollIntoView({block:"nearest",behavior:"smooth"});};
+$("statusAddText").onclick=()=>{const box=$("statusEditorPreview"),overlay=document.createElement("div");overlay.className="status-media-text-overlay";overlay.contentEditable="true";overlay.setAttribute("data-placeholder","Type text");overlay.textContent="";overlay.style.left="50%";overlay.style.top="48%";box.appendChild(overlay);overlay.focus();enableStatusOverlayGestures(overlay);};
 $("statusAddSticker").onclick=()=>{
  $("statusEmojiTray").classList.toggle("hidden");
  $("statusDrawPalette").classList.add("hidden");
