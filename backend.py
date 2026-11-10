@@ -898,7 +898,7 @@ async def get_profile(username: str, request: Request):
 
     with get_db() as conn:
         profile = conn.execute("""
-            SELECT id, username, profile_picture, about
+            SELECT id, username, phone_number, profile_picture, about
             FROM accounts
             WHERE username_key = %s
         """, (username.lower(),)).fetchone()
@@ -916,6 +916,8 @@ async def get_profile(username: str, request: Request):
 
     return {
         "username": profile["username"],
+        # Only return the registered phone number to the account owner.
+        "phone_number": profile["phone_number"] if profile["id"] == account["id"] else None,
         "profile_picture": profile["profile_picture"],
         "about": profile["about"] or ""
     }
