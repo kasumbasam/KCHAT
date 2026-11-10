@@ -1093,6 +1093,12 @@ hr {
 }
 
 @media(max-width:750px) {
+    #appScreen.status-open .sidebar {
+        display:none;
+    }
+    #appScreen.status-open .main-area {
+        display:flex;
+    }
     .sidebar {
         width:100%;
         min-width:0;
@@ -2010,6 +2016,8 @@ function hide(element) {
  */
 function openKchatUpdatesScreen() {
     activeTab = "status";
+    $("appScreen").classList.remove("mobile-chat-open");
+    $("appScreen").classList.add("status-open");
     document.querySelectorAll(".whatsapp-tab-btn").forEach(button => {
         button.classList.toggle("active", button.dataset.tab === "status");
     });
@@ -2966,6 +2974,7 @@ $("updatesSettingsMenu").addEventListener("click",()=>{hide($("updatesMenu"));op
 document.querySelectorAll("[data-main-nav]").forEach(button=>button.addEventListener("click",()=>{
     const tab=button.dataset.mainNav;
     if(tab==="status")return;
+    $("appScreen").classList.remove("status-open");
     document.querySelectorAll(".whatsapp-tab-btn").forEach(item=>item.classList.toggle("active",item.dataset.tab===tab));
     activeTab=tab;
     hide($("statusScreen"));
