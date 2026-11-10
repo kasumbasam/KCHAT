@@ -3421,7 +3421,7 @@ $("publishTextStatus").addEventListener("click",async()=>{
     finally{button.disabled=false;}
 });
 $("uploadStatusButton").addEventListener("click",()=>$("statusFileInput").click());
-$("statusFileInput").addEventListener("change",event=>{const files=Array.from(event.target.files||[]);event.target.value="";if(!files.length)return;const invalid=files.find(f=>!f.type.startsWith("image/")&&!f.type.startsWith("video/"));if(invalid){alert("Choose images or videos only.");return;}openMediaStatusEditor(files);});
+$("statusFileInput").addEventListener("change",event=>{const files=Array.from(event.target.files||[]);event.target.value="";if(!files.length)return;const invalid=files.find(f=>!f.type.startsWith("image/")&&!f.type.startsWith("video/"));if(invalid){alert("Choose images or videos only.");return;}hide($("textStatusModal"));openMediaStatusEditor(files);});
 $("exploreChannelsButton").addEventListener("click",loadChannels);
 $("channelsExploreEmpty").addEventListener("click",loadChannels);
 $("createChannelMenu").addEventListener("click",()=>{hide($("updatesMenu"));show($("createChannelModal"));$("newChannelName").focus();});
