@@ -2808,7 +2808,7 @@ async def get_statuses(request: Request):
         ensure_status_table()
         with get_db() as conn:
             rows = conn.execute("""
-                SELECT s.id, a.username, a.profile_picture, s.text,
+                SELECT s.id, s.owner_id, a.username, a.profile_picture, s.text,
                        s.media_data, s.media_type, s.created_at,
                        s.expires_at
                 FROM status_updates s
@@ -2824,18 +2824,18 @@ async def get_statuses(request: Request):
                 ORDER BY s.created_at DESC
             """, (account["id"], account["id"])).fetchall()
 
-        privacy = get_privacy_settings(account["id"])
-        audience = privacy.get("status_audience", "all_contacts")
-        excluded = {str(name).lower() for name in privacy.get("status_excluded", [])}
-        allowed = {str(name).lower() for name in privacy.get("status_allowed", [])}
-
         visible_rows = []
         for row in rows:
             is_mine = row["username"].lower() == account["username"].lower()
             if not is_mine:
-                if audience == "my_contacts_except" and row["username"].lower() in excluded:
+                owner_privacy = get_privacy_settings(row["owner_id"])
+                audience = owner_privacy.get("status_audience", "all_contacts")
+                excluded = {str(name).lower() for name in owner_privacy.get("status_excluded", [])}
+                allowed = {str(name).lower() for name in owner_privacy.get("status_allowed", [])}
+                viewer_name = account["username"].lower()
+                if audience == "my_contacts_except" and viewer_name in excluded:
                     continue
-                if audience == "only_share_with" and row["username"].lower() not in allowed:
+                if audience == "only_share_with" and viewer_name not in allowed:
                     continue
             visible_rows.append(row)
 
