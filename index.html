@@ -3045,7 +3045,19 @@ function renderStatusViewer() {
     $("statusViewerName").textContent=item.is_mine?"My status":(item.username||"Status");
     $("statusViewerTime").textContent=item.created_at?new Date(item.created_at).toLocaleString():"";
     $("statusViewerAvatar").textContent=(item.username||currentUser||"S").charAt(0).toUpperCase();
-    $("statusViewerFooter").querySelector("#statusViewerPosition").textContent=(statusViewerIndex+1)+" of "+statusViewerItems.length;
+    const viewerFooter=$("statusViewerFooter");
+    if(!viewerFooter.querySelector("#viewedByButton")){
+        viewerFooter.innerHTML='<button type="button" id="viewedByButton" class="viewed-by-button" hidden>◉ Viewed by 0</button><span id="statusViewerPosition"></span>';
+        $("viewedByButton").addEventListener("click",event=>{
+            event.stopPropagation();
+            const viewedItem=statusViewerItems.find(entry=>entry.id===$("viewedByButton").dataset.statusId);
+            if(!viewedItem||!viewedItem.is_mine)return;
+            const list=Array.isArray(viewedItem.viewers)?viewedItem.viewers:[];
+            const lines=list.length?list.map(viewer=>viewer.username+" · "+new Date(viewer.viewed_at).toLocaleString()).join("\\n"):"No views yet.";
+            alert("Viewed by ("+list.length+")\\n\\n"+lines);
+        });
+    }
+    viewerFooter.querySelector("#statusViewerPosition").textContent=(statusViewerIndex+1)+" of "+statusViewerItems.length;
     const viewedButton=$("viewedByButton");
     viewedButton.hidden=!item.is_mine;
     viewedButton.textContent="◉ Viewed by "+Number(item.view_count||0);
@@ -3110,6 +3122,10 @@ function moveStatusViewer(direction) {
     const video=$("statusViewer").querySelector("video");
     if(video)video.pause();
     statusViewerIndex=next;
+    const nextItem=statusViewerItems[statusViewerIndex];
+    if(nextItem&&!nextItem.is_mine&&nextItem.id!=="status-loading"){
+        apiRequest("/api/statuses/"+encodeURIComponent(nextItem.id)+"/view",{method:"POST"}).catch(error=>console.warn("Status view not recorded:",error));
+    }
     renderStatusViewer();
 }
 $("closeStatusViewer").addEventListener("click",closeStatusViewer);
