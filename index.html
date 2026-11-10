@@ -1116,11 +1116,15 @@ hr {
             <div class="sidebar-header">
                 <div class="topbar">
                     <div class="brand">KCHAT</div>
-                    <div style="display:flex;gap:7px;align-items:center;">
-                        <button class="icon-btn" id="newChatButton"
-                            title="New chat">＋</button>
-                        <button class="icon-btn" id="mainMenuButton"
-                            title="Menu">⋮</button>
+                    <div class="topbar-actions" style="display:flex;gap:7px;align-items:center;">
+                        <button class="icon-btn" id="sidebarCameraButton" title="Camera" aria-label="Open camera">
+                            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4H10L8.5 6H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.5L14 4Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+                        </button>
+                        <button class="icon-btn" id="sidebarSearchButton" title="Search" aria-label="Search conversations">
+                            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
+                        </button>
+                        <button class="icon-btn" id="newChatButton" title="New chat" aria-label="New chat">＋</button>
+                        <button class="icon-btn" id="mainMenuButton" title="Menu" aria-label="Menu">⋮</button>
                     </div>
                 </div>
 
@@ -1195,10 +1199,12 @@ hr {
                     </div>
 
                     <div class="chat-header-actions">
-                        <button class="icon-btn" id="chatAudioCallButton"
-                            title="Audio call">☎</button>
-                        <button class="icon-btn" id="chatVideoCallButton"
-                            title="Video call">▣</button>
+                        <button class="icon-btn" id="chatVideoCallButton" title="Video call" aria-label="Video call">
+                            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="m15 10 6-3v10l-6-3"/></svg>
+                        </button>
+                        <button class="icon-btn" id="chatAudioCallButton" title="Voice call" aria-label="Voice call">
+                            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h4l2 5-2.5 1.7a15 15 0 0 0 5.8 5.8L16 13l5 2v4a2 2 0 0 1-2.2 2A18 18 0 0 1 3 5.2 2 2 0 0 1 5 3Z"/></svg>
+                        </button>
                         <button class="icon-btn" id="chatMoreButton"
                             title="Chat options">⋮</button>
                     </div>
@@ -3411,6 +3417,23 @@ $("closeBlockedModal").addEventListener("click", () => {
 
 $("attachmentButton").addEventListener("click", () => {
     show($("attachmentModal"));
+});
+
+$("sidebarSearchButton").addEventListener("click", () => {
+    $("chatSearch").focus();
+    $("chatSearch").scrollIntoView({ behavior: "smooth", block: "nearest" });
+});
+
+$("sidebarCameraButton").addEventListener("click", () => {
+    if (!currentChat) {
+        alert("Open a conversation first to take and send a photo.");
+        return;
+    }
+    const picker = $("mediaFileInput");
+    picker.setAttribute("accept", "image/*");
+    picker.setAttribute("capture", "environment");
+    picker.click();
+    window.setTimeout(() => picker.removeAttribute("capture"), 1000);
 });
 
 $("closeAttachmentModal").addEventListener("click", () => {
