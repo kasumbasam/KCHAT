@@ -699,6 +699,10 @@ hr {
 .channels-empty small{max-width:280px;font-size:15px}
 .channels-empty button{border:0;border-radius:20px;background:#25d366;color:#07130b;padding:9px 18px;margin-top:8px}
 .status-create-bar{position:absolute;left:8px;right:8px;bottom:82px;min-height:76px;display:flex;align-items:center;justify-content:space-around;gap:2px;padding:7px 5px;background:#080d10;border-top:1px solid #ffffff18;z-index:5}
+.status-create-bar:not(.is-open){display:none}
+.status-create-bar.is-open{display:flex}
+#statusCreateMenuButton,#quickStatusCameraButton{font-size:21px;color:#f5f7f8}
+#statusCreateMenuButton.is-active{background:#123c2a;color:#25d366}
 .status-create-option{min-width:0;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:0;background:transparent;color:#e8edef;font-size:12px;padding:5px 1px}
 .status-create-icon{font-size:24px;line-height:26px}
 .status-format-option{flex:0 0 40px;width:40px;height:40px;border:0;border-radius:50%;background:#1b2925;color:#25d366;font:bold 19px Arial,sans-serif}
@@ -1499,6 +1503,8 @@ hr {
                     <h1>Updates</h1>
                     <div class="updates-header-actions">
                         <button class="icon-btn" id="updatesSearchButton" aria-label="Search updates" title="Search"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></button>
+                        <button class="icon-btn" id="quickStatusCameraButton" aria-label="Open status camera" title="Camera">📷</button>
+                        <button class="icon-btn" id="statusCreateMenuButton" aria-label="Create status options" title="Create status">✎</button>
                         <button class="icon-btn" id="updatesMenuButton" aria-label="Updates menu" title="More">⋮</button>
                     </div>
                 </header>
@@ -3506,6 +3512,23 @@ $("recordStatusVideo").addEventListener("click",()=>{if(statusCameraRecorder&&st
 $("finishStatusVideo").addEventListener("click",async()=>{if(!statusCameraBlob)return;if(statusCameraBlob.size>5*1024*1024){alert("Video is larger than 5 MB. Record a shorter video.");return;}const file=new File([statusCameraBlob],"kchat-status-video.webm",{type:statusCameraBlob.type||"video/webm"});await stopStatusCamera();hide($("statusCameraModal"));openMediaStatusEditor([file]);});
 $("uploadStatusButton").addEventListener("click",()=>openStatusCamera("photo"));
 $("uploadVideoStatus").addEventListener("click",()=>openStatusCamera("video"));
+
+// Keep the original camera and pen shortcuts visible in the Updates header.
+// The pen reveals the full creation choices without replacing either shortcut.
+$("statusCreateMenuButton").addEventListener("click",()=>{
+    const bar=$("statusScreen").querySelector(".status-create-bar");
+    const opened=bar.classList.toggle("is-open");
+    $("statusCreateMenuButton").classList.toggle("is-active",opened);
+    $("statusCreateMenuButton").setAttribute("aria-expanded",String(opened));
+});
+$("quickStatusCameraButton").addEventListener("click",()=>openStatusCamera("photo"));
+$("statusScreen").querySelector(".status-create-bar").addEventListener("click",event=>{
+    const option=event.target.closest("button");
+    if(!option)return;
+    $("statusScreen").querySelector(".status-create-bar").classList.remove("is-open");
+    $("statusCreateMenuButton").classList.remove("is-active");
+    $("statusCreateMenuButton").setAttribute("aria-expanded","false");
+});
 $("openStatusOverview").addEventListener("click",()=>{$("myStatusCard").click();});
 $("statusFormatButton").addEventListener("click",()=>openTextStatus());
 let voiceStatusRecorder=null,voiceStatusChunks=[],voiceStatusBlob=null,voiceStatusClock=null,voiceStatusStarted=0;
