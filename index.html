@@ -3055,6 +3055,13 @@ function connectWebSocket() {
                     }
                     renderMessages();
                 }
+            } else if (item.type === "message_edited") {
+                const edited = messages.find(entry => entry.id === item.id);
+                if (edited) {
+                    edited.text = item.text;
+                    edited.edited = true;
+                    renderMessages();
+                }
             } else if (item.type === "private_status") {
                 // The server can acknowledge delivery before POST /api/messages
                 // returns. Preserve that early event so it is not lost.
