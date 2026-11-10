@@ -1400,6 +1400,19 @@ hr {
     </div>
 </section>
 
+<!-- CREATE CHANNEL -->
+<div id="createChannelModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+        <h2>Create channel</h2>
+        <label for="newChannelName">Channel name</label>
+        <input id="newChannelName" maxlength="60" placeholder="e.g. Campus Updates">
+        <label for="newChannelDescription">Description</label>
+        <textarea id="newChannelDescription" maxlength="300" rows="3" placeholder="What is this channel about?"></textarea>
+        <p id="createChannelMessage" class="small muted"></p>
+        <div class="modal-actions"><button class="secondary-btn" id="cancelCreateChannel">Cancel</button><button class="primary-btn" id="saveCreateChannel">Create channel</button></div>
+    </div>
+</div>
+
 <!-- TEXT STATUS EDITOR -->
 <div id="textStatusModal" class="modal-backdrop hidden">
     <div class="modal-card text-status-card">
@@ -2861,9 +2874,41 @@ $("statusFileInput").addEventListener("change",async event=>{
     reader.onerror=()=>alert("Could not read that file.");
     reader.readAsDataURL(file);
 });
-$("exploreChannelsButton").addEventListener("click",()=>alert("Channel discovery will appear here when channel services are enabled."));
-$("channelsExploreEmpty").addEventListener("click",()=>alert("Channel discovery will appear here when channel services are enabled."));
-$("createChannelMenu").addEventListener("click",()=>{hide($("updatesMenu"));alert("Channel creation needs the channel service to be added to KCHAT's backend.");});
+$("exploreChannelsButton").addEventListener("click",loadChannels);
+$("channelsExploreEmpty").addEventListener("click",loadChannels);
+$("createChannelMenu").addEventListener("click",()=>{hide($("updatesMenu"));show($("createChannelModal"));$("newChannelName").focus();});
+$("cancelCreateChannel").addEventListener("click",()=>hide($("createChannelModal")));
+async function loadChannels(){
+    try{
+        const result=await apiRequest("/api/channels");
+        renderChannels(Array.isArray(result.channels)?result.channels:[]);
+    }catch(error){alert(error.message||"Could not load channels.");}
+}
+function renderChannels(channels){
+    const list=$("channelList");
+    if(!channels.length){
+        list.innerHTML='<div class="channels-empty"><span>◉</span><strong>No channels yet</strong><small>Explore channels or create one to get started.</small><button id="channelsExploreEmpty">Explore channels</button></div>';
+        $("channelsExploreEmpty").addEventListener("click",loadChannels);
+        return;
+    }
+    list.innerHTML=channels.map(channel=>'<div class="channel-row"><div class="channel-avatar">◉</div><div class="channel-copy"><div class="channel-name">'+escapeHTML(channel.name)+'</div><div class="channel-preview">'+escapeHTML(channel.description||("Channel by "+channel.owner))+' · '+Number(channel.followers||0)+' followers</div></div>'+(channel.following?'<span class="channel-time">Following</span>':'<button class="device-contact-action" data-follow-channel="'+escapeHTML(channel.id)+'">Follow</button>')+'</div>').join("");
+    list.querySelectorAll("[data-follow-channel]").forEach(button=>button.addEventListener("click",async()=>{
+        button.disabled=true;
+        try{await apiRequest("/api/channels/"+encodeURIComponent(button.dataset.followChannel)+"/follow",{method:"POST"});await loadChannels();}
+        catch(error){button.disabled=false;alert(error.message||"Could not follow channel.");}
+    }));
+}
+$("saveCreateChannel").addEventListener("click",async()=>{
+    const name=$("newChannelName").value.trim();
+    const description=$("newChannelDescription").value.trim();
+    const button=$("saveCreateChannel");button.disabled=true;button.textContent="Creating...";
+    try{
+        await apiRequest("/api/channels",{method:"POST",body:JSON.stringify({name,description})});
+        $("newChannelName").value="";$("newChannelDescription").value="";
+        hide($("createChannelModal"));await loadChannels();
+    }catch(error){showMessage($("createChannelMessage"),error.message||"Could not create channel.",true);}
+    finally{button.disabled=false;button.textContent="Create channel";}
+});
 $("statusPrivacyMenu").addEventListener("click",()=>{hide($("updatesMenu"));openSettings();});
 $("starredUpdatesMenu").addEventListener("click",()=>{hide($("updatesMenu"));alert("Starred status updates will appear here after status sharing is enabled.");});
 $("updatesSettingsMenu").addEventListener("click",()=>{hide($("updatesMenu"));openSettings();});
