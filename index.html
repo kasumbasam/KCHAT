@@ -701,8 +701,12 @@ hr {
 .status-create-bar{position:absolute;left:8px;right:8px;bottom:82px;min-height:76px;display:flex;align-items:center;justify-content:space-around;gap:2px;padding:7px 5px;background:#080d10;border-top:1px solid #ffffff18;z-index:5}
 .status-create-bar:not(.is-open){display:none}
 .status-create-bar.is-open{display:flex}
-#statusCreateMenuButton,#quickStatusCameraButton{font-size:21px;color:#f5f7f8}
-#statusCreateMenuButton.is-active{background:#123c2a;color:#25d366}
+.status-fab-stack{position:absolute;right:18px;bottom:98px;z-index:7;display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+.status-fab{display:grid;place-items:center;border:0;border-radius:50%;box-shadow:0 3px 10px #0008;cursor:pointer}
+.status-fab svg{width:25px;height:25px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.status-camera-fab{width:48px;height:48px;background:#263238;color:#f5f7f8}
+.status-pen-fab{width:56px;height:56px;background:#25d366;color:#062b17}
+.status-pen-fab.is-active{background:#128c52;color:#fff}
 .status-create-option{min-width:0;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:0;background:transparent;color:#e8edef;font-size:12px;padding:5px 1px}
 .status-create-icon{font-size:24px;line-height:26px}
 .status-format-option{flex:0 0 40px;width:40px;height:40px;border:0;border-radius:50%;background:#1b2925;color:#25d366;font:bold 19px Arial,sans-serif}
@@ -1503,8 +1507,6 @@ hr {
                     <h1>Updates</h1>
                     <div class="updates-header-actions">
                         <button class="icon-btn" id="updatesSearchButton" aria-label="Search updates" title="Search"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></button>
-                        <button class="icon-btn" id="quickStatusCameraButton" aria-label="Open status camera" title="Camera">📷</button>
-                        <button class="icon-btn" id="statusCreateMenuButton" aria-label="Create status options" title="Create status">✎</button>
                         <button class="icon-btn" id="updatesMenuButton" aria-label="Updates menu" title="More">⋮</button>
                     </div>
                 </header>
@@ -1535,6 +1537,14 @@ hr {
                     <button type="button" id="writeStatusButton" class="status-create-option"><span class="status-create-icon">✎</span><span>Text</span></button>
                     <button type="button" id="uploadVideoStatus" class="status-create-option"><span class="status-create-icon">▣</span><span>Video</span></button>
                     <button type="button" id="statusFormatButton" class="status-format-option" aria-label="Text format">Aa</button>
+                </div>
+                <div class="status-fab-stack" aria-label="Create status">
+                    <button type="button" class="status-fab status-camera-fab" id="quickStatusCameraButton" aria-label="Open camera" title="Camera">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h3l1.5-2h7l1.5 2h3A1.5 1.5 0 0 1 21.5 9v9A1.5 1.5 0 0 1 20 19.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z"/><circle cx="12" cy="13.5" r="4"/></svg>
+                    </button>
+                    <button type="button" class="status-fab status-pen-fab" id="statusCreateMenuButton" aria-label="Create status" title="Create status" aria-expanded="false">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16.5-.9 4.4 4.4-.9L19.8 7.7a2.5 2.5 0 0 0-3.5-3.5L4 16.5Z"/><path d="m14.8 5.7 3.5 3.5"/></svg>
+                    </button>
                 </div>
                 <nav class="status-bottom-nav" aria-label="Main navigation">
                     <button data-main-nav="chat"><span>▤</span>Chats</button>
@@ -3513,8 +3523,7 @@ $("finishStatusVideo").addEventListener("click",async()=>{if(!statusCameraBlob)r
 $("uploadStatusButton").addEventListener("click",()=>openStatusCamera("photo"));
 $("uploadVideoStatus").addEventListener("click",()=>openStatusCamera("video"));
 
-// Keep the original camera and pen shortcuts visible in the Updates header.
-// The pen reveals the full creation choices without replacing either shortcut.
+// WhatsApp-style floating camera and pencil actions at the bottom-right of Updates.
 $("statusCreateMenuButton").addEventListener("click",()=>{
     const bar=$("statusScreen").querySelector(".status-create-bar");
     const opened=bar.classList.toggle("is-open");
