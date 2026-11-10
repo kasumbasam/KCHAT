@@ -1497,6 +1497,8 @@ let currentUser = localStorage.getItem("kchat_username") || "sammie' k";
 let currentChat = "";
 let contacts = [];
 let messages = [];
+// Keep receipt events that arrive before the HTTP send response adds the message bubble.
+const pendingDeliveryStatuses = new Map();
 let activeFilter = "all";
 let activeTab = "chat";
 let socket = null;
@@ -2458,7 +2460,13 @@ async function sendMessage() {
             throw new Error((result && result.error) || "KCHAT did not accept the message.");
         }
         input.value = "";
-        messages.push(result.message);
+        const sentMessage = { ...result.message };
+        const earlyStatus = pendingDeliveryStatuses.get(sentMessage.id);
+        if (earlyStatus) {
+            sentMessage.status = earlyStatus;
+            pendingDeliveryStatuses.delete(sentMessage.id);
+        }
+        messages.push(sentMessage);
         renderMessages();
         loadContacts();
     } catch (error) {
@@ -2827,9 +2835,15 @@ function connectWebSocket() {
                     renderMessages();
                 }
             } else if (item.type === "private_status") {
+                // The server can acknowledge delivery before POST /api/messages
+                // returns. Preserve that early event so it is not lost.
+                if (item.id && item.status) {
+                    pendingDeliveryStatuses.set(item.id, item.status);
+                }
                 const message = messages.find(entry => entry.id === item.id);
                 if (message) {
                     message.status = item.status;
+                    pendingDeliveryStatuses.delete(item.id);
                     renderMessages();
                 }
                 loadContacts();
