@@ -3089,12 +3089,9 @@ function moveStatusViewer(direction) {
 }
 $("closeStatusViewer").addEventListener("click",closeStatusViewer);
 // A tap anywhere on the status itself skips forward. Statuses also advance automatically.
-$("statusViewerStage").addEventListener("click",event=>{
-    if(event.target.closest("video"))return;
+$("statusViewerStage").addEventListener("click",()=>{
     moveStatusViewer(1);
 });
-$("previousStatusButton").addEventListener("click",event=>event.stopPropagation());
-$("nextStatusButton").addEventListener("click",event=>event.stopPropagation());
 $("deleteMyStatusButton").addEventListener("click",async()=>{
     const item=statusViewerItems[statusViewerIndex];
     if(!item||!item.is_mine)return;
