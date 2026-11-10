@@ -480,6 +480,17 @@ hr {
     margin-top:6px;
 }
 
+.message-image {
+    display:block;
+    max-width:min(100%, 420px);
+    max-height:420px;
+    width:auto;
+    height:auto;
+    border-radius:10px;
+    object-fit:contain;
+    margin:2px 0 5px;
+}
+
 .message-composer {
     display:flex;
     align-items:center;
@@ -2215,6 +2226,12 @@ async function openChat(username) {
     $("appScreen").classList.add("mobile-chat-open");
 
     await loadMessages(username);
+    try {
+        const presence = await apiRequest("/api/presence/" + encodeURIComponent(username));
+        updateContactPresence(username, presence.online === true);
+    } catch {
+        updateContactPresence(username, false);
+    }
 }
 
 $("backToChats").addEventListener("click", () => {
@@ -2246,6 +2263,11 @@ function renderMessages() {
         const date = message.created_at ? new Date(message.created_at) : new Date();
         const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+        const isImage = typeof message.text === "string"
+            && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(message.text);
+        const messageContent = isImage
+            ? `<img class="message-image" src="${escapeHTML(message.text)}" alt="Photo sent in KCHAT" loading="lazy">`
+            : `<div class="message-text">${escapeHTML(message.text || "")}</div>`;
         const revokedLabel = message.revoked
             ? `<div class="message-meta">Deleted for everyone${message.revoked_retained ? " · retained by Anti-Revoke" : ""}</div>`
             : `<div class="message-meta">${time}</div>`;
@@ -2256,7 +2278,7 @@ function renderMessages() {
         return `
             <div class="message-row ${mine ? "mine" : ""}">
                 <div class="message-bubble">
-                    <div class="message-text">${escapeHTML(message.text || "")}</div>
+                    ${messageContent}
                     ${revokedLabel}
                     ${revokeButton}
                 </div>
@@ -2537,12 +2559,75 @@ $("closeAttachmentModal").addEventListener("click", () => {
 $("attachPhotoButton").addEventListener("click", () => {
     $("mediaFileInput").click();
 });
-$("mediaFileInput").addEventListener("change", event => {
+async function compressPhotoForKchat(file) {
+    if (!file.type.startsWith("image/")) {
+        throw new Error("Please choose a photo image (JPG, PNG or WEBP).");
+    }
+    if (file.size > 15 * 1024 * 1024) {
+        throw new Error("Choose a photo smaller than 15 MB.");
+    }
+
+    const sourceUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("Could not read this photo."));
+        reader.readAsDataURL(file);
+    });
+
+    const image = await new Promise((resolve, reject) => {
+        const picture = new Image();
+        picture.onload = () => resolve(picture);
+        picture.onerror = () => reject(new Error("This photo format could not be opened."));
+        picture.src = sourceUrl;
+    });
+
+    const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext("2d");
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.78);
+    if (dataUrl.length > 3_400_000) {
+        throw new Error("This photo is still too large. Choose a smaller photo.");
+    }
+    return dataUrl;
+}
+
+$("mediaFileInput").addEventListener("change", async event => {
     const file = event.target.files[0];
-    if (file && currentChat) {
-        messages.push({ username: currentUser, text: `[Attached Photo: ${file.name}]`, created_at: new Date().toISOString() });
+    event.target.value = "";
+    if (!file || !currentChat) return;
+
+    const button = $("attachPhotoButton");
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = "Sending photo...";
+    try {
+        const photoData = await compressPhotoForKchat(file);
+        const result = await apiRequest("/api/messages", {
+            method: "POST",
+            body: JSON.stringify({
+                recipient: currentChat,
+                text: photoData,
+                type: "private"
+            })
+        });
+        if (!result || !result.success || !result.message) {
+            throw new Error(result?.error || "KCHAT did not confirm sending the photo.");
+        }
+        if (!messages.some(item => item.id === result.message.id)) {
+            messages.push(result.message);
+        }
         renderMessages();
         hide($("attachmentModal"));
+        await loadContacts();
+    } catch (error) {
+        alert(error.message || "Photo could not be sent. Please try again.");
+    } finally {
+        button.disabled = false;
+        button.textContent = originalText;
     }
 });
 
