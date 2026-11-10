@@ -707,7 +707,22 @@ hr {
 .status-bottom-nav button span{font:28px Arial}
 .status-bottom-nav button.active{color:#25d366}
 .status-bottom-nav button.active span{background:#123c2a;border-radius:30px;padding:5px 25px}
-.text-status-card textarea{min-height:150px;background:#151b1f;color:white}
+.text-status-backdrop{position:fixed;inset:0;z-index:10030;padding:0!important;background:#000!important}
+.text-status-card{width:100%;height:100dvh;max-width:100%!important;max-height:100dvh!important;border:0!important;border-radius:0!important;padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom)!important;background:#546E7A;display:flex;flex-direction:column;overflow:hidden;transition:background .18s ease}
+.text-status-header{height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:space-between}
+.text-status-header button{width:44px;height:44px;border:0;border-radius:50%;background:#00000020;color:#fff;font:30px Arial,sans-serif;display:grid;place-items:center}
+.text-status-header button:last-child svg,.text-status-actions svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.text-status-header strong{font:600 17px Arial,sans-serif;color:#fff}
+.text-status-writing-area{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:20px 4px 62px}
+#textStatusInput{width:100%;height:100%;min-height:0;resize:none;border:0!important;outline:0;background:transparent!important;color:#fff!important;text-align:center;font:600 clamp(27px,6vw,42px)/1.35 Arial,sans-serif;padding:18px 8px 36px!important;overflow:auto;overflow-wrap:anywhere}
+#textStatusInput::placeholder{color:#ffffffa8}
+.text-status-at-button{position:absolute;right:8px;bottom:14px;width:42px;height:42px;border:0;border-radius:50%;background:#00000025;color:#fff;font:700 22px Arial,sans-serif}
+.text-status-writing-area .status-mention-list{position:absolute;left:0;right:0;bottom:62px;z-index:5;max-height:34vh;background:#182126;border:1px solid #ffffff35}
+.text-status-actions{height:76px;flex:0 0 76px;display:flex;align-items:center;justify-content:space-between;padding:0 2px 8px}
+.text-status-actions button{width:52px;height:52px;border:0;border-radius:50%;display:grid;place-items:center;color:#fff;background:#00000028}
+.text-status-actions #publishTextStatus{width:58px;height:58px;background:#25d366;color:#06200f}
+.text-status-actions #publishTextStatus svg{width:28px;height:28px}
+.status-viewer-content .status-viewer-text{background:var(--status-text-background,transparent);border-radius:12px;min-width:100%;min-height:100%;display:flex;align-items:center;justify-content:center}
 
 .status-viewer{position:fixed;inset:0;z-index:10020;background:#050708;color:#fff;display:flex;flex-direction:column;padding:12px max(12px,env(safe-area-inset-left)) max(12px,env(safe-area-inset-bottom));}
 .status-viewer.hidden{display:none}
@@ -1525,13 +1540,29 @@ hr {
 </div>
 
 <!-- TEXT STATUS EDITOR -->
-<div id="textStatusModal" class="modal-backdrop hidden">
-    <div class="modal-card text-status-card">
-        <h2>Write a status</h2>
-        <div class="status-mention-composer"><textarea id="textStatusInput" maxlength="700" rows="5" placeholder="What's on your mind? Type @ to mention a person or group"></textarea><button type="button" class="status-at-button" id="textStatusAtButton" aria-label="Mention a person or group">@</button></div>
-        <div id="textStatusMentionList" class="status-mention-list hidden"></div>
-        <div class="modal-actions"><button class="secondary-btn" id="cancelTextStatus">Cancel</button><button class="primary-btn" id="publishTextStatus">Share status</button></div>
-    </div>
+<div id="textStatusModal" class="modal-backdrop hidden text-status-backdrop">
+    <section class="text-status-card" aria-label="Create a text status">
+        <header class="text-status-header">
+            <button type="button" id="cancelTextStatus" aria-label="Close text status">×</button>
+            <strong>Text status</strong>
+            <button type="button" id="changeTextStatusBackground" aria-label="Change background" title="Change background">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18h1.2a2 2 0 0 0 1.4-3.4 1.7 1.7 0 0 1 1.2-2.9H18a3 3 0 0 0 3-3c0-4.8-4-8.7-9-8.7Z"/><circle cx="7.5" cy="10" r="1"/><circle cx="11" cy="6.8" r="1"/><circle cx="16" cy="8" r="1"/></svg>
+            </button>
+        </header>
+        <div class="text-status-writing-area" id="textStatusWritingArea">
+            <textarea id="textStatusInput" maxlength="700" placeholder="Type a status" aria-label="Write your status"></textarea>
+            <button type="button" class="text-status-at-button" id="textStatusAtButton" aria-label="Mention a person or group">@</button>
+            <div id="textStatusMentionList" class="status-mention-list hidden"></div>
+        </div>
+        <footer class="text-status-actions">
+            <button type="button" id="textStatusAddFile" aria-label="Add photo or video" title="Add photo or video">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h3l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z"/><circle cx="12" cy="13" r="3"/></svg>
+            </button>
+            <button type="button" id="publishTextStatus" aria-label="Share status" title="Share status">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 18-8-8 18-2.5-7.5L3 11Z"/><path d="M10.5 13.5 21 3"/></svg>
+            </button>
+        </footer>
+    </section>
 </div>
 
 
@@ -3022,7 +3053,21 @@ $("updatesMenuButton").addEventListener("click",showUpdatesMenu);
 document.addEventListener("click",event=>{
     if(!event.target.closest("#updatesMenu")&&!event.target.closest("#updatesMenuButton")) hide($("updatesMenu"));
 });
-function openTextStatus(){hide($("updatesMenu"));show($("textStatusModal"));$("textStatusInput").focus();}
+const textStatusBackgrounds=["#546E7A","#075E54","#6A1B9A","#AD1457","#1565C0","#8D6E63","#263238","#B26A00","#37474F","#5D4037"];
+let textStatusBackgroundIndex=0;
+function setTextStatusBackground(index){
+    textStatusBackgroundIndex=(index+textStatusBackgrounds.length)%textStatusBackgrounds.length;
+    $("textStatusModal").querySelector(".text-status-card").style.background=textStatusBackgrounds[textStatusBackgroundIndex];
+}
+function openTextStatus(){
+    hide($("updatesMenu"));
+    $("textStatusInput").value="";
+    setTextStatusBackground(textStatusBackgroundIndex);
+    show($("textStatusModal"));
+    $("textStatusInput").focus();
+}
+$("changeTextStatusBackground").addEventListener("click",()=>setTextStatusBackground(textStatusBackgroundIndex+1));
+$("textStatusAddFile").addEventListener("click",()=>$("statusFileInput").click());
 $("writeStatusButton").addEventListener("click",openTextStatus);
 let statusViewerItems = [];
 let statusViewerIndex = 0;
@@ -3083,6 +3128,7 @@ function renderStatusViewer() {
         const text=document.createElement("div");
         text.className="status-viewer-text";
         text.textContent=item.text||"";
+        text.style.background=item.background||"#546E7A";
         content.appendChild(text);
     }
     $("statusViewerName").textContent=item.is_mine?"My status":(item.username||"Status");
@@ -3364,16 +3410,15 @@ $("cancelTextStatus").addEventListener("click",()=>hide($("textStatusModal")));
 $("publishTextStatus").addEventListener("click",async()=>{
     const value=$("textStatusInput").value.trim();
     if(!value){alert("Write something for your status first.");return;}
-    const button=$("publishTextStatus");button.disabled=true;button.textContent="Sharing...";
+    const button=$("publishTextStatus");button.disabled=true;
     try{
-        const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:value})});
+        const background=textStatusBackgrounds[textStatusBackgroundIndex];
+        const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:value,background})});
         $("textStatusInput").value="";
         hide($("textStatusModal"));
-        // The POST response already contains the saved status. Display it
-        // immediately instead of waiting for a second, potentially slow GET.
         showJustCreatedStatus(result.status);
     }catch(error){alert(error.message||"Could not share status.");}
-    finally{button.disabled=false;button.textContent="Share status";}
+    finally{button.disabled=false;}
 });
 $("uploadStatusButton").addEventListener("click",()=>$("statusFileInput").click());
 $("statusFileInput").addEventListener("change",event=>{const files=Array.from(event.target.files||[]);event.target.value="";if(!files.length)return;const invalid=files.find(f=>!f.type.startsWith("image/")&&!f.type.startsWith("video/"));if(invalid){alert("Choose images or videos only.");return;}openMediaStatusEditor(files);});
