@@ -1395,6 +1395,29 @@ hr {
 .status-media-text-overlay:empty:before{content:attr(data-placeholder);color:#ffffffbb}
 .status-media-text-overlay:focus{outline:2px solid #25d366}
 </style>
+
+<style id="kchatAiStyles">
+.kchat-ai-fab{position:absolute;right:26px;bottom:26px;z-index:30;width:58px;height:58px;border:0;border-radius:50%;background:#00a884;color:#062e26;box-shadow:0 5px 20px #0008;cursor:pointer;display:grid;place-items:center}
+.kchat-ai-fab-mark,.kchat-ai-brand-mark,.kchat-ai-large-mark{display:grid;place-items:center;border:2px solid currentColor;border-radius:50%;font-weight:800;letter-spacing:-1px}
+.kchat-ai-fab-mark{width:35px;height:35px;font-size:14px}
+.kchat-ai-screen{position:absolute;inset:0;z-index:40;background:#0b141a;color:#e9edef;display:flex;flex-direction:column;min-width:0}
+.kchat-ai-screen.hidden{display:none!important}
+.kchat-ai-header{height:68px;flex:0 0 68px;display:flex;align-items:center;gap:13px;padding:0 20px;background:#202c33;border-bottom:1px solid #2a3942}
+.kchat-ai-back{border:0;background:none;color:#e9edef;font-size:32px;cursor:pointer}
+.kchat-ai-brand-mark{width:39px;height:39px;color:#00a884;font-size:14px}
+.kchat-ai-heading{display:flex;flex-direction:column;gap:3px}.kchat-ai-heading strong{font-size:16px}.kchat-ai-heading small{font-size:12px;color:#8696a0}
+.kchat-ai-content{flex:1;overflow:auto;display:flex;flex-direction:column;align-items:center;padding:34px 20px 18px;background:radial-gradient(ellipse at center top,#142c30 0%,#0b141a 62%)}
+.kchat-ai-welcome{margin:auto auto 24px;text-align:center;max-width:440px}
+.kchat-ai-large-mark{width:76px;height:76px;margin:0 auto 20px;color:#00a884;font-size:24px}
+.kchat-ai-welcome h1{font-size:25px;margin:0 0 10px}.kchat-ai-welcome p{font-size:19px;margin:0 0 10px;color:#d9fdd3}.kchat-ai-welcome span{font-size:13px;color:#aebac1}
+.kchat-ai-messages{width:min(760px,100%);display:flex;flex-direction:column;gap:10px}
+.kchat-ai-user-message{align-self:flex-end;max-width:80%;padding:12px 16px;border-radius:16px 16px 4px 16px;background:#005c4b;color:#e9edef;white-space:pre-wrap;overflow-wrap:anywhere}
+.kchat-ai-connection-note{width:min(760px,100%);margin-top:20px;text-align:center;color:#8696a0;font-size:12px}
+.kchat-ai-composer{display:flex;gap:12px;align-items:flex-end;padding:14px max(18px,calc((100% - 800px)/2));background:#202c33}
+.kchat-ai-composer textarea{flex:1;resize:none;max-height:130px;border:0;outline:0;border-radius:22px;padding:13px 17px;background:#2a3942;color:#e9edef;font:15px Arial,sans-serif}
+.kchat-ai-composer button{width:46px;height:46px;border:0;border-radius:50%;background:#00a884;color:#062e26;font-size:21px;cursor:pointer}
+@media(max-width:700px){.kchat-ai-fab{right:16px;bottom:78px}.kchat-ai-content{padding:24px 16px 14px}.kchat-ai-welcome h1{font-size:22px}}
+</style>
 </head>
 
 <body>
@@ -1675,7 +1698,32 @@ hr {
                 </nav>
                 <input id="statusFileInput" type="file" accept="image/*,video/*" multiple class="hidden">
             </section>
-        </main>
+        
+            <button type="button" id="kchatAiFab" class="kchat-ai-fab" aria-label="Open KCAGT AI" title="KCAGT AI">
+                <span class="kchat-ai-fab-mark">AI</span>
+            </button>
+            <section id="kchatAiScreen" class="kchat-ai-screen hidden" aria-label="KCAGT AI assistant">
+                <header class="kchat-ai-header">
+                    <button type="button" id="kchatAiBack" class="kchat-ai-back" aria-label="Back to chats">‹</button>
+                    <div class="kchat-ai-brand-mark">AI</div>
+                    <div class="kchat-ai-heading"><strong>KCAGT AI</strong><small>Meta AI · Assistant</small></div>
+                </header>
+                <div class="kchat-ai-content">
+                    <div class="kchat-ai-welcome">
+                        <div class="kchat-ai-large-mark">AI</div>
+                        <h1>Welcome to KCHAT AI</h1>
+                        <p>Let me solve the problem for u!</p>
+                        <span>Ask a question or tell me what you need help with.</span>
+                    </div>
+                    <div id="kchatAiMessages" class="kchat-ai-messages" aria-live="polite"></div>
+                    <div class="kchat-ai-connection-note">Meta AI connection is not configured yet. Your messages will not be sent until the Meta AI service is connected.</div>
+                </div>
+                <form id="kchatAiForm" class="kchat-ai-composer">
+                    <textarea id="kchatAiInput" rows="1" maxlength="4000" placeholder="Message KCAGT AI" aria-label="Message KCAGT AI"></textarea>
+                    <button type="submit" aria-label="Send message" title="Send">➤</button>
+                </form>
+            </section>
+</main>
 
     </div>
 </section>
@@ -5063,6 +5111,39 @@ if (document.readyState === "loading") {
 } else {
     restoreSession();
 }
+
+/* KCAGT AI screen navigation and local composer preview. */
+(function(){
+ const fab=document.getElementById("kchatAiFab");
+ const screen=document.getElementById("kchatAiScreen");
+ const back=document.getElementById("kchatAiBack");
+ const form=document.getElementById("kchatAiForm");
+ const input=document.getElementById("kchatAiInput");
+ const messages=document.getElementById("kchatAiMessages");
+ if(!fab||!screen||!back||!form||!input||!messages)return;
+ fab.addEventListener("click",function(){
+   screen.classList.remove("hidden");
+   fab.classList.add("hidden");
+   input.focus();
+ });
+ back.addEventListener("click",function(){
+   screen.classList.add("hidden");
+   fab.classList.remove("hidden");
+ });
+ form.addEventListener("submit",function(event){
+   event.preventDefault();
+   const value=input.value.trim();
+   if(!value)return;
+   const bubble=document.createElement("div");
+   bubble.className="kchat-ai-user-message";
+   bubble.textContent=value;
+   messages.appendChild(bubble);
+   input.value="";
+   const note=screen.querySelector(".kchat-ai-connection-note");
+   if(note)note.textContent="Your message is shown here, but Meta AI has not been connected yet. Connect Meta's AI API to receive AI answers.";
+   messages.scrollTop=messages.scrollHeight;
+ });
+})();
 </script>
 
 </body>
