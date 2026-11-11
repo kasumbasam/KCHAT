@@ -403,6 +403,29 @@ async def kchat_ai_chat(request: Request):
         if not safe_messages or safe_messages[-1]["role"] != "user":
             return JSONResponse({"error": "Your latest message is missing."}, status_code=400)
 
+        # Route image requests on the server as well as in the browser.
+        latest_text = safe_messages[-1]["content"].strip()
+        image_prompt = latest_text
+        refusal_pattern = re.search(r'(?is)(?:can.t|cannot).*?(?:image|picture|photo).*?(?:prompt|generator).*?[“"]([^”"]{20,1800})[”"]', latest_text)
+        if refusal_pattern:
+            image_prompt = refusal_pattern.group(1).strip()
+        direct_image_request = re.search(r'(?is)\b(?:create|generate|draw|render|make|produce)\b.{0,140}\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\b|\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\b.{0,100}\b(?:create|generate|draw|render|make)\b', latest_text)
+        if refusal_pattern or direct_image_request:
+            image_client = AsyncOpenAI(api_key=api_key)
+            image_result = await image_client.images.generate(
+                model=os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2.5-flare"),
+                prompt=image_prompt[:2000],
+                n=4,
+                size="2048x1152",
+                quality="max",
+                output_format="png",
+                safety_identifier=hashlib.sha256(str(account["id"]).encode("utf-8")).hexdigest()
+            )
+            generated_images = ["data:image/png;base64," + item.b64_json for item in (image_result.data or []) if item.b64_json]
+            if not generated_images:
+                return JSONResponse({"error": "KCHAT AI did not receive any generated images. Please try again."}, status_code=502)
+            return {"success": True, "images": generated_images, "reply": "Here are your images."}
+
         client = AsyncOpenAI(api_key=api_key)
         response = await client.responses.create(
             model=os.environ.get("OPENAI_MODEL", "gpt-6-luna"),
