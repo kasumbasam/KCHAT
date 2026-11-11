@@ -1394,6 +1394,7 @@ hr {
 .status-media-text-overlay{position:absolute;z-index:31;left:50%;top:48%;min-width:90px;max-width:85%;padding:9px 14px;color:#fff;background:linear-gradient(135deg,#075e54,#128c7e);border:1px solid #ffffff55;border-radius:10px;box-shadow:0 3px 12px #0008;text-align:center;font:700 28px Arial,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;outline:1px dashed #ffffff99;touch-action:none;user-select:text;cursor:move;transform:translate(-50%,-50%)}
 .status-media-text-overlay:empty:before{content:attr(data-placeholder);color:#ffffffbb}
 .status-media-text-overlay:focus{outline:2px solid #25d366}
+.kchat-ai-assistant-message{align-self:flex-start;max-width:88%;margin:8px 0;padding:12px 15px;border-radius:16px 16px 16px 4px;background:rgba(255,255,255,.09);color:inherit;line-height:1.5;font-size:14px;}
 </style>
 
 <style id="kchatAiStyles">
@@ -1699,14 +1700,14 @@ hr {
                 <input id="statusFileInput" type="file" accept="image/*,video/*" multiple class="hidden">
             </section>
         
-            <button type="button" id="kchatAiFab" class="kchat-ai-fab" aria-label="Open KCAGT AI" title="KCAGT AI">
+            <button type="button" id="kchatAiFab" class="kchat-ai-fab" aria-label="Open KCHAT AI" title="KCHAT AI">
                 <span class="kchat-ai-fab-mark">AI</span>
             </button>
-            <section id="kchatAiScreen" class="kchat-ai-screen hidden" aria-label="KCAGT AI assistant">
+            <section id="kchatAiScreen" class="kchat-ai-screen hidden" aria-label="KCHAT AI assistant">
                 <header class="kchat-ai-header">
                     <button type="button" id="kchatAiBack" class="kchat-ai-back" aria-label="Back to chats">‹</button>
                     <div class="kchat-ai-brand-mark">AI</div>
-                    <div class="kchat-ai-heading"><strong>KCAGT AI</strong><small>KCHAT AI Assistant</small></div>
+                    <div class="kchat-ai-heading"><strong>KCHAT AI</strong><small>KCHAT AI Assistant</small></div>
                 </header>
                 <div class="kchat-ai-content">
                     <div class="kchat-ai-welcome">
@@ -1716,10 +1717,10 @@ hr {
                         <span>Ask a question or tell me what you need help with.</span>
                     </div>
                     <div id="kchatAiMessages" class="kchat-ai-messages" aria-live="polite"></div>
-                    <div class="kchat-ai-connection-note">KCHAT AI is ready for its assistant connection. Your messages are displayed here, but AI replies are not active yet.</div>
+                    <div class="kchat-ai-connection-note">Your KCHAT AI assistant is ready.</div>
                 </div>
                 <form id="kchatAiForm" class="kchat-ai-composer">
-                    <textarea id="kchatAiInput" rows="1" maxlength="4000" placeholder="Message KCAGT AI" aria-label="Message KCAGT AI"></textarea>
+                    <textarea id="kchatAiInput" rows="1" maxlength="4000" placeholder="Message KCHAT AI" aria-label="Message KCHAT AI"></textarea>
                     <button type="submit" aria-label="Send message" title="Send">➤</button>
                 </form>
             </section>
@@ -5112,7 +5113,7 @@ if (document.readyState === "loading") {
     restoreSession();
 }
 
-/* KCAGT AI screen navigation and local composer preview. */
+/* KCHAT AI: authenticated OpenAI-powered assistant. */
 (function(){
  const fab=document.getElementById("kchatAiFab");
  const screen=document.getElementById("kchatAiScreen");
@@ -5120,7 +5121,25 @@ if (document.readyState === "loading") {
  const form=document.getElementById("kchatAiForm");
  const input=document.getElementById("kchatAiInput");
  const messages=document.getElementById("kchatAiMessages");
+ const note=screen&&screen.querySelector(".kchat-ai-connection-note");
  if(!fab||!screen||!back||!form||!input||!messages)return;
+ const history=[];
+ let sending=false;
+ function addBubble(role,text){
+   const bubble=document.createElement("div");
+   bubble.className=role==="user"?"kchat-ai-user-message":"kchat-ai-assistant-message";
+   bubble.textContent=text;
+   bubble.style.whiteSpace="pre-wrap";
+   bubble.style.overflowWrap="anywhere";
+   messages.appendChild(bubble);
+   messages.scrollTop=messages.scrollHeight;
+   return bubble;
+ }
+ function setStatus(text,isError){
+   if(!note)return;
+   note.textContent=text;
+   note.style.color=isError?"#ff647c":"";
+ }
  fab.addEventListener("click",function(){
    screen.classList.remove("hidden");
    fab.classList.add("hidden");
@@ -5130,18 +5149,36 @@ if (document.readyState === "loading") {
    screen.classList.add("hidden");
    fab.classList.remove("hidden");
  });
- form.addEventListener("submit",function(event){
+ form.addEventListener("submit",async function(event){
    event.preventDefault();
    const value=input.value.trim();
-   if(!value)return;
-   const bubble=document.createElement("div");
-   bubble.className="kchat-ai-user-message";
-   bubble.textContent=value;
-   messages.appendChild(bubble);
+   if(!value||sending)return;
+   if(!authToken){setStatus("Please log in to use KCHAT AI.",true);return;}
+   history.push({role:"user",content:value});
+   addBubble("user",value);
    input.value="";
-   const note=screen.querySelector(".kchat-ai-connection-note");
-   if(note)note.textContent="Your message is shown here, but KCHAT AI is not connected to an AI service yet, so this message has not received an AI reply.";
-   messages.scrollTop=messages.scrollHeight;
+   sending=true;
+   const sendButton=form.querySelector('button[type="submit"]');
+   if(sendButton)sendButton.disabled=true;
+   setStatus("KCHAT AI is thinking…",false);
+   const thinking=addBubble("assistant","Thinking…");
+   try{
+     const result=await apiRequest("/api/ai/chat",{method:"POST",body:JSON.stringify({messages:history})});
+     if(!result||!result.success||!result.reply)throw new Error(result?.error||"KCHAT AI did not return a reply.");
+     thinking.textContent=result.reply;
+     history.push({role:"assistant",content:result.reply});
+     messages.scrollTop=messages.scrollHeight;
+     setStatus("KCHAT AI is ready.",false);
+   }catch(error){
+     thinking.remove();
+     history.pop();
+     addBubble("assistant",error.message||"KCHAT AI could not respond. Please try again.");
+     setStatus("Message not completed. You can try again.",true);
+   }finally{
+     sending=false;
+     if(sendButton)sendButton.disabled=false;
+     input.focus();
+   }
  });
 })();
 </script>
