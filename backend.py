@@ -420,10 +420,17 @@ async def kchat_ai_chat(request: Request):
         return {"success": True, "reply": answer}
 
     except Exception as error:
-        print("KCHAT AI request error:", error)
-        return JSONResponse({
-            "error": "KCHAT AI could not respond right now. Please try again."
-        }, status_code=502)
+        print("KCHAT AI request error:", repr(error))
+        detail = str(error).strip()
+        if "api_key" in detail.lower() or "authentication" in detail.lower() or "401" in detail:
+            message = "OpenAI rejected the API key. Check OPENAI_API_KEY in Render."
+        elif "quota" in detail.lower() or "billing" in detail.lower() or "429" in detail:
+            message = "Your OpenAI API account has no available quota. Check API billing and usage limits."
+        elif "model" in detail.lower() and ("not found" in detail.lower() or "access" in detail.lower()):
+            message = "The selected OpenAI model is unavailable to this API project. Check OPENAI_MODEL access."
+        else:
+            message = "OpenAI connection error: " + (detail[:260] if detail else "Unknown error")
+        return JSONResponse({"error": message}, status_code=502)
 
 
 def users_blocked(user_id, other_id):
