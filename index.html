@@ -1394,11 +1394,11 @@ hr {
 .status-media-text-overlay{position:absolute;z-index:31;left:50%;top:48%;min-width:90px;max-width:85%;padding:9px 14px;color:#fff;background:linear-gradient(135deg,#075e54,#128c7e);border:1px solid #ffffff55;border-radius:10px;box-shadow:0 3px 12px #0008;text-align:center;font:700 28px Arial,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;outline:1px dashed #ffffff99;touch-action:none;user-select:text;cursor:move;transform:translate(-50%,-50%)}
 .status-media-text-overlay:empty:before{content:attr(data-placeholder);color:#ffffffbb}
 .status-media-text-overlay:focus{outline:2px solid #25d366}
-.kchat-ai-assistant-message{align-self:flex-start;max-width:88%;margin:8px 0;padding:12px 15px;border-radius:16px 16px 16px 4px;background:rgba(255,255,255,.09);color:inherit;line-height:1.5;font-size:14px;}
+.kchat-ai-assistant-message{align-self:flex-start;width:100%;max-width:100%;margin:8px 0;padding:8px 0;background:transparent;color:inherit;line-height:1.6;font-size:15px;white-space:pre-wrap;border:0;border-radius:0;box-shadow:none;}
 </style>
 
 <style id="kchatAiStyles">
-.kchat-ai-fab{position:absolute;right:26px;bottom:26px;z-index:30;width:58px;height:58px;border:0;border-radius:50%;background:#00a884;color:#062e26;box-shadow:0 5px 20px #0008;cursor:pointer;display:grid;place-items:center}
+.kchat-ai-fab{position:absolute;right:20px;bottom:146px;z-index:12;width:58px;height:58px;border:0;border-radius:50%;background:#00a884;color:#062e26;box-shadow:0 5px 20px #0008;cursor:pointer;display:grid;place-items:center}
 .kchat-ai-fab-mark,.kchat-ai-brand-mark,.kchat-ai-large-mark{display:grid;place-items:center;border:2px solid currentColor;border-radius:50%;font-weight:800;letter-spacing:-1px}
 .kchat-ai-fab-mark{width:35px;height:35px;font-size:14px}
 .kchat-ai-screen{position:absolute;inset:0;z-index:40;background:#0b141a;color:#e9edef;display:flex;flex-direction:column;min-width:0}
@@ -1412,12 +1412,12 @@ hr {
 .kchat-ai-large-mark{width:76px;height:76px;margin:0 auto 20px;color:#00a884;font-size:24px}
 .kchat-ai-welcome h1{font-size:25px;margin:0 0 10px}.kchat-ai-welcome p{font-size:19px;margin:0 0 10px;color:#d9fdd3}.kchat-ai-welcome span{font-size:13px;color:#aebac1}
 .kchat-ai-messages{width:min(760px,100%);display:flex;flex-direction:column;gap:10px}
-.kchat-ai-user-message{align-self:flex-end;max-width:80%;padding:12px 16px;border-radius:16px 16px 4px 16px;background:#005c4b;color:#e9edef;white-space:pre-wrap;overflow-wrap:anywhere}
+.kchat-ai-user-message{align-self:flex-end;max-width:88%;padding:7px 0;margin:8px 0 8px auto;background:transparent;color:#d9fdd3;text-align:right;white-space:pre-wrap;overflow-wrap:anywhere;border:0;border-radius:0;box-shadow:none}
 .kchat-ai-connection-note{width:min(760px,100%);margin-top:20px;text-align:center;color:#8696a0;font-size:12px}
 .kchat-ai-composer{display:flex;gap:12px;align-items:flex-end;padding:14px max(18px,calc((100% - 800px)/2));background:#202c33}
 .kchat-ai-composer textarea{flex:1;resize:none;max-height:130px;border:0;outline:0;border-radius:22px;padding:13px 17px;background:#2a3942;color:#e9edef;font:15px Arial,sans-serif}
 .kchat-ai-composer button{width:46px;height:46px;border:0;border-radius:50%;background:#00a884;color:#062e26;font-size:21px;cursor:pointer}
-@media(max-width:700px){.kchat-ai-fab{right:16px;bottom:78px}.kchat-ai-content{padding:24px 16px 14px}.kchat-ai-welcome h1{font-size:22px}}
+@media(max-width:700px){.kchat-ai-fab{right:20px;bottom:146px}.kchat-ai-content{padding:24px 16px 14px}.kchat-ai-welcome h1{font-size:22px}}
 </style>
 </head>
 
@@ -1571,6 +1571,11 @@ hr {
                 </div>
             </div>
 
+            <!-- KCHAT AI launcher sits directly above the new-conversation button -->
+            <button type="button" id="kchatAiFab" class="kchat-ai-fab" aria-label="Open KCHAT AI" title="KCHAT AI">
+                <span class="kchat-ai-fab-mark">AI</span>
+            </button>
+
             <!-- FLOATING CIRCULAR SELECT CONTACT / USER BUTTON AT BOTTOM RIGHT -->
             <button class="floating-user-btn" id="sidebarSelectContactBtn" title="Select Contact / User">💬</button>
 
@@ -1700,9 +1705,7 @@ hr {
                 <input id="statusFileInput" type="file" accept="image/*,video/*" multiple class="hidden">
             </section>
         
-            <button type="button" id="kchatAiFab" class="kchat-ai-fab" aria-label="Open KCHAT AI" title="KCHAT AI">
-                <span class="kchat-ai-fab-mark">AI</span>
-            </button>
+
             <section id="kchatAiScreen" class="kchat-ai-screen hidden" aria-label="KCHAT AI assistant">
                 <header class="kchat-ai-header">
                     <button type="button" id="kchatAiBack" class="kchat-ai-back" aria-label="Back to chats">‹</button>
