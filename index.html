@@ -1706,7 +1706,7 @@ hr {
                 <header class="kchat-ai-header">
                     <button type="button" id="kchatAiBack" class="kchat-ai-back" aria-label="Back to chats">‹</button>
                     <div class="kchat-ai-brand-mark">AI</div>
-                    <div class="kchat-ai-heading"><strong>KCAGT AI</strong><small>Meta AI · Assistant</small></div>
+                    <div class="kchat-ai-heading"><strong>KCAGT AI</strong><small>KCHAT AI Assistant</small></div>
                 </header>
                 <div class="kchat-ai-content">
                     <div class="kchat-ai-welcome">
@@ -1716,7 +1716,7 @@ hr {
                         <span>Ask a question or tell me what you need help with.</span>
                     </div>
                     <div id="kchatAiMessages" class="kchat-ai-messages" aria-live="polite"></div>
-                    <div class="kchat-ai-connection-note">Meta AI connection is not configured yet. Your messages will not be sent until the Meta AI service is connected.</div>
+                    <div class="kchat-ai-connection-note">KCHAT AI is ready for its assistant connection. Your messages are displayed here, but AI replies are not active yet.</div>
                 </div>
                 <form id="kchatAiForm" class="kchat-ai-composer">
                     <textarea id="kchatAiInput" rows="1" maxlength="4000" placeholder="Message KCAGT AI" aria-label="Message KCAGT AI"></textarea>
@@ -5140,7 +5140,7 @@ if (document.readyState === "loading") {
    messages.appendChild(bubble);
    input.value="";
    const note=screen.querySelector(".kchat-ai-connection-note");
-   if(note)note.textContent="Your message is shown here, but Meta AI has not been connected yet. Connect Meta's AI API to receive AI answers.";
+   if(note)note.textContent="Your message is shown here, but KCHAT AI is not connected to an AI service yet, so this message has not received an AI reply.";
    messages.scrollTop=messages.scrollHeight;
  });
 })();
