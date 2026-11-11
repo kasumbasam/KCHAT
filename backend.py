@@ -6,6 +6,8 @@ import base64
 import re
 import json
 
+from openai import AsyncOpenAI
+
 import psycopg
 from psycopg.rows import dict_row
 
@@ -360,6 +362,68 @@ def get_account_from_request(request):
     token = authorization.replace("Bearer ", "", 1)
 
     return get_account_from_token(token)
+
+
+
+# ---------------- KCHAT AI (OPENAI) ----------------
+
+@app.post("/api/ai/chat")
+async def kchat_ai_chat(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        return JSONResponse({
+            "error": "KCHAT AI is not configured yet. Add OPENAI_API_KEY to the Render environment."
+        }, status_code=503)
+
+    try:
+        data = await request.json()
+        raw_messages = data.get("messages", [])
+        if not isinstance(raw_messages, list) or not raw_messages:
+            return JSONResponse({"error": "Send a message to KCHAT AI."}, status_code=400)
+
+        safe_messages = []
+        for entry in raw_messages[-24:]:
+            if not isinstance(entry, dict):
+                continue
+            role = entry.get("role")
+            content = entry.get("content")
+            if role not in ("user", "assistant") or not isinstance(content, str):
+                continue
+            content = content.strip()
+            if content:
+                safe_messages.append({"role": role, "content": content[:6000]})
+
+        if not safe_messages or safe_messages[-1]["role"] != "user":
+            return JSONResponse({"error": "Your latest message is missing."}, status_code=400)
+
+        client = AsyncOpenAI(api_key=api_key)
+        response = await client.responses.create(
+            model=os.environ.get("OPENAI_MODEL", "gpt-6-luna"),
+            instructions=(
+                "You are KCHAT AI, a helpful conversational assistant inside the KCHAT app. "
+                "Respond naturally and accurately like a capable ChatGPT assistant. "
+                "Help with explanations, learning, writing, coding, planning and problem-solving. "
+                "Use the conversation history to understand follow-up questions. "
+                "Be clear, respectful and honest about uncertainty. Never claim to have performed "
+                "actions outside the chat unless a connected tool actually did so."
+            ),
+            input=safe_messages,
+            max_output_tokens=1400
+        )
+        answer = (response.output_text or "").strip()
+        if not answer:
+            return JSONResponse({"error": "KCHAT AI could not produce a reply. Please try again."}, status_code=502)
+        return {"success": True, "reply": answer}
+
+    except Exception as error:
+        print("KCHAT AI request error:", error)
+        return JSONResponse({
+            "error": "KCHAT AI could not respond right now. Please try again."
+        }, status_code=502)
 
 
 def users_blocked(user_id, other_id):
