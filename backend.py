@@ -433,6 +433,56 @@ async def kchat_ai_chat(request: Request):
         return JSONResponse({"error": message}, status_code=502)
 
 
+
+@app.post("/api/ai/image")
+async def kchat_ai_image(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        return JSONResponse({"error": "KCHAT AI is not configured. Add OPENAI_API_KEY in Render."}, status_code=503)
+
+    try:
+        data = await request.json()
+        prompt = str(data.get("prompt", "")).strip()
+        if not prompt:
+            return JSONResponse({"error": "Describe the picture you want KCHAT AI to create."}, status_code=400)
+        if len(prompt) > 2000:
+            return JSONResponse({"error": "Please keep the image description under 2,000 characters."}, status_code=400)
+
+        client = AsyncOpenAI(api_key=api_key)
+        result = await client.images.generate(
+            model=os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2.5-flare"),
+            prompt=prompt,
+            size="1024x1024",
+            quality="medium",
+            output_format="jpeg",
+            output_compression=82,
+            safety_identifier=hashlib.sha256(str(account["id"]).encode("utf-8")).hexdigest()
+        )
+        image_data = result.data[0].b64_json if result.data else None
+        if not image_data:
+            return JSONResponse({"error": "KCHAT AI did not return an image. Please try again."}, status_code=502)
+        return {"success": True, "image": "data:image/jpeg;base64," + image_data}
+
+    except Exception as error:
+        print("KCHAT AI image generation error:", repr(error))
+        detail = str(error).strip()
+        lower = detail.lower()
+        if "api_key" in lower or "authentication" in lower or "401" in lower:
+            message = "OpenAI rejected the API key. Check OPENAI_API_KEY in Render."
+        elif "quota" in lower or "billing" in lower or "429" in lower:
+            message = "Image generation has no available API quota. Check OpenAI API billing and usage limits."
+        elif "verification" in lower or "organization" in lower:
+            message = "Your OpenAI organization may need verification before image generation. Check the OpenAI developer dashboard."
+        elif "model" in lower and ("not found" in lower or "access" in lower):
+            message = "The image model is unavailable to this API project. Check OPENAI_IMAGE_MODEL access."
+        else:
+            message = "Image generation failed: " + (detail[:220] if detail else "Please try again.")
+        return JSONResponse({"error": message}, status_code=502)
+
 def users_blocked(user_id, other_id):
     with get_db() as conn:
         result = conn.execute("""
