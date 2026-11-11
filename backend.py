@@ -5,6 +5,9 @@ import secrets
 import base64
 import re
 import json
+import asyncio
+import urllib.request
+import urllib.error
 
 from openai import AsyncOpenAI
 
@@ -12,7 +15,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from starlette.websockets import WebSocketState
 
 app = FastAPI()
@@ -453,19 +456,23 @@ async def kchat_ai_image(request: Request):
             return JSONResponse({"error": "Please keep the image description under 2,000 characters."}, status_code=400)
 
         client = AsyncOpenAI(api_key=api_key)
+        count = max(1, min(4, int(data.get("count", 4))))
+        size = str(data.get("size", "2048x1152"))
+        if size not in ("2048x1152", "1152x2048", "2048x2048"):
+            size = "2048x1152"
         result = await client.images.generate(
             model=os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2.5-flare"),
             prompt=prompt,
-            size="1024x1024",
-            quality="medium",
-            output_format="jpeg",
-            output_compression=82,
+            n=count,
+            size=size,
+            quality="max",
+            output_format="png",
             safety_identifier=hashlib.sha256(str(account["id"]).encode("utf-8")).hexdigest()
         )
-        image_data = result.data[0].b64_json if result.data else None
-        if not image_data:
+        images = ["data:image/png;base64," + item.b64_json for item in (result.data or []) if item.b64_json]
+        if not images:
             return JSONResponse({"error": "KCHAT AI did not return an image. Please try again."}, status_code=502)
-        return {"success": True, "image": "data:image/jpeg;base64," + image_data}
+        return {"success": True, "images": images}
 
     except Exception as error:
         print("KCHAT AI image generation error:", repr(error))
@@ -482,6 +489,95 @@ async def kchat_ai_image(request: Request):
         else:
             message = "Image generation failed: " + (detail[:220] if detail else "Please try again.")
         return JSONResponse({"error": message}, status_code=502)
+
+
+def _openai_video_request(path, api_key, method="GET", payload=None):
+    body = json.dumps(payload).encode("utf-8") if payload is not None else None
+    request = urllib.request.Request(
+        "https://api.openai.com/v1" + path,
+        data=body,
+        method=method,
+        headers={"Authorization": "Bearer " + api_key, "Content-Type": "application/json"}
+    )
+    with urllib.request.urlopen(request, timeout=90) as response:
+        return response.read(), response.headers.get("Content-Type", "application/json")
+
+
+@app.post("/api/ai/video")
+async def kchat_ai_video_create(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        return JSONResponse({"error": "Add OPENAI_API_KEY to the Render environment."}, status_code=503)
+    try:
+        data = await request.json()
+        prompt = str(data.get("prompt", "")).strip()
+        if not prompt:
+            return JSONResponse({"error": "Describe the video you want KCHAT AI to create."}, status_code=400)
+        if len(prompt) > 2000:
+            return JSONResponse({"error": "Keep the video description under 2,000 characters."}, status_code=400)
+        size = str(data.get("size", "1280x720"))
+        if size not in ("1280x720", "720x1280"):
+            size = "1280x720"
+        payload = {
+            "model": os.environ.get("OPENAI_VIDEO_MODEL", "sora-2"),
+            "prompt": prompt,
+            "size": size,
+            "seconds": str(data.get("seconds", "8"))
+        }
+        raw, _ = await asyncio.to_thread(_openai_video_request, "/videos", api_key, "POST", payload)
+        job = json.loads(raw.decode("utf-8"))
+        return {"success": True, "id": job.get("id"), "status": job.get("status", "queued")}
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", "replace")
+        print("KCHAT AI video create error:", detail[:1000])
+        return JSONResponse({"error": "OpenAI video generation failed: " + detail[:220]}, status_code=502)
+    except Exception as error:
+        print("KCHAT AI video create error:", repr(error))
+        return JSONResponse({"error": "Video generation failed: " + str(error)[:220]}, status_code=502)
+
+
+@app.get("/api/ai/video/{video_id}")
+async def kchat_ai_video_status(video_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        return JSONResponse({"error": "KCHAT AI is not configured."}, status_code=503)
+    if not re.fullmatch(r"video_[A-Za-z0-9_-]+", video_id):
+        return JSONResponse({"error": "Invalid video job."}, status_code=400)
+    try:
+        raw, _ = await asyncio.to_thread(_openai_video_request, "/videos/" + video_id, api_key)
+        job = json.loads(raw.decode("utf-8"))
+        return {"success": True, "status": job.get("status"), "error": job.get("error")}
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", "replace")
+        return JSONResponse({"error": "Could not check video status: " + detail[:180]}, status_code=502)
+    except Exception as error:
+        return JSONResponse({"error": "Could not check video status: " + str(error)[:180]}, status_code=502)
+
+
+@app.get("/api/ai/video/{video_id}/content")
+async def kchat_ai_video_content(video_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        return JSONResponse({"error": "KCHAT AI is not configured."}, status_code=503)
+    if not re.fullmatch(r"video_[A-Za-z0-9_-]+", video_id):
+        return JSONResponse({"error": "Invalid video job."}, status_code=400)
+    try:
+        raw, content_type = await asyncio.to_thread(_openai_video_request, "/videos/" + video_id + "/content", api_key)
+        return Response(content=raw, media_type="video/mp4", headers={"Content-Disposition": 'inline; filename="kchat-ai-video.mp4"'})
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", "replace")
+        return JSONResponse({"error": "Video is not ready or could not be downloaded: " + detail[:180]}, status_code=502)
+    except Exception as error:
+        return JSONResponse({"error": "Could not load generated video: " + str(error)[:180]}, status_code=502)
 
 def users_blocked(user_id, other_id):
     with get_db() as conn:
