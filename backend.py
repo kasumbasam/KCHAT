@@ -554,7 +554,8 @@ async def kchat_ai_chat(request: Request):
     if not account:
         return JSONResponse({"error": "Please log in again."}, status_code=401)
 
-    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    cloudflare_token = (os.environ.get("CLOUDFLARE_API_TOKEN") or os.environ.get("CLOUDFLARE_AUTH_TOKEN") or os.environ.get("CF_API_TOKEN") or "").strip()
+    cloudflare_account_id = (os.environ.get("CLOUDFLARE_ACCOUNT_ID") or os.environ.get("CF_ACCOUNT_ID") or "").strip()
 
     try:
         data = await request.json()
@@ -623,10 +624,15 @@ async def kchat_ai_chat(request: Request):
             """, (account["id"],)).fetchall()
         approved_memories = [row["memory"] for row in reversed(memory_rows)]
 
-        if not api_key:
-            return JSONResponse({"error": "KCHAT AI text chat needs an available OpenAI API key and quota. Check API billing and usage limits."}, status_code=503)
+        if not cloudflare_token or not cloudflare_account_id:
+            return JSONResponse({"error": "KCHAT AI is not connected to Cloudflare Workers AI yet. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in Render Environment."}, status_code=503)
 
-        client = AsyncOpenAI(api_key=api_key)
+        cloudflare_base_url = f"https://api.cloudflare.com/client/v4/accounts/{cloudflare_account_id}/ai/v1"
+        client = AsyncOpenAI(
+            api_key=cloudflare_token,
+            base_url=cloudflare_base_url,
+            timeout=180.0
+        )
         research_request = bool(re.search(
             r"(?i)\b(research|look up|latest|current|today|this week|recent|news|sources|cite|compare current|price now)\b",
             latest_text
@@ -647,16 +653,22 @@ async def kchat_ai_chat(request: Request):
             "Ask for permission before consequential actions, sharing information, or sending messages. "
             "Be honest about uncertainty and limitations."
         )
-        response_args = {
-            "model": os.environ.get("OPENAI_MODEL", "gpt-6-astra"),
-            "instructions": instructions,
-            "input": safe_messages,
-            "max_output_tokens": 25000
+        system_message = {
+            "role": "system",
+            "content": instructions + (
+                " You do not have live web browsing in this configuration. "
+                "Never claim you searched the internet or verified current facts. "
+                "If the user requests current information or sources, explain this limitation "
+                "and ask them to provide links or source text."
+            )
         }
-        if research_request:
-            response_args["tools"] = [{"type": "web_search", "search_context_size": "medium"}]
-        response = await client.responses.create(**response_args)
-        answer = (response.output_text or "").strip()
+        response = await client.chat.completions.create(
+            model="@cf/zai-org/glm-4.7-flash",
+            messages=[system_message] + safe_messages,
+            max_completion_tokens=25000,
+            temperature=0.6
+        )
+        answer = (response.choices[0].message.content or "").strip()
         if not answer:
             return JSONResponse({"error": "KCHAT AI could not produce a reply. Please try again."}, status_code=502)
         with get_db() as conn:
@@ -673,14 +685,14 @@ async def kchat_ai_chat(request: Request):
     except Exception as error:
         print("KCHAT AI request error:", repr(error))
         detail = str(error).strip()
-        if "api_key" in detail.lower() or "authentication" in detail.lower() or "401" in detail:
-            message = "OpenAI rejected the API key. Check OPENAI_API_KEY in Render."
-        elif "quota" in detail.lower() or "billing" in detail.lower() or "429" in detail:
-            message = "Your OpenAI API account has no available quota. Check API billing and usage limits."
+        if "401" in detail or "authentication" in detail.lower() or "unauthorized" in detail.lower():
+            message = "Cloudflare rejected the API token. Check that CLOUDFLARE_API_TOKEN has Account > Workers AI > Read permission."
+        elif "429" in detail or "quota" in detail.lower() or "rate limit" in detail.lower() or "neurons" in detail.lower():
+            message = "Cloudflare Workers AI is temporarily rate-limited or its free daily allowance may be used up. Please wait and try again."
         elif "model" in detail.lower() and ("not found" in detail.lower() or "access" in detail.lower()):
-            message = "The selected OpenAI model is unavailable to this API project. Check OPENAI_MODEL access."
+            message = "Cloudflare could not access GLM-4.7-Flash. Check the Workers AI model availability for this account."
         else:
-            message = "OpenAI connection error: " + (detail[:260] if detail else "Unknown error")
+            message = "Cloudflare Workers AI connection error: " + (detail[:260] if detail else "Unknown error")
         return JSONResponse({"error": message}, status_code=502)
 
 
