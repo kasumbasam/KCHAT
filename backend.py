@@ -368,6 +368,51 @@ def get_account_from_request(request):
 
 
 
+# ---------------- FREE IMAGE GENERATION (CLOUDFLARE) ----------------
+
+def _cloudflare_generate_image(prompt):
+    account_id = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
+    api_token = os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
+    if not account_id or not api_token:
+        return None
+
+    model = os.environ.get(
+        "CLOUDFLARE_IMAGE_MODEL",
+        "@cf/black-forest-labs/flux-1-schnell"
+    ).strip()
+    endpoint = (
+        "https://api.cloudflare.com/client/v4/accounts/"
+        + account_id + "/ai/run/" + model
+    )
+    payload = json.dumps({"prompt": prompt[:2048]}).encode("utf-8")
+    req = urllib.request.Request(
+        endpoint,
+        data=payload,
+        method="POST",
+        headers={
+            "Authorization": "Bearer " + api_token,
+            "Content-Type": "application/json"
+        }
+    )
+    with urllib.request.urlopen(req, timeout=120) as response:
+        result = json.loads(response.read().decode("utf-8"))
+
+    image_data = (result.get("result") or {}).get("image")
+    if not result.get("success") or not image_data:
+        raise RuntimeError("Cloudflare did not return a generated image.")
+    return "data:image/jpeg;base64," + image_data
+
+
+async def cloudflare_generate_images(prompt, count=1):
+    count = max(1, min(4, int(count)))
+    images = []
+    for _ in range(count):
+        image_data = await asyncio.to_thread(_cloudflare_generate_image, prompt)
+        if image_data:
+            images.append(image_data)
+    return images
+
+
 # ---------------- KCHAT AI (OPENAI) ----------------
 
 @app.post("/api/ai/chat")
@@ -411,20 +456,25 @@ async def kchat_ai_chat(request: Request):
             image_prompt = refusal_pattern.group(1).strip()
         direct_image_request = re.search(r'(?is)\b(?:create|generate|draw|render|make|produce)\b.{0,140}\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\b|\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\b.{0,100}\b(?:create|generate|draw|render|make)\b', latest_text)
         if refusal_pattern or direct_image_request:
-            image_client = AsyncOpenAI(api_key=api_key)
-            image_result = await image_client.images.generate(
-                model=os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2.5-flare"),
-                prompt=image_prompt[:2000],
-                n=4,
-                size="2048x1152",
-                quality="max",
-                output_format="png",
-                safety_identifier=hashlib.sha256(str(account["id"]).encode("utf-8")).hexdigest()
-            )
-            generated_images = ["data:image/png;base64," + item.b64_json for item in (image_result.data or []) if item.b64_json]
+            if os.environ.get("CLOUDFLARE_ACCOUNT_ID") and os.environ.get("CLOUDFLARE_API_TOKEN"):
+                generated_images = await cloudflare_generate_images(image_prompt, 1)
+            elif api_key:
+                image_client = AsyncOpenAI(api_key=api_key)
+                image_result = await image_client.images.generate(
+                    model=os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2.5-flare"),
+                    prompt=image_prompt[:2000],
+                    n=1,
+                    size="2048x1152",
+                    quality="max",
+                    output_format="png",
+                    safety_identifier=hashlib.sha256(str(account["id"]).encode("utf-8")).hexdigest()
+                )
+                generated_images = ["data:image/png;base64," + item.b64_json for item in (image_result.data or []) if item.b64_json]
+            else:
+                return JSONResponse({"error": "Image generation is not configured. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in Render."}, status_code=503)
             if not generated_images:
                 return JSONResponse({"error": "KCHAT AI did not receive any generated images. Please try again."}, status_code=502)
-            return {"success": True, "images": generated_images, "reply": "Here are your images."}
+            return {"success": True, "images": generated_images, "reply": "Here is your image."}
 
         client = AsyncOpenAI(api_key=api_key)
         response = await client.responses.create(
@@ -467,8 +517,12 @@ async def kchat_ai_image(request: Request):
         return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        return JSONResponse({"error": "KCHAT AI is not configured. Add OPENAI_API_KEY in Render."}, status_code=503)
+    cloudflare_ready = bool(
+        os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
+        and os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
+    )
+    if not api_key and not cloudflare_ready:
+        return JSONResponse({"error": "Image generation is not configured. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in Render."}, status_code=503)
 
     try:
         data = await request.json()
@@ -478,21 +532,24 @@ async def kchat_ai_image(request: Request):
         if len(prompt) > 2000:
             return JSONResponse({"error": "Please keep the image description under 2,000 characters."}, status_code=400)
 
-        client = AsyncOpenAI(api_key=api_key)
-        count = max(1, min(4, int(data.get("count", 4))))
-        size = str(data.get("size", "2048x1152"))
-        if size not in ("2048x1152", "1152x2048", "2048x2048"):
-            size = "2048x1152"
-        result = await client.images.generate(
-            model=os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2.5-flare"),
-            prompt=prompt,
-            n=count,
-            size=size,
-            quality="max",
-            output_format="png",
-            safety_identifier=hashlib.sha256(str(account["id"]).encode("utf-8")).hexdigest()
-        )
-        images = ["data:image/png;base64," + item.b64_json for item in (result.data or []) if item.b64_json]
+        count = max(1, min(4, int(data.get("count", 1))))
+        if cloudflare_ready:
+            images = await cloudflare_generate_images(prompt, count)
+        else:
+            client = AsyncOpenAI(api_key=api_key)
+            size = str(data.get("size", "2048x1152"))
+            if size not in ("2048x1152", "1152x2048", "2048x2048"):
+                size = "2048x1152"
+            result = await client.images.generate(
+                model=os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2.5-flare"),
+                prompt=prompt,
+                n=count,
+                size=size,
+                quality="max",
+                output_format="png",
+                safety_identifier=hashlib.sha256(str(account["id"]).encode("utf-8")).hexdigest()
+            )
+            images = ["data:image/png;base64," + item.b64_json for item in (result.data or []) if item.b64_json]
         if not images:
             return JSONResponse({"error": "KCHAT AI did not return an image. Please try again."}, status_code=502)
         return {"success": True, "images": images}
