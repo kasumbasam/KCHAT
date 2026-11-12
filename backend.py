@@ -650,7 +650,7 @@ async def kchat_ai_chat(request: Request):
         if not latest_entry:
             return JSONResponse({"error": "Send a message to KCHAT AI."}, status_code=400)
         latest_content = latest_entry.get("content", "")
-        latest_text = (latest_content if isinstance(latest_content, str) else str(latest_entry.get("text", ""))).strip()[:20000]
+        latest_text = (latest_content if isinstance(latest_content, str) else str(latest_entry.get("text", ""))).strip()[:50000]
         attachments = data.get("attachments", [])
         image_data = None
         if isinstance(attachments, list):
@@ -782,7 +782,7 @@ async def kchat_ai_chat(request: Request):
             "model": os.environ.get("OPENAI_MODEL", "gpt-6-astra"),
             "instructions": instructions,
             "input": safe_messages,
-            "max_output_tokens": 7000
+            "max_output_tokens": 15000
         }
         if research_request:
             response_args["tools"] = [{"type": "web_search", "search_context_size": "medium"}]
