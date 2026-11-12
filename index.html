@@ -5199,8 +5199,47 @@ if (document.readyState === "loading") {
  async function generateImages(promptOverride,silentRequest){const prompt=(typeof promptOverride==="string"?promptOverride:input.value).trim();if(!prompt||sending)return;if(!authToken){setStatus("Please log in to use KCHAT AI.",true);return;}const count=Math.max(1,Math.min(4,Number(imageCount?.value||4)));const style=imageStyle?.value||"photographic";const styleLabel=imageStyle?.selectedOptions?.[0]?.textContent||"Photo";if(welcome)welcome.classList.add("hidden");if(!silentRequest){const userText="Create "+count+" "+(count===1?"picture":"pictures")+" ("+styleLabel+"): "+prompt;addBubble("user",userText);try{await saveMediaMessage("user",userText);}catch(error){setStatus(error.message,true);return;}}input.value="";lock(true);setStatus("Creating "+count+" detailed "+(count===1?"picture":"pictures")+"…",false);const wait=addBubble("assistant","KCHAT AI is creating your pictures…");try{const result=await apiRequest("/api/ai/image",{method:"POST",body:JSON.stringify({prompt,count,style,quality:"high"})});if(!result?.success||!Array.isArray(result.images)||!result.images.length)throw new Error(result?.error||"No pictures were returned.");wait.remove();addImages(result.images);const savedReply="Generated "+result.images.length+" image(s).";history.push({role:"assistant",content:savedReply});await saveMediaMessage("assistant",savedReply);await loadConversationList(false);setStatus(result.images.length+" picture(s) are ready.",false);}catch(error){wait.textContent=error.message||"Picture generation failed.";setStatus("Picture generation failed.",true);}finally{lock(false);input.focus();}}
  async function generateVideo(){const prompt=input.value.trim();if(!prompt||sending)return;if(!authToken){setStatus("Please log in to use KCHAT AI.",true);return;}if(welcome)welcome.classList.add("hidden");const userText="Create an HD video: "+prompt;addBubble("user",userText);try{await saveMediaMessage("user",userText);}catch(error){setStatus(error.message,true);return;}input.value="";lock(true);setStatus("Submitting video generation…",false);const wait=addBubble("assistant","KCHAT AI is preparing your video…");try{const created=await apiRequest("/api/ai/video",{method:"POST",body:JSON.stringify({prompt,size:"1280x720",seconds:"8"})});if(!created?.success||!created.id)throw new Error(created?.error||"Video job could not be created.");let status=created.status;for(let i=0;i<60&&![ "completed","failed","cancelled"].includes(status);i++){await new Promise(resolve=>setTimeout(resolve,10000));const state=await apiRequest("/api/ai/video/"+encodeURIComponent(created.id));if(!state?.success)throw new Error(state?.error||"Could not check video progress.");status=state.status;setStatus("Video generation: "+(status||"processing")+"…",false);}if(status!=="completed")throw new Error(status==="failed"?"OpenAI could not complete this video.":"Video is taking longer than expected. Try checking again later.");wait.remove();const wrap=document.createElement("div");wrap.className="kchat-ai-image-result";const video=document.createElement("video");video.className="kchat-ai-generated-video";video.controls=true;video.playsInline=true;video.src="/api/ai/video/"+encodeURIComponent(created.id)+"/content";const link=document.createElement("a");link.className="kchat-ai-media-download";link.href=video.src;link.download="kchat-ai-video.mp4";link.textContent="Download video";wrap.append(video,link);messages.appendChild(wrap);const savedReply="Generated a video. Video job: "+created.id;history.push({role:"assistant",content:savedReply});await saveMediaMessage("assistant",savedReply);await loadConversationList(false);messages.scrollTop=messages.scrollHeight;setStatus("Your video is ready.",false);}catch(error){wait.textContent=error.message||"Video generation failed.";setStatus("Video generation failed.",true);}finally{lock(false);input.focus();}}
  imageButton.addEventListener("click",()=>generateImages());videoButton.addEventListener("click",generateVideo);
- form.addEventListener("submit",async function(event){event.preventDefault();const typedValue=input.value.trim();const value=typedValue||(selectedImageData?"Please analyse the attached image.":"");if((!value&&!selectedImageData)||sending)return;if(!authToken){setStatus("Please log in to use KCHAT AI.",true);return;}if(selectedImageData){if(welcome)welcome.classList.add("hidden");addBubble("user",(typedValue||"Please analyse the attached image.")+"\n[Attached image: "+selectedImageName+"]");history.push({role:"user",content:typedValue||"Please analyse the attached image."});input.value="";lock(true);setStatus("KCHAT AI is analysing your image…",false);const thinking=addBubble("assistant","Looking at your image…");try{const result=await apiRequest("/api/ai/chat",{method:"POST",body:JSON.stringify({messages:history,conversation_id:currentConversationId||null,attachments:[{data:selectedImageData,name:selectedImageName}]})});if(!result?.success)throw new Error(result?.error||"KCHAT AI could not analyse this image.");if(result.conversation_id)currentConversationId=result.conversation_id;thinking.textContent=result.reply||"Image analysis completed.";history.push({role:"assistant",content:result.reply||"Image analysis completed."});selectedImageData="";selectedImageName="";if(imageInput)imageInput.value="";await loadConversationList(false);setStatus("Image analysis complete.",false);}catch(error){thinking.textContent=error.message||"Image analysis failed.";setStatus("Image analysis failed.",true);}finally{lock(false);input.focus();}return;}const imageIntent=/\b(?:create|generate|draw|render|make|produce|design)\b[\s\S]{0,120}\b(?:image|picture|photo|photograph|illustration|artwork|wallpaper|logo|poster|portrait)\b|\b(?:image|picture|photo|photograph|illustration|artwork|wallpaper|logo|poster|portrait)\b[\s\S]{0,100}\b(?:create|generate|draw|render|make)\b/i;if(imageIntent.test(value)){await generateImages(value);return;}if(welcome)welcome.classList.add("hidden");addBubble("user",value);history.push({role:"user",content:value});input.value="";lock(true);setStatus("KCHAT AI is thinking…",false);const thinking=addBubble("assistant","Thinking…");try{const result=await apiRequest("/api/ai/chat",{method:"POST",body:JSON.stringify({messages:history,conversation_id:currentConversationId||null})});if(!result?.success)throw new Error(result?.error||"KCHAT AI did not return a reply.");if(result.conversation_id)currentConversationId=result.conversation_id;if(Array.isArray(result.images)&&result.images.length){thinking.remove();addImages(result.images);const savedReply="Generated an image.";history.push({role:"assistant",content":savedReply});await loadConversationList(false);setStatus(result.images.length+" picture(s) are ready.",false);return;}if(!result.reply)throw new Error(result?.error||"KCHAT AI did not return a reply.");const imageFallback=/\b(?:can(?:not|\x27t)|can’t)\b[\s\S]{0,100}\b(?:create|generate|render|make)\b[\s\S]{0,100}\b(?:image|picture|photo|illustration)\b|\bprompt\b[\s\S]{0,100}\bimage generator\b/i;if(imageFallback.test(result.reply)){const quoted=result.reply.match(/[“"]([^”"]{20,1800})[”"]/);if(quoted&&quoted[1]){thinking.remove();await generateImages(quoted[1],true);return;}}thinking.textContent=result.reply;history.push({role:"assistant",content:result.reply});await loadConversationList(false);setStatus("KCHAT AI is ready.",false);}catch(error){thinking.remove();if(history.length&&history[history.length-1].role==="user")history.pop();addBubble("assistant",error.message||"KCHAT AI could not respond.");setStatus("Message not completed. You can try again.",true);}finally{lock(false);input.focus();}});
- input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(typeof form.requestSubmit==="function")form.requestSubmit();else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));}});
+ form.addEventListener("submit", async function(event) {
+    event.preventDefault();
+    const value = input.value.trim();
+    if (!value || sending) return;
+    if (!authToken) {
+        setStatus("Please log in to use KCHAT AI.", true);
+        return;
+    }
+    const imageIntent = /\b(create|generate|draw|render|make|produce|design)\b[\s\S]{0,120}\b(image|picture|photo|illustration|artwork|logo|poster|portrait)\b/i;
+    if (imageIntent.test(value)) {
+        await generateImages(value);
+        return;
+    }
+    if (welcome) welcome.classList.add("hidden");
+    addBubble("user", value);
+    history.push({ role: "user", content: value });
+    input.value = "";
+    lock(true);
+    setStatus("KCHAT AI is thinking…", false);
+    const thinking = addBubble("assistant", "Thinking…");
+    try {
+        const result = await apiRequest("/api/ai/chat", {
+            method: "POST",
+            body: JSON.stringify({ messages: history, conversation_id: currentConversationId || null })
+        });
+        if (!result || !result.success || !result.reply) {
+            throw new Error(result && result.error ? result.error : "KCHAT AI did not return a reply.");
+        }
+        if (result.conversation_id) currentConversationId = result.conversation_id;
+        thinking.textContent = result.reply;
+        history.push({ role: "assistant", content: result.reply });
+        await loadConversationList(false);
+        setStatus("KCHAT AI is ready.", false);
+    } catch (error) {
+        thinking.textContent = error.message || "KCHAT AI could not respond.";
+        setStatus("Message not completed. You can try again.", true);
+    } finally {
+        lock(false);
+        input.focus();
+    }
+}); input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(typeof form.requestSubmit==="function")form.requestSubmit();else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));}});
 })();
 </script>
 
