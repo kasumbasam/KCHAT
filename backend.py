@@ -421,11 +421,8 @@ def _cloudflare_generate_image(prompt):
     if not account_id or not api_token:
         return None
 
-    # Lucid Origin provides higher-fidelity image generation than FLUX Schnell.
-    model = os.environ.get(
-        "CLOUDFLARE_IMAGE_MODEL",
-        "@cf/leonardo/lucid-origin"
-    ).strip()
+    # Use the quality-focused model consistently; do not fall back to FLUX Schnell.
+    model = "@cf/leonardo/lucid-origin"
     endpoint = (
         "https://api.cloudflare.com/client/v4/accounts/"
         + account_id + "/ai/run/" + model
