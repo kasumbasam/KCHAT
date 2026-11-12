@@ -15,7 +15,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.websockets import WebSocketState
 
 app = FastAPI()
@@ -421,19 +421,21 @@ def _cloudflare_generate_image(prompt):
     if not account_id or not api_token:
         return None
 
+    # Lucid Origin provides higher-fidelity image generation than FLUX Schnell.
     model = os.environ.get(
         "CLOUDFLARE_IMAGE_MODEL",
-        "@cf/black-forest-labs/flux-1-schnell"
+        "@cf/leonardo/lucid-origin"
     ).strip()
     endpoint = (
         "https://api.cloudflare.com/client/v4/accounts/"
         + account_id + "/ai/run/" + model
     )
-    # FLUX.1 schnell supports up to 8 steps; more steps can improve detail.
     payload = json.dumps({
-        # The model accepts at most 2,048 characters, including the appended style.
         "prompt": prompt[:2048],
-        "steps": 8
+        "width": 1536,
+        "height": 1024,
+        "guidance": 6.5,
+        "num_steps": 35
     }).encode("utf-8")
     req = urllib.request.Request(
         endpoint,
@@ -445,7 +447,7 @@ def _cloudflare_generate_image(prompt):
         }
     )
     try:
-        with urllib.request.urlopen(req, timeout=180) as response:
+        with urllib.request.urlopen(req, timeout=240) as response:
             result = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", "replace")
@@ -474,7 +476,7 @@ def _cloudflare_generate_image(prompt):
 async def cloudflare_generate_images(prompt, count=1, style="photographic"):
     count = max(1, min(4, int(count)))
     style_prompts = {
-        "photographic": "Create an authentic real-world photograph, as if captured by a professional photographer using a modern full-frame DSLR or mirrorless camera and a real lens. Strict photorealism: physically accurate human anatomy and proportions, natural realistic faces and skin texture with visible pores, lifelike eyes, believable hair and fabric, true-to-life materials, natural shadows, realistic reflections, accurate perspective, subtle camera depth of field, and documentary-quality detail. The result must look like an actual unedited photograph of a real scene. Do not make it a cartoon, anime, illustration, painting, drawing, 3D render, CGI, game art, plastic-looking image, or stylized concept art.",
+        "photographic": "Create a premium, highly detailed, convincingly real photograph. Professional full-frame camera, excellent lens, precise focus on the main subject, natural skin texture and pores, realistic eyes and hands, fine hair detail, authentic fabric and material texture, physically accurate anatomy and proportions, balanced composition, rich but natural color, true-to-life lighting, nuanced shadows, clean highlights, realistic depth of field, crisp micro-detail, professional editorial photography. It must look like a genuine photograph, never a cartoon, anime, illustration, painting, drawing, CGI, or plastic-looking render.",
         "cinematic": "Create a photorealistic live-action movie still captured with a real cinema camera and lens. Real people and physically accurate objects, natural skin texture, believable lighting and shadows, realistic materials, subtle film grain, authentic depth of field, and detailed real-world environments. It must look like a frame from a live-action film, not animation, illustration, painting, cartoon, or CGI.",
         "3d": "Premium 3D render, physically based materials, realistic lighting, detailed surfaces, polished professional CGI.",
         "digital-art": "Highly detailed digital painting, confident brushwork, layered depth, refined color harmony, professional concept-art finish.",
@@ -876,114 +878,6 @@ async def kchat_ai_image(request: Request):
             message = "Image generation failed: " + (detail[:220] if detail else "Please try again.")
         return JSONResponse({"error": message}, status_code=502)
 
-
-def _openai_video_request(path, api_key, method="GET", payload=None):
-    body = json.dumps(payload).encode("utf-8") if payload is not None else None
-    request = urllib.request.Request(
-        "https://api.openai.com/v1" + path,
-        data=body,
-        method=method,
-        headers={"Authorization": "Bearer " + api_key, "Content-Type": "application/json"}
-    )
-    with urllib.request.urlopen(request, timeout=90) as response:
-        return response.read(), response.headers.get("Content-Type", "application/json")
-
-
-@app.post("/api/ai/video")
-async def kchat_ai_video_create(request: Request):
-    account = get_account_from_request(request)
-    if not account:
-        return JSONResponse({"error": "Please log in again."}, status_code=401)
-    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        return JSONResponse({"error": "Add OPENAI_API_KEY to the Render environment."}, status_code=503)
-    try:
-        data = await request.json()
-        prompt = str(data.get("prompt", "")).strip()
-        if not prompt:
-            return JSONResponse({"error": "Describe the video you want KCHAT AI to create."}, status_code=400)
-        if len(prompt) > 2000:
-            return JSONResponse({"error": "Keep the video description under 2,000 characters."}, status_code=400)
-        size = str(data.get("size", "1280x720"))
-        if size not in ("1280x720", "720x1280"):
-            size = "1280x720"
-        payload = {
-            "model": os.environ.get("OPENAI_VIDEO_MODEL", "sora-2"),
-            "prompt": prompt,
-            "size": size,
-            "seconds": str(data.get("seconds", "8"))
-        }
-        raw, _ = await asyncio.to_thread(_openai_video_request, "/videos", api_key, "POST", payload)
-        job = json.loads(raw.decode("utf-8"))
-        return {"success": True, "id": job.get("id"), "status": job.get("status", "queued")}
-    except urllib.error.HTTPError as error:
-        detail = error.read().decode("utf-8", "replace")
-        print("KCHAT AI video create error:", detail[:1000])
-        return JSONResponse({"error": "OpenAI video generation failed: " + detail[:220]}, status_code=502)
-    except Exception as error:
-        print("KCHAT AI video create error:", repr(error))
-        return JSONResponse({"error": "Video generation failed: " + str(error)[:220]}, status_code=502)
-
-
-@app.get("/api/ai/video/{video_id}")
-async def kchat_ai_video_status(video_id: str, request: Request):
-    account = get_account_from_request(request)
-    if not account:
-        return JSONResponse({"error": "Please log in again."}, status_code=401)
-    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        return JSONResponse({"error": "KCHAT AI is not configured."}, status_code=503)
-    if not re.fullmatch(r"video_[A-Za-z0-9_-]+", video_id):
-        return JSONResponse({"error": "Invalid video job."}, status_code=400)
-    try:
-        raw, _ = await asyncio.to_thread(_openai_video_request, "/videos/" + video_id, api_key)
-        job = json.loads(raw.decode("utf-8"))
-        return {"success": True, "status": job.get("status"), "error": job.get("error")}
-    except urllib.error.HTTPError as error:
-        detail = error.read().decode("utf-8", "replace")
-        return JSONResponse({"error": "Could not check video status: " + detail[:180]}, status_code=502)
-    except Exception as error:
-        return JSONResponse({"error": "Could not check video status: " + str(error)[:180]}, status_code=502)
-
-
-@app.get("/api/ai/video/{video_id}/content")
-async def kchat_ai_video_content(video_id: str, request: Request):
-    account = get_account_from_request(request)
-    if not account:
-        return JSONResponse({"error": "Please log in again."}, status_code=401)
-    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        return JSONResponse({"error": "KCHAT AI is not configured."}, status_code=503)
-    if not re.fullmatch(r"video_[A-Za-z0-9_-]+", video_id):
-        return JSONResponse({"error": "Invalid video job."}, status_code=400)
-    try:
-        raw, content_type = await asyncio.to_thread(_openai_video_request, "/videos/" + video_id + "/content", api_key)
-        return Response(content=raw, media_type="video/mp4", headers={"Content-Disposition": 'inline; filename="kchat-ai-video.mp4"'})
-    except urllib.error.HTTPError as error:
-        detail = error.read().decode("utf-8", "replace")
-        return JSONResponse({"error": "Video is not ready or could not be downloaded: " + detail[:180]}, status_code=502)
-    except Exception as error:
-        return JSONResponse({"error": "Could not load generated video: " + str(error)[:180]}, status_code=502)
-
-def users_blocked(user_id, other_id):
-    with get_db() as conn:
-        result = conn.execute("""
-            SELECT 1
-            FROM blocked_users
-            WHERE (owner_id = %s AND blocked_id = %s)
-               OR (owner_id = %s AND blocked_id = %s)
-            LIMIT 1
-        """, (
-            user_id,
-            other_id,
-            other_id,
-            user_id
-        )).fetchone()
-
-    return bool(result)
-
-
-# ---------------- REGISTRATION ----------------
 
 @app.post("/api/register")
 async def register(request: Request):
