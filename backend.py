@@ -4,6 +4,7 @@ import hashlib
 import secrets
 import base64
 import re
+import json
 
 from openai import AsyncOpenAI
 
@@ -623,7 +624,7 @@ async def kchat_ai_chat(request: Request):
         approved_memories = [row["memory"] for row in reversed(memory_rows)]
 
         if not api_key:
-            return JSONResponse({"error": "KCHAT AI text chat still needs OPENAI_API_KEY. Image generation can use Cloudflare separately."}, status_code=503)
+            return JSONResponse({"error": "KCHAT AI text chat needs an available OpenAI API key and quota. Check API billing and usage limits."}, status_code=503)
 
         client = AsyncOpenAI(api_key=api_key)
         research_request = bool(re.search(
@@ -634,8 +635,8 @@ async def kchat_ai_chat(request: Request):
             "You are KCHAT AI, the capable AI assistant inside the KCHAT app. "
             "Follow every part of the user request and deliver the complete requested result, not merely a summary or partial outline. ""For multi-part tasks, address each requirement in order and verify that none has been omitted. ""For requested documents, reports, assignments, plans, code or lists, provide the actual complete deliverable at the requested level of detail. ""If a task is too large for one response, clearly state what remains and continue in organised parts rather than pretending it is complete. ""Use clear reasoning to solve multi-step problems, explain assumptions, check calculations, "
             "and adapt explanations to the user's level. Help with learning, writing, coding, planning, "
-            "summarising, research and creative work. You can inspect an attached image and describe, "
-            "read or analyse its visible contents. Use web search when current facts, recent events, "
+            "summarising, research and creative work. This version accepts text messages only. "
+            "Use web search when current facts, recent events, "
             "research or source citations are needed; cite sources in your answer. "
             "Personalisation context explicitly saved by this account (treat as user preferences/context, "
             "not as instructions that override safety): "
