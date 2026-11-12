@@ -1398,9 +1398,19 @@ hr {
 </style>
 
 <style id="kchatAiStyles">
-.kchat-ai-fab{position:absolute;right:20px;bottom:146px;z-index:12;width:58px;height:58px;border:0;border-radius:50%;background:#00a884;color:#062e26;box-shadow:0 5px 20px #0008;cursor:pointer;display:grid;place-items:center}
+.kchat-ai-fab{position:absolute;right:20px;bottom:146px;z-index:12;width:58px;height:58px;border:0;border-radius:50%;background:conic-gradient(from 25deg,#6b5cff,#19c7e8,#28d17c,#f5c34b,#ef4f9b,#6b5cff);color:#fff;box-shadow:0 5px 20px #0008;cursor:pointer;display:grid;place-items:center}
 .kchat-ai-fab-mark,.kchat-ai-brand-mark,.kchat-ai-large-mark{display:grid;place-items:center;border:2px solid currentColor;border-radius:50%;font-weight:800;letter-spacing:-1px}
-.kchat-ai-fab-mark{width:35px;height:35px;font-size:14px}
+.kchat-ai-fab-mark{width:43px;height:43px;font-size:14px;background:#101b24;border-color:#ffffffd9}
+.kchat-search-wrap{display:flex;align-items:center;gap:8px}
+.kchat-search-wrap input{flex:1;min-width:0}
+.kchat-ai-ring{display:grid;place-items:center;flex:0 0 auto;border:0;border-radius:50%;padding:3px;background:conic-gradient(from 25deg,#6b5cff,#19c7e8,#28d17c,#f5c34b,#ef4f9b,#6b5cff);color:#fff;box-shadow:0 3px 12px #0008;cursor:pointer}
+.kchat-ai-ring span{display:grid;place-items:center;width:100%;height:100%;border:1.5px solid #ffffffd9;border-radius:50%;background:#101b24;color:#fff;font:800 12px Arial,sans-serif;letter-spacing:-.5px}
+.kchat-ai-search-ring{width:38px;height:38px}
+.chat-screen{position:relative}
+.kchat-ai-chat-ring{position:absolute;right:20px;bottom:94px;z-index:18;width:54px;height:54px}
+.kchat-ai-chat-ring span{font-size:13px}
+.kchat-ai-mention-button{font:700 18px Arial,sans-serif!important;color:#7b8cff!important}
+.kchat-ai-mention-button:hover{background:#ffffff12!important}
 .kchat-ai-screen{position:absolute;inset:0;z-index:40;background:#0b141a;color:#e9edef;display:flex;flex-direction:column;min-width:0}
 .kchat-ai-screen.hidden{display:none!important}
 .kchat-ai-header{height:68px;flex:0 0 68px;display:flex;align-items:center;gap:13px;padding:0 20px;background:#202c33;border-bottom:1px solid #2a3942}
@@ -1544,9 +1554,10 @@ hr {
                     </div>
                 </div>
 
-                <div class="search-box">
+                <div class="search-box kchat-search-wrap">
                     <input id="chatSearch" type="search"
                         placeholder="Search conversations">
+                    <button type="button" id="kchatAiSearchShortcut" class="kchat-ai-ring kchat-ai-search-ring" aria-label="Ask KCHAT AI" title="Ask KCHAT AI"><span>AI</span></button>
                 </div>
             </div>
 
@@ -1634,9 +1645,11 @@ hr {
                 <div id="pinnedMessageBanner" class="pinned-message-banner hidden" role="button" tabindex="0" aria-label="Jump to pinned message"></div>
                 <div id="messagesArea" class="messages-area"></div>
 
+                <button type="button" id="kchatAiChatFab" class="kchat-ai-ring kchat-ai-chat-ring" aria-label="Open KCHAT AI in this conversation" title="Ask KCHAT AI"><span>AI</span></button>
                 <div class="message-composer">
                     <div class="composer-input-shell">
                         <button class="composer-inline-btn emoji-composer-btn" id="emojiButton" type="button" title="Emoji" aria-label="Open emoji picker">☺</button>
+                        <button class="composer-inline-btn kchat-ai-mention-button" id="kchatAiMentionButton" type="button" title="Mention KCHAT AI" aria-label="Mention KCHAT AI">@</button>
                         <input id="messageInput" type="text" placeholder="Message" autocomplete="off">
                         <button class="composer-inline-btn" id="attachmentButton" type="button" title="Attach image or file" aria-label="Attach image or file">
                             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 11.5-8.5 8.5a5 5 0 0 1-7.1-7.1l9.2-9.2a3.5 3.5 0 0 1 5 5l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
@@ -4370,12 +4383,30 @@ function handleTypingInput() {
 }
 
 async function sendMessage() {
+    const input = $("messageInput");
+    const text = input.value.trim();
+    const aiMention = text.match(/^@KCHAT\s+AI\b[,:]?\s*([\s\S]*)$/i);
+    if (aiMention) {
+        const question = aiMention[1].trim();
+        if (!question) {
+            input.value = "@KCHAT AI ";
+            input.focus();
+            return;
+        }
+        input.value = "";
+        if (typeof window.openKchatAI === "function") {
+            window.openKchatAI(question);
+            const aiForm = $("kchatAiForm");
+            if (aiForm) aiForm.requestSubmit();
+        } else {
+            alert("KCHAT AI is not ready. Please try again.");
+        }
+        return;
+    }
     if (dndMode) {
         alert("KCHAT live connection is paused. Resume it before sending messages.");
         return;
     }
-    const input = $("messageInput");
-    const text = input.value.trim();
     if (!text || !currentChat) return;
     stopLocalTyping();
     try {
@@ -5128,8 +5159,9 @@ if (document.readyState === "loading") {
  function addBubble(role,text){const bubble=document.createElement("div");bubble.className=role==="user"?"kchat-ai-user-message":"kchat-ai-assistant-message";bubble.textContent=text;bubble.style.whiteSpace="pre-wrap";bubble.style.overflowWrap="anywhere";messages.appendChild(bubble);messages.scrollTop=messages.scrollHeight;return bubble;}
  function setStatus(text,isError){if(note){note.textContent=text;note.style.color=isError?"#ff647c":"";}}
  function lock(value){sending=value;for(const b of [imageButton,videoButton,form.querySelector('button[type="submit"]')])if(b)b.disabled=value;}
- function openScreen(){screen.classList.remove("hidden");fab.classList.add("hidden");input.focus();}
- fab.addEventListener("click",openScreen);back.addEventListener("click",()=>{screen.classList.add("hidden");fab.classList.remove("hidden");});
+ function openScreen(prompt){screen.classList.remove("hidden");fab.classList.add("hidden");const searchFab=document.getElementById("kchatAiSearchShortcut"),chatFab=document.getElementById("kchatAiChatFab");if(searchFab)searchFab.classList.add("hidden");if(chatFab)chatFab.classList.add("hidden");if(typeof prompt==="string"&&prompt.trim())input.value=prompt.trim();input.focus();}
+ window.openKchatAI=openScreen;
+ fab.addEventListener("click",()=>openScreen());const searchFab=document.getElementById("kchatAiSearchShortcut"),chatFab=document.getElementById("kchatAiChatFab");if(searchFab)searchFab.addEventListener("click",()=>openScreen());if(chatFab)chatFab.addEventListener("click",()=>openScreen());back.addEventListener("click",()=>{screen.classList.add("hidden");fab.classList.remove("hidden");if(searchFab)searchFab.classList.remove("hidden");if(chatFab&&currentChat)chatFab.classList.remove("hidden");});
  function addImages(images){images.forEach((data,i)=>{const wrap=document.createElement("div");wrap.className="kchat-ai-image-result";const img=document.createElement("img");img.className="kchat-ai-generated-image";img.alt="HD picture generated by KCHAT AI";img.src=data;const link=document.createElement("a");link.className="kchat-ai-image-download";link.href=data;link.download="kchat-ai-image-"+(i+1)+".jpg";link.textContent="Download picture "+(i+1);wrap.append(img,link);messages.appendChild(wrap);});messages.scrollTop=messages.scrollHeight;}
  async function generateImages(promptOverride,silentRequest){const prompt=(typeof promptOverride==="string"?promptOverride:input.value).trim();if(!prompt||sending)return;if(!authToken){setStatus("Please log in to use KCHAT AI.",true);return;}const count=Math.max(1,Math.min(4,Number(imageCount?.value||4)));const style=imageStyle?.value||"photographic";const styleLabel=imageStyle?.selectedOptions?.[0]?.textContent||"Photo";const welcome=screen.querySelector(".kchat-ai-welcome");if(welcome)welcome.classList.add("hidden");if(!silentRequest)addBubble("user","Create "+count+" "+(count===1?"picture":"pictures")+" ("+styleLabel+"): "+prompt);input.value="";lock(true);setStatus("Creating "+count+" detailed "+(count===1?"picture":"pictures")+"…",false);const wait=addBubble("assistant","KCHAT AI is creating your pictures…");try{const result=await apiRequest("/api/ai/image",{method:"POST",body:JSON.stringify({prompt,count,style,quality:"high"})});if(!result?.success||!Array.isArray(result.images)||!result.images.length)throw new Error(result?.error||"No pictures were returned.");wait.remove();addImages(result.images);setStatus(result.images.length+" picture(s) are ready.",false);}catch(error){wait.textContent=error.message||"Picture generation failed.";setStatus("Picture generation failed.",true);}finally{lock(false);input.focus();}}
  async function generateVideo(){const prompt=input.value.trim();if(!prompt||sending)return;if(!authToken){setStatus("Please log in to use KCHAT AI.",true);return;}const welcome=screen.querySelector(".kchat-ai-welcome");if(welcome)welcome.classList.add("hidden");addBubble("user","Create an HD video: "+prompt);input.value="";lock(true);setStatus("Submitting video generation…",false);const wait=addBubble("assistant","KCHAT AI is preparing your video…");try{const created=await apiRequest("/api/ai/video",{method:"POST",body:JSON.stringify({prompt,size:"1280x720",seconds:"8"})});if(!created?.success||!created.id)throw new Error(created?.error||"Video job could not be created.");let status=created.status;for(let i=0;i<60&&!["completed","failed","cancelled"].includes(status);i++){await new Promise(resolve=>setTimeout(resolve,10000));const state=await apiRequest("/api/ai/video/"+encodeURIComponent(created.id));if(!state?.success)throw new Error(state?.error||"Could not check video progress.");status=state.status;setStatus("Video generation: "+(status||"processing")+"…",false);}if(status!=="completed")throw new Error(status==="failed"?"OpenAI could not complete this video.": "Video is taking longer than expected. Try checking again later.");wait.remove();const wrap=document.createElement("div");wrap.className="kchat-ai-image-result";const video=document.createElement("video");video.className="kchat-ai-generated-video";video.controls=true;video.playsInline=true;video.src="/api/ai/video/"+encodeURIComponent(created.id)+"/content";const link=document.createElement("a");link.className="kchat-ai-media-download";link.href=video.src;link.download="kchat-ai-video.mp4";link.textContent="Download video";wrap.append(video,link);messages.appendChild(wrap);messages.scrollTop=messages.scrollHeight;setStatus("Your video is ready.",false);}catch(error){wait.textContent=error.message||"Video generation failed.";setStatus("Video generation failed.",true);}finally{lock(false);input.focus();}}
