@@ -388,8 +388,7 @@ def _cloudflare_generate_image(prompt):
     payload = json.dumps({
         # The model accepts at most 2,048 characters, including the appended style.
         "prompt": prompt[:2048],
-        "steps": 8,
-        "seed": secrets.randbelow(2147483647)
+        "steps": 8
     }).encode("utf-8")
     req = urllib.request.Request(
         endpoint,
