@@ -237,6 +237,37 @@ def init_db():
             ADD COLUMN IF NOT EXISTS media_visibility BOOLEAN NOT NULL DEFAULT TRUE
         """)
 
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS ai_conversations (
+                id TEXT PRIMARY KEY,
+                owner_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                title TEXT NOT NULL DEFAULT 'New conversation',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS ai_conversations_owner_updated_idx
+            ON ai_conversations(owner_id, updated_at DESC)
+        """)
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS ai_messages (
+                id BIGSERIAL PRIMARY KEY,
+                conversation_id TEXT NOT NULL REFERENCES ai_conversations(id) ON DELETE CASCADE,
+                owner_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+                content TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS ai_messages_conversation_idx
+            ON ai_messages(conversation_id, created_at, id)
+        """)
+
 
 @app.on_event("startup")
 async def startup():
@@ -449,6 +480,60 @@ async def cloudflare_generate_images(prompt, count=1, style="photographic"):
 
 # ---------------- KCHAT AI (OPENAI) ----------------
 
+@app.get("/api/ai/conversations")
+async def kchat_ai_list_conversations(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT c.id, c.title, c.created_at, c.updated_at,
+                   (SELECT COUNT(*) FROM ai_messages m WHERE m.conversation_id = c.id) AS message_count
+            FROM ai_conversations c
+            WHERE c.owner_id = %s
+            ORDER BY c.updated_at DESC
+            LIMIT 100
+        """, (account["id"],)).fetchall()
+    return {"success": True, "conversations": rows}
+
+
+@app.post("/api/ai/conversations")
+async def kchat_ai_create_conversation(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    conversation_id = str(uuid.uuid4())
+    with get_db() as conn:
+        row = conn.execute("""
+            INSERT INTO ai_conversations (id, owner_id, title)
+            VALUES (%s, %s, 'New conversation')
+            RETURNING id, title, created_at, updated_at
+        """, (conversation_id, account["id"])).fetchone()
+    return {"success": True, "conversation": row}
+
+
+@app.get("/api/ai/conversations/{conversation_id}")
+async def kchat_ai_get_conversation(conversation_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    with get_db() as conn:
+        conversation = conn.execute("""
+            SELECT id, title, created_at, updated_at
+            FROM ai_conversations
+            WHERE id = %s AND owner_id = %s
+        """, (conversation_id, account["id"])).fetchone()
+        if not conversation:
+            return JSONResponse({"error": "That AI conversation was not found."}, status_code=404)
+        rows = conn.execute("""
+            SELECT role, content, created_at
+            FROM ai_messages
+            WHERE conversation_id = %s AND owner_id = %s
+            ORDER BY created_at, id
+        """, (conversation_id, account["id"])).fetchall()
+    return {"success": True, "conversation": conversation, "messages": rows}
+
+
 @app.post("/api/ai/chat")
 async def kchat_ai_chat(request: Request):
     account = get_account_from_request(request)
@@ -459,32 +544,65 @@ async def kchat_ai_chat(request: Request):
 
     try:
         data = await request.json()
+        latest_entry = None
         raw_messages = data.get("messages", [])
-        if not isinstance(raw_messages, list) or not raw_messages:
+        if isinstance(raw_messages, list):
+            for entry in reversed(raw_messages):
+                if isinstance(entry, dict) and entry.get("role") == "user" and isinstance(entry.get("content"), str) and entry["content"].strip():
+                    latest_entry = entry
+                    break
+        if not latest_entry:
             return JSONResponse({"error": "Send a message to KCHAT AI."}, status_code=400)
+        latest_text = latest_entry["content"].strip()[:6000]
 
-        safe_messages = []
-        for entry in raw_messages[-24:]:
-            if not isinstance(entry, dict):
-                continue
-            role = entry.get("role")
-            content = entry.get("content")
-            if role not in ("user", "assistant") or not isinstance(content, str):
-                continue
-            content = content.strip()
-            if content:
-                safe_messages.append({"role": role, "content": content[:6000]})
+        conversation_id = str(data.get("conversation_id") or "").strip()
+        if not conversation_id:
+            conversation_id = str(uuid.uuid4())
+            with get_db() as conn:
+                conn.execute("""
+                    INSERT INTO ai_conversations (id, owner_id, title)
+                    VALUES (%s, %s, %s)
+                """, (conversation_id, account["id"], latest_text[:70] or "New conversation"))
+        else:
+            with get_db() as conn:
+                conversation = conn.execute("""
+                    SELECT id FROM ai_conversations
+                    WHERE id = %s AND owner_id = %s
+                """, (conversation_id, account["id"])).fetchone()
+            if not conversation:
+                return JSONResponse({"error": "That AI conversation was not found."}, status_code=404)
 
-        if not safe_messages or safe_messages[-1]["role"] != "user":
-            return JSONResponse({"error": "Your latest message is missing."}, status_code=400)
+        with get_db() as conn:
+            prior_rows = conn.execute("""
+                SELECT role, content
+                FROM ai_messages
+                WHERE conversation_id = %s AND owner_id = %s
+                ORDER BY created_at DESC, id DESC
+                LIMIT 23
+            """, (conversation_id, account["id"])).fetchall()
+            conn.execute("""
+                INSERT INTO ai_messages (conversation_id, owner_id, role, content)
+                VALUES (%s, %s, 'user', %s)
+            """, (conversation_id, account["id"], latest_text))
+            conn.execute("""
+                UPDATE ai_conversations
+                SET updated_at = NOW(),
+                    title = CASE WHEN title = 'New conversation' THEN %s ELSE title END
+                WHERE id = %s AND owner_id = %s
+            """, (latest_text[:70] or "New conversation", conversation_id, account["id"]))
+
+        safe_messages = [
+            {"role": row["role"], "content": row["content"]}
+            for row in reversed(prior_rows)
+        ]
+        safe_messages.append({"role": "user", "content": latest_text})
 
         # Route image requests on the server as well as in the browser.
-        latest_text = safe_messages[-1]["content"].strip()
         image_prompt = latest_text
         refusal_pattern = re.search(r'(?is)(?:can.t|cannot).*?(?:image|picture|photo).*?(?:prompt|generator).*?[“"]([^”"]{20,1800})[”"]', latest_text)
         if refusal_pattern:
             image_prompt = refusal_pattern.group(1).strip()
-        direct_image_request = re.search(r'(?is)\b(?:create|generate|draw|render|make|produce)\b.{0,140}\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\b|\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\b.{0,100}\b(?:create|generate|draw|render|make)\b', latest_text)
+        direct_image_request = re.search(r'(?is)\\b(?:create|generate|draw|render|make|produce)\\b.{0,140}\\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\\b|\\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\\b.{0,100}\\b(?:create|generate|draw|render|make)\\b', latest_text)
         if refusal_pattern or direct_image_request:
             if os.environ.get("CLOUDFLARE_ACCOUNT_ID") and os.environ.get("CLOUDFLARE_API_TOKEN"):
                 generated_images = await cloudflare_generate_images(image_prompt, 1, 'photographic')
@@ -504,7 +622,13 @@ async def kchat_ai_chat(request: Request):
                 return JSONResponse({"error": "Image generation is not configured. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in Render."}, status_code=503)
             if not generated_images:
                 return JSONResponse({"error": "KCHAT AI did not receive any generated images. Please try again."}, status_code=502)
-            return {"success": True, "images": generated_images, "reply": "Here is your image."}
+            with get_db() as conn:
+                conn.execute("""
+                    INSERT INTO ai_messages (conversation_id, owner_id, role, content)
+                    VALUES (%s, %s, 'assistant', %s)
+                """, (conversation_id, account["id"], "Generated an image."))
+                conn.execute("UPDATE ai_conversations SET updated_at = NOW() WHERE id = %s", (conversation_id,))
+            return {"success": True, "conversation_id": conversation_id, "images": generated_images, "reply": "Here is your image."}
 
         if not api_key:
             return JSONResponse({"error": "KCHAT AI text chat still needs OPENAI_API_KEY. Image generation can use Cloudflare separately."}, status_code=503)
@@ -516,7 +640,7 @@ async def kchat_ai_chat(request: Request):
                 "You are KCHAT AI, a helpful conversational assistant inside the KCHAT app. "
                 "Respond naturally and accurately like a capable ChatGPT assistant. "
                 "Help with explanations, learning, writing, coding, planning and problem-solving. "
-                "Use the conversation history to understand follow-up questions. "
+                "Use the saved conversation history to understand follow-up questions. "
                 "Be clear, respectful and honest about uncertainty. Never claim to have performed "
                 "actions outside the chat unless a connected tool actually did so."
             ),
@@ -526,7 +650,16 @@ async def kchat_ai_chat(request: Request):
         answer = (response.output_text or "").strip()
         if not answer:
             return JSONResponse({"error": "KCHAT AI could not produce a reply. Please try again."}, status_code=502)
-        return {"success": True, "reply": answer}
+        with get_db() as conn:
+            conn.execute("""
+                INSERT INTO ai_messages (conversation_id, owner_id, role, content)
+                VALUES (%s, %s, 'assistant', %s)
+            """, (conversation_id, account["id"], answer))
+            conn.execute("""
+                UPDATE ai_conversations SET updated_at = NOW()
+                WHERE id = %s AND owner_id = %s
+            """, (conversation_id, account["id"]))
+        return {"success": True, "conversation_id": conversation_id, "reply": answer}
 
     except Exception as error:
         print("KCHAT AI request error:", repr(error))
