@@ -5202,27 +5202,38 @@ if (document.readyState === "loading") {
  form.addEventListener("submit", async function(event) {
     event.preventDefault();
     const value = input.value.trim();
-    if (!value || sending) return;
+    const hasImage = Boolean(selectedImageData);
+    if ((!value && !hasImage) || sending) return;
     if (!authToken) {
         setStatus("Please log in to use KCHAT AI.", true);
         return;
     }
+    const messageText = value || "Please describe this image in detail and explain what is visible.";
     const imageIntent = /\b(create|generate|draw|render|make|produce|design)\b[\s\S]{0,120}\b(image|picture|photo|illustration|artwork|logo|poster|portrait)\b/i;
-    if (imageIntent.test(value)) {
+    if (!hasImage && imageIntent.test(value)) {
         await generateImages(value);
         return;
     }
     if (welcome) welcome.classList.add("hidden");
-    addBubble("user", value);
-    history.push({ role: "user", content: value });
+    const userBubble = addBubble("user", messageText);
+    if (hasImage) {
+        const preview = document.createElement("img");
+        preview.src = selectedImageData;
+        preview.alt = selectedImageName || "Attached image";
+        preview.style.cssText = "display:block;max-width:min(100%,260px);max-height:220px;object-fit:contain;border-radius:9px;margin-top:8px";
+        userBubble.appendChild(preview);
+    }
+    history.push({ role: "user", content: messageText });
     input.value = "";
     lock(true);
-    setStatus("KCHAT AI is thinking…", false);
+    setStatus(hasImage ? "KCHAT AI is examining your image…" : "KCHAT AI is thinking…", false);
     const thinking = addBubble("assistant", "Thinking…");
     try {
+        const payload = { messages: history, conversation_id: currentConversationId || null };
+        if (hasImage) payload.attachments = [{ name: selectedImageName, data: selectedImageData }];
         const result = await apiRequest("/api/ai/chat", {
             method: "POST",
-            body: JSON.stringify({ messages: history, conversation_id: currentConversationId || null })
+            body: JSON.stringify(payload)
         });
         if (!result || !result.success || !result.reply) {
             throw new Error(result && result.error ? result.error : "KCHAT AI did not return a reply.");
@@ -5230,6 +5241,11 @@ if (document.readyState === "loading") {
         if (result.conversation_id) currentConversationId = result.conversation_id;
         thinking.textContent = result.reply;
         history.push({ role: "assistant", content: result.reply });
+        if (hasImage) {
+            selectedImageData = "";
+            selectedImageName = "";
+            if (imageInput) imageInput.value = "";
+        }
         await loadConversationList(false);
         setStatus("KCHAT AI is ready.", false);
     } catch (error) {
@@ -5239,7 +5255,7 @@ if (document.readyState === "loading") {
         lock(false);
         input.focus();
     }
-}); input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(typeof form.requestSubmit==="function")form.requestSubmit();else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));}});
+});; input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(typeof form.requestSubmit==="function")form.requestSubmit();else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));}});
 })();
 </script>
 
