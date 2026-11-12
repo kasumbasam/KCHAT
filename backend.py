@@ -534,6 +534,37 @@ async def kchat_ai_get_conversation(conversation_id: str, request: Request):
     return {"success": True, "conversation": conversation, "messages": rows}
 
 
+@app.post("/api/ai/conversations/{conversation_id}/messages")
+async def kchat_ai_save_media_message(conversation_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    try:
+        data = await request.json()
+        role = str(data.get("role", ""))
+        content = str(data.get("content", "")).strip()
+        if role not in ("user", "assistant") or not content or len(content) > 6000:
+            return JSONResponse({"error": "Invalid AI conversation message."}, status_code=400)
+        with get_db() as conn:
+            conversation = conn.execute("""
+                SELECT id FROM ai_conversations WHERE id = %s AND owner_id = %s
+            """, (conversation_id, account["id"])).fetchone()
+            if not conversation:
+                return JSONResponse({"error": "That AI conversation was not found."}, status_code=404)
+            conn.execute("""
+                INSERT INTO ai_messages (conversation_id, owner_id, role, content)
+                VALUES (%s, %s, %s, %s)
+            """, (conversation_id, account["id"], role, content))
+            conn.execute("""
+                UPDATE ai_conversations SET updated_at = NOW()
+                WHERE id = %s AND owner_id = %s
+            """, (conversation_id, account["id"]))
+        return {"success": True}
+    except Exception as error:
+        print("KCHAT AI history save error:", repr(error))
+        return JSONResponse({"error": "Could not save this KCHAT AI message."}, status_code=500)
+
+
 @app.post("/api/ai/chat")
 async def kchat_ai_chat(request: Request):
     account = get_account_from_request(request)
