@@ -413,7 +413,6 @@ async def cloudflare_generate_images(prompt, count=1, style="photographic"):
     style_prompts = {
         "photographic": "Photorealistic professional photography, natural realistic lighting, lifelike textures, crisp focus, refined composition.",
         "cinematic": "Cinematic film still, dramatic controlled lighting, rich atmosphere, sophisticated color grading, wide dynamic range.",
-        "anime": "High-quality anime illustration, expressive clean linework, beautifully rendered details, polished anime color design.",
         "3d": "Premium 3D render, physically based materials, realistic lighting, detailed surfaces, polished professional CGI.",
         "digital-art": "Highly detailed digital painting, confident brushwork, layered depth, refined color harmony, professional concept-art finish.",
         "watercolor": "Traditional watercolor painting, delicate pigment blooms, textured paper, layered transparent washes, elegant hand-painted detail.",
