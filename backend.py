@@ -633,7 +633,7 @@ async def kchat_ai_chat(request: Request):
         refusal_pattern = re.search(r'(?is)(?:can.t|cannot).*?(?:image|picture|photo).*?(?:prompt|generator).*?[“"]([^”"]{20,1800})[”"]', latest_text)
         if refusal_pattern:
             image_prompt = refusal_pattern.group(1).strip()
-        direct_image_request = re.search(r'(?is)\\b(?:create|generate|draw|render|make|produce)\\b.{0,140}\\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\\b|\\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\\b.{0,100}\\b(?:create|generate|draw|render|make)\\b', latest_text)
+        direct_image_request = re.search(r'(?is)\b(?:create|generate|draw|render|make|produce)\b.{0,140}\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\b|\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\b.{0,100}\b(?:create|generate|draw|render|make)\b', latest_text)
         if refusal_pattern or direct_image_request:
             if os.environ.get("CLOUDFLARE_ACCOUNT_ID") and os.environ.get("CLOUDFLARE_API_TOKEN"):
                 generated_images = await cloudflare_generate_images(image_prompt, 1, 'photographic')
