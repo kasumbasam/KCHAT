@@ -650,7 +650,7 @@ async def kchat_ai_chat(request: Request):
         if not latest_entry:
             return JSONResponse({"error": "Send a message to KCHAT AI."}, status_code=400)
         latest_content = latest_entry.get("content", "")
-        latest_text = (latest_content if isinstance(latest_content, str) else str(latest_entry.get("text", ""))).strip()[:6000]
+        latest_text = (latest_content if isinstance(latest_content, str) else str(latest_entry.get("text", ""))).strip()[:20000]
         attachments = data.get("attachments", [])
         image_data = None
         if isinstance(attachments, list):
@@ -764,7 +764,7 @@ async def kchat_ai_chat(request: Request):
         ))
         instructions = (
             "You are KCHAT AI, the capable AI assistant inside the KCHAT app. "
-            "Use clear reasoning to solve multi-step problems, explain assumptions, check calculations, "
+            "Follow every part of the user request and deliver the complete requested result, not merely a summary or partial outline. ""For multi-part tasks, address each requirement in order and verify that none has been omitted. ""For requested documents, reports, assignments, plans, code or lists, provide the actual complete deliverable at the requested level of detail. ""If a task is too large for one response, clearly state what remains and continue in organised parts rather than pretending it is complete. ""Use clear reasoning to solve multi-step problems, explain assumptions, check calculations, "
             "and adapt explanations to the user's level. Help with learning, writing, coding, planning, "
             "summarising, research and creative work. You can inspect an attached image and describe, "
             "read or analyse its visible contents. Use web search when current facts, recent events, "
@@ -782,7 +782,7 @@ async def kchat_ai_chat(request: Request):
             "model": os.environ.get("OPENAI_MODEL", "gpt-6-astra"),
             "instructions": instructions,
             "input": safe_messages,
-            "max_output_tokens": 1800
+            "max_output_tokens": 7000
         }
         if research_request:
             response_args["tools"] = [{"type": "web_search", "search_context_size": "medium"}]
