@@ -4,10 +4,6 @@ import hashlib
 import secrets
 import base64
 import re
-import json
-import asyncio
-import urllib.request
-import urllib.error
 
 from openai import AsyncOpenAI
 
@@ -413,84 +409,6 @@ def get_account_from_request(request):
 
 
 
-# ---------------- FREE IMAGE GENERATION (CLOUDFLARE) ----------------
-
-def _cloudflare_generate_image(prompt):
-    account_id = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
-    api_token = os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
-    if not account_id or not api_token:
-        return None
-
-    # Use the quality-focused model consistently; do not fall back to FLUX Schnell.
-    model = "@cf/leonardo/lucid-origin"
-    endpoint = (
-        "https://api.cloudflare.com/client/v4/accounts/"
-        + account_id + "/ai/run/" + model
-    )
-    payload = json.dumps({
-        "prompt": prompt[:2048],
-        "width": 1536,
-        "height": 1024,
-        "guidance": 6.5,
-        "num_steps": 35
-    }).encode("utf-8")
-    req = urllib.request.Request(
-        endpoint,
-        data=payload,
-        method="POST",
-        headers={
-            "Authorization": "Bearer " + api_token,
-            "Content-Type": "application/json"
-        }
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=240) as response:
-            result = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as error:
-        detail = error.read().decode("utf-8", "replace")
-        try:
-            provider_error = json.loads(detail)
-            messages = [
-                str(item.get("message", ""))
-                for item in provider_error.get("errors", [])
-                if isinstance(item, dict) and item.get("message")
-            ]
-            if messages:
-                detail = "; ".join(messages)
-        except Exception:
-            pass
-        raise RuntimeError(
-            "Cloudflare image service rejected the request (HTTP "
-            + str(error.code) + "): " + (detail[:500] or error.reason)
-        ) from error
-
-    image_data = (result.get("result") or {}).get("image")
-    if not result.get("success") or not image_data:
-        raise RuntimeError("Cloudflare did not return a generated image.")
-    return "data:image/jpeg;base64," + image_data
-
-
-async def cloudflare_generate_images(prompt, count=1, style="photographic"):
-    count = max(1, min(4, int(count)))
-    style_prompts = {
-        "photographic": "Create a premium, highly detailed, convincingly real photograph. Professional full-frame camera, excellent lens, precise focus on the main subject, natural skin texture and pores, realistic eyes and hands, fine hair detail, authentic fabric and material texture, physically accurate anatomy and proportions, balanced composition, rich but natural color, true-to-life lighting, nuanced shadows, clean highlights, realistic depth of field, crisp micro-detail, professional editorial photography. It must look like a genuine photograph, never a cartoon, anime, illustration, painting, drawing, CGI, or plastic-looking render.",
-        "cinematic": "Create a photorealistic live-action movie still captured with a real cinema camera and lens. Real people and physically accurate objects, natural skin texture, believable lighting and shadows, realistic materials, subtle film grain, authentic depth of field, and detailed real-world environments. It must look like a frame from a live-action film, not animation, illustration, painting, cartoon, or CGI.",
-        "3d": "Premium 3D render, physically based materials, realistic lighting, detailed surfaces, polished professional CGI.",
-        "digital-art": "Highly detailed digital painting, confident brushwork, layered depth, refined color harmony, professional concept-art finish.",
-        "watercolor": "Traditional watercolor painting, delicate pigment blooms, textured paper, layered transparent washes, elegant hand-painted detail.",
-        "fantasy": "Epic fantasy concept art, imaginative worldbuilding, intricate details, atmospheric depth, dramatic visual storytelling.",
-        "logo": "Professional graphic design, clean vector-like shapes, balanced composition, crisp edges, restrained color palette, simple forms."
-    }
-    style_key = style if style in style_prompts else "photographic"
-    enhanced_prompt = prompt.strip() + " " + style_prompts[style_key]
-    images = []
-    for _ in range(count):
-        image_data = await asyncio.to_thread(_cloudflare_generate_image, enhanced_prompt)
-        if image_data:
-            images.append(image_data)
-    return images
-
-
 # ---------------- KCHAT AI (OPENAI) ----------------
 
 @app.get("/api/ai/conversations")
@@ -556,8 +474,8 @@ async def kchat_ai_save_media_message(conversation_id: str, request: Request):
         data = await request.json()
         role = str(data.get("role", ""))
         content = str(data.get("content", "")).strip()
-        if role not in ("user", "assistant") or not content or len(content) > 6000:
-            return JSONResponse({"error": "Invalid AI conversation message."}, status_code=400)
+        if role not in ("user", "assistant") or not content or len(content) > 100000:
+            return JSONResponse({"error": "AI conversation message must contain 1–100,000 characters."}, status_code=400)
         with get_db() as conn:
             conversation = conn.execute("""
                 SELECT id FROM ai_conversations WHERE id = %s AND owner_id = %s
@@ -649,18 +567,9 @@ async def kchat_ai_chat(request: Request):
         if not latest_entry:
             return JSONResponse({"error": "Send a message to KCHAT AI."}, status_code=400)
         latest_content = latest_entry.get("content", "")
-        latest_text = (latest_content if isinstance(latest_content, str) else str(latest_entry.get("text", ""))).strip()[:50000]
-        attachments = data.get("attachments", [])
-        image_data = None
-        if isinstance(attachments, list):
-            for attachment in attachments[:1]:
-                if isinstance(attachment, dict):
-                    candidate = str(attachment.get("data", ""))
-                    if re.fullmatch(r"data:image/(?:png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]{1,7000000}", candidate):
-                        image_data = candidate
-                        break
-        if not latest_text and not image_data:
-            return JSONResponse({"error": "Write a message or attach an image for KCHAT AI to understand."}, status_code=400)
+        latest_text = (latest_content if isinstance(latest_content, str) else str(latest_entry.get("text", ""))).strip()[:100000]
+        if not latest_text:
+            return JSONResponse({"error": "Write a text message for KCHAT AI."}, status_code=400)
 
         conversation_id = str(data.get("conversation_id") or "").strip()
         if not conversation_id:
@@ -702,14 +611,7 @@ async def kchat_ai_chat(request: Request):
             {"role": row["role"], "content": row["content"]}
             for row in reversed(prior_rows)
         ]
-        if image_data:
-            multimodal_content = []
-            if latest_text:
-                multimodal_content.append({"type": "input_text", "text": latest_text})
-            multimodal_content.append({"type": "input_image", "image_url": image_data, "detail": "high"})
-            safe_messages.append({"role": "user", "content": multimodal_content})
-        else:
-            safe_messages.append({"role": "user", "content": latest_text})
+        safe_messages.append({"role": "user", "content": latest_text})
 
         with get_db() as conn:
             memory_rows = conn.execute("""
@@ -719,39 +621,6 @@ async def kchat_ai_chat(request: Request):
                 LIMIT 30
             """, (account["id"],)).fetchall()
         approved_memories = [row["memory"] for row in reversed(memory_rows)]
-
-        # Route image requests on the server as well as in the browser.
-        image_prompt = latest_text
-        refusal_pattern = re.search(r'(?is)(?:can.t|cannot).*?(?:image|picture|photo).*?(?:prompt|generator).*?[“"]([^”"]{20,1800})[”"]', latest_text)
-        if refusal_pattern:
-            image_prompt = refusal_pattern.group(1).strip()
-        direct_image_request = re.search(r'(?is)\b(?:create|generate|draw|render|make|produce)\b.{0,140}\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\b|\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\b.{0,100}\b(?:create|generate|draw|render|make)\b', latest_text)
-        if refusal_pattern or direct_image_request:
-            if os.environ.get("CLOUDFLARE_ACCOUNT_ID") and os.environ.get("CLOUDFLARE_API_TOKEN"):
-                generated_images = await cloudflare_generate_images(image_prompt, 1, 'photographic')
-            elif api_key:
-                image_client = AsyncOpenAI(api_key=api_key)
-                image_result = await image_client.images.generate(
-                    model=os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2.5-flare"),
-                    prompt=image_prompt[:2000],
-                    n=1,
-                    size="2048x1152",
-                    quality="max",
-                    output_format="png",
-                    safety_identifier=hashlib.sha256(str(account["id"]).encode("utf-8")).hexdigest()
-                )
-                generated_images = ["data:image/png;base64," + item.b64_json for item in (image_result.data or []) if item.b64_json]
-            else:
-                return JSONResponse({"error": "Image generation is not configured. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in Render."}, status_code=503)
-            if not generated_images:
-                return JSONResponse({"error": "KCHAT AI did not receive any generated images. Please try again."}, status_code=502)
-            with get_db() as conn:
-                conn.execute("""
-                    INSERT INTO ai_messages (conversation_id, owner_id, role, content)
-                    VALUES (%s, %s, 'assistant', %s)
-                """, (conversation_id, account["id"], "Generated an image."))
-                conn.execute("UPDATE ai_conversations SET updated_at = NOW() WHERE id = %s", (conversation_id,))
-            return {"success": True, "conversation_id": conversation_id, "images": generated_images, "reply": "Here is your image."}
 
         if not api_key:
             return JSONResponse({"error": "KCHAT AI text chat still needs OPENAI_API_KEY. Image generation can use Cloudflare separately."}, status_code=503)
@@ -781,7 +650,7 @@ async def kchat_ai_chat(request: Request):
             "model": os.environ.get("OPENAI_MODEL", "gpt-6-astra"),
             "instructions": instructions,
             "input": safe_messages,
-            "max_output_tokens": 15000
+            "max_output_tokens": 25000
         }
         if research_request:
             response_args["tools"] = [{"type": "web_search", "search_context_size": "medium"}]
@@ -813,67 +682,6 @@ async def kchat_ai_chat(request: Request):
             message = "OpenAI connection error: " + (detail[:260] if detail else "Unknown error")
         return JSONResponse({"error": message}, status_code=502)
 
-
-
-@app.post("/api/ai/image")
-async def kchat_ai_image(request: Request):
-    account = get_account_from_request(request)
-    if not account:
-        return JSONResponse({"error": "Please log in again."}, status_code=401)
-
-    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    cloudflare_ready = bool(
-        os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
-        and os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
-    )
-    if not api_key and not cloudflare_ready:
-        return JSONResponse({"error": "Image generation is not configured. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in Render."}, status_code=503)
-
-    try:
-        data = await request.json()
-        prompt = str(data.get("prompt", "")).strip()
-        if not prompt:
-            return JSONResponse({"error": "Describe the picture you want KCHAT AI to create."}, status_code=400)
-        if len(prompt) > 2000:
-            return JSONResponse({"error": "Please keep the image description under 2,000 characters."}, status_code=400)
-
-        count = max(1, min(4, int(data.get("count", 1))))
-        if cloudflare_ready:
-            images = await cloudflare_generate_images(prompt, count, str(data.get('style', 'photographic')))
-        else:
-            client = AsyncOpenAI(api_key=api_key)
-            size = str(data.get("size", "2048x1152"))
-            if size not in ("2048x1152", "1152x2048", "2048x2048"):
-                size = "2048x1152"
-            result = await client.images.generate(
-                model=os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2.5-flare"),
-                prompt=prompt,
-                n=count,
-                size=size,
-                quality="max",
-                output_format="png",
-                safety_identifier=hashlib.sha256(str(account["id"]).encode("utf-8")).hexdigest()
-            )
-            images = ["data:image/png;base64," + item.b64_json for item in (result.data or []) if item.b64_json]
-        if not images:
-            return JSONResponse({"error": "KCHAT AI did not return an image. Please try again."}, status_code=502)
-        return {"success": True, "images": images}
-
-    except Exception as error:
-        print("KCHAT AI image generation error:", repr(error))
-        detail = str(error).strip()
-        lower = detail.lower()
-        if "api_key" in lower or "authentication" in lower or "401" in lower:
-            message = "OpenAI rejected the API key. Check OPENAI_API_KEY in Render."
-        elif "quota" in lower or "billing" in lower or "429" in lower:
-            message = "Image generation has no available API quota. Check OpenAI API billing and usage limits."
-        elif "verification" in lower or "organization" in lower:
-            message = "Your OpenAI organization may need verification before image generation. Check the OpenAI developer dashboard."
-        elif "model" in lower and ("not found" in lower or "access" in lower):
-            message = "The image model is unavailable to this API project. Check OPENAI_IMAGE_MODEL access."
-        else:
-            message = "Image generation failed: " + (detail[:220] if detail else "Please try again.")
-        return JSONResponse({"error": message}, status_code=502)
 
 
 @app.post("/api/register")
