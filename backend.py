@@ -386,6 +386,7 @@ def _cloudflare_generate_image(prompt):
     )
     # FLUX.1 schnell supports up to 8 steps; more steps can improve detail.
     payload = json.dumps({
+        # The model accepts at most 2,048 characters, including the appended style.
         "prompt": prompt[:2048],
         "steps": 8,
         "seed": secrets.randbelow(2147483647)
@@ -399,8 +400,26 @@ def _cloudflare_generate_image(prompt):
             "Content-Type": "application/json"
         }
     )
-    with urllib.request.urlopen(req, timeout=180) as response:
-        result = json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=180) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", "replace")
+        try:
+            provider_error = json.loads(detail)
+            messages = [
+                str(item.get("message", ""))
+                for item in provider_error.get("errors", [])
+                if isinstance(item, dict) and item.get("message")
+            ]
+            if messages:
+                detail = "; ".join(messages)
+        except Exception:
+            pass
+        raise RuntimeError(
+            "Cloudflare image service rejected the request (HTTP "
+            + str(error.code) + "): " + (detail[:500] or error.reason)
+        ) from error
 
     image_data = (result.get("result") or {}).get("image")
     if not result.get("success") or not image_data:
