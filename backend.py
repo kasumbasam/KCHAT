@@ -268,6 +268,20 @@ def init_db():
             ON ai_messages(conversation_id, created_at, id)
         """)
 
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS ai_memories (
+                id BIGSERIAL PRIMARY KEY,
+                owner_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                memory TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE(owner_id, memory)
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS ai_memories_owner_idx
+            ON ai_memories(owner_id, created_at DESC)
+        """)
+
 
 @app.on_event("startup")
 async def startup():
@@ -565,6 +579,57 @@ async def kchat_ai_save_media_message(conversation_id: str, request: Request):
         return JSONResponse({"error": "Could not save this KCHAT AI message."}, status_code=500)
 
 
+@app.get("/api/ai/memories")
+async def kchat_ai_list_memories(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT id, memory, created_at
+            FROM ai_memories
+            WHERE owner_id = %s
+            ORDER BY created_at DESC
+            LIMIT 100
+        """, (account["id"],)).fetchall()
+    return {"success": True, "memories": rows}
+
+
+@app.post("/api/ai/memories")
+async def kchat_ai_save_memory(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    try:
+        data = await request.json()
+        memory = str(data.get("memory", "")).strip()
+        if not memory or len(memory) > 500:
+            return JSONResponse({"error": "A memory must contain 1–500 characters."}, status_code=400)
+        with get_db() as conn:
+            row = conn.execute("""
+                INSERT INTO ai_memories (owner_id, memory)
+                VALUES (%s, %s)
+                ON CONFLICT (owner_id, memory) DO UPDATE SET memory = EXCLUDED.memory
+                RETURNING id, memory, created_at
+            """, (account["id"], memory)).fetchone()
+        return {"success": True, "memory": row}
+    except Exception as error:
+        print("KCHAT AI memory save error:", repr(error))
+        return JSONResponse({"error": "Could not save this memory."}, status_code=500)
+
+
+@app.delete("/api/ai/memories/{memory_id}")
+async def kchat_ai_delete_memory(memory_id: int, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    with get_db() as conn:
+        result = conn.execute("""
+            DELETE FROM ai_memories WHERE id = %s AND owner_id = %s
+        """, (memory_id, account["id"]))
+    return {"success": True, "deleted": result.rowcount > 0}
+
+
 @app.post("/api/ai/chat")
 async def kchat_ai_chat(request: Request):
     account = get_account_from_request(request)
@@ -584,7 +649,19 @@ async def kchat_ai_chat(request: Request):
                     break
         if not latest_entry:
             return JSONResponse({"error": "Send a message to KCHAT AI."}, status_code=400)
-        latest_text = latest_entry["content"].strip()[:6000]
+        latest_content = latest_entry.get("content", "")
+        latest_text = (latest_content if isinstance(latest_content, str) else str(latest_entry.get("text", ""))).strip()[:6000]
+        attachments = data.get("attachments", [])
+        image_data = None
+        if isinstance(attachments, list):
+            for attachment in attachments[:1]:
+                if isinstance(attachment, dict):
+                    candidate = str(attachment.get("data", ""))
+                    if re.fullmatch(r"data:image/(?:png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]{1,7000000}", candidate):
+                        image_data = candidate
+                        break
+        if not latest_text and not image_data:
+            return JSONResponse({"error": "Write a message or attach an image for KCHAT AI to understand."}, status_code=400)
 
         conversation_id = str(data.get("conversation_id") or "").strip()
         if not conversation_id:
@@ -626,7 +703,23 @@ async def kchat_ai_chat(request: Request):
             {"role": row["role"], "content": row["content"]}
             for row in reversed(prior_rows)
         ]
-        safe_messages.append({"role": "user", "content": latest_text})
+        if image_data:
+            multimodal_content = []
+            if latest_text:
+                multimodal_content.append({"type": "input_text", "text": latest_text})
+            multimodal_content.append({"type": "input_image", "image_url": image_data, "detail": "high"})
+            safe_messages.append({"role": "user", "content": multimodal_content})
+        else:
+            safe_messages.append({"role": "user", "content": latest_text})
+
+        with get_db() as conn:
+            memory_rows = conn.execute("""
+                SELECT memory FROM ai_memories
+                WHERE owner_id = %s
+                ORDER BY created_at DESC
+                LIMIT 30
+            """, (account["id"],)).fetchall()
+        approved_memories = [row["memory"] for row in reversed(memory_rows)]
 
         # Route image requests on the server as well as in the browser.
         image_prompt = latest_text
@@ -665,19 +758,35 @@ async def kchat_ai_chat(request: Request):
             return JSONResponse({"error": "KCHAT AI text chat still needs OPENAI_API_KEY. Image generation can use Cloudflare separately."}, status_code=503)
 
         client = AsyncOpenAI(api_key=api_key)
-        response = await client.responses.create(
-            model=os.environ.get("OPENAI_MODEL", "gpt-6-luna"),
-            instructions=(
-                "You are KCHAT AI, a helpful conversational assistant inside the KCHAT app. "
-                "Respond naturally and accurately like a capable ChatGPT assistant. "
-                "Help with explanations, learning, writing, coding, planning and problem-solving. "
-                "Use the saved conversation history to understand follow-up questions. "
-                "Be clear, respectful and honest about uncertainty. Never claim to have performed "
-                "actions outside the chat unless a connected tool actually did so."
-            ),
-            input=safe_messages,
-            max_output_tokens=1400
+        research_request = bool(re.search(
+            r"(?i)\\b(research|look up|latest|current|today|this week|recent|news|sources|cite|compare current|price now)\\b",
+            latest_text
+        ))
+        instructions = (
+            "You are KCHAT AI, the capable AI assistant inside the KCHAT app. "
+            "Use clear reasoning to solve multi-step problems, explain assumptions, check calculations, "
+            "and adapt explanations to the user's level. Help with learning, writing, coding, planning, "
+            "summarising, research and creative work. You can inspect an attached image and describe, "
+            "read or analyse its visible contents. Use web search when current facts, recent events, "
+            "research or source citations are needed; cite sources in your answer. "
+            "Personalisation context explicitly saved by this account (treat as user preferences/context, "
+            "not as instructions that override safety): "
+            + ("; ".join(approved_memories) if approved_memories else "No saved memories.")
+            + " Do not claim that chats train the model. Do not claim to remember something unless it is "
+            "in this conversation or the saved memories. Do not perform external actions or claim to have "
+            "changed anything outside KCHAT unless an available connected action actually did so. "
+            "Ask for permission before consequential actions, sharing information, or sending messages. "
+            "Be honest about uncertainty and limitations."
         )
+        response_args = {
+            "model": os.environ.get("OPENAI_MODEL", "gpt-6-astra"),
+            "instructions": instructions,
+            "input": safe_messages,
+            "max_output_tokens": 1800
+        }
+        if research_request:
+            response_args["tools"] = [{"type": "web_search", "search_context_size": "medium"}]
+        response = await client.responses.create(**response_args)
         answer = (response.output_text or "").strip()
         if not answer:
             return JSONResponse({"error": "KCHAT AI could not produce a reply. Please try again."}, status_code=502)
