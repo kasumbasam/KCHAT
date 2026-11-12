@@ -422,10 +422,6 @@ async def kchat_ai_chat(request: Request):
         return JSONResponse({"error": "Please log in again."}, status_code=401)
 
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        return JSONResponse({
-            "error": "KCHAT AI is not configured yet. Add OPENAI_API_KEY to the Render environment."
-        }, status_code=503)
 
     try:
         data = await request.json()
@@ -475,6 +471,9 @@ async def kchat_ai_chat(request: Request):
             if not generated_images:
                 return JSONResponse({"error": "KCHAT AI did not receive any generated images. Please try again."}, status_code=502)
             return {"success": True, "images": generated_images, "reply": "Here is your image."}
+
+        if not api_key:
+            return JSONResponse({"error": "KCHAT AI text chat still needs OPENAI_API_KEY. Image generation can use Cloudflare separately."}, status_code=503)
 
         client = AsyncOpenAI(api_key=api_key)
         response = await client.responses.create(
