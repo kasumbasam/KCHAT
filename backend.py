@@ -759,7 +759,7 @@ async def kchat_ai_chat(request: Request):
 
         client = AsyncOpenAI(api_key=api_key)
         research_request = bool(re.search(
-            r"(?i)\\b(research|look up|latest|current|today|this week|recent|news|sources|cite|compare current|price now)\\b",
+            r"(?i)\b(research|look up|latest|current|today|this week|recent|news|sources|cite|compare current|price now)\b",
             latest_text
         ))
         instructions = (
