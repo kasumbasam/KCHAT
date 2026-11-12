@@ -384,7 +384,12 @@ def _cloudflare_generate_image(prompt):
         "https://api.cloudflare.com/client/v4/accounts/"
         + account_id + "/ai/run/" + model
     )
-    payload = json.dumps({"prompt": prompt[:2048]}).encode("utf-8")
+    # FLUX.1 schnell supports up to 8 steps; more steps can improve detail.
+    payload = json.dumps({
+        "prompt": prompt[:2048],
+        "steps": 8,
+        "seed": secrets.randbelow(2147483647)
+    }).encode("utf-8")
     req = urllib.request.Request(
         endpoint,
         data=payload,
@@ -394,7 +399,7 @@ def _cloudflare_generate_image(prompt):
             "Content-Type": "application/json"
         }
     )
-    with urllib.request.urlopen(req, timeout=120) as response:
+    with urllib.request.urlopen(req, timeout=180) as response:
         result = json.loads(response.read().decode("utf-8"))
 
     image_data = (result.get("result") or {}).get("image")
@@ -403,11 +408,23 @@ def _cloudflare_generate_image(prompt):
     return "data:image/jpeg;base64," + image_data
 
 
-async def cloudflare_generate_images(prompt, count=1):
+async def cloudflare_generate_images(prompt, count=1, style="photographic"):
     count = max(1, min(4, int(count)))
+    style_prompts = {
+        "photographic": "Photorealistic professional photography, natural realistic lighting, lifelike textures, crisp focus, refined composition.",
+        "cinematic": "Cinematic film still, dramatic controlled lighting, rich atmosphere, sophisticated color grading, wide dynamic range.",
+        "anime": "High-quality anime illustration, expressive clean linework, beautifully rendered details, polished anime color design.",
+        "3d": "Premium 3D render, physically based materials, realistic lighting, detailed surfaces, polished professional CGI.",
+        "digital-art": "Highly detailed digital painting, confident brushwork, layered depth, refined color harmony, professional concept-art finish.",
+        "watercolor": "Traditional watercolor painting, delicate pigment blooms, textured paper, layered transparent washes, elegant hand-painted detail.",
+        "fantasy": "Epic fantasy concept art, imaginative worldbuilding, intricate details, atmospheric depth, dramatic visual storytelling.",
+        "logo": "Professional graphic design, clean vector-like shapes, balanced composition, crisp edges, restrained color palette, simple forms."
+    }
+    style_key = style if style in style_prompts else "photographic"
+    enhanced_prompt = prompt.strip() + " " + style_prompts[style_key]
     images = []
     for _ in range(count):
-        image_data = await asyncio.to_thread(_cloudflare_generate_image, prompt)
+        image_data = await asyncio.to_thread(_cloudflare_generate_image, enhanced_prompt)
         if image_data:
             images.append(image_data)
     return images
@@ -453,7 +470,7 @@ async def kchat_ai_chat(request: Request):
         direct_image_request = re.search(r'(?is)\b(?:create|generate|draw|render|make|produce)\b.{0,140}\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\b|\b(?:image|picture|photo|illustration|artwork|poster|logo|portrait)\b.{0,100}\b(?:create|generate|draw|render|make)\b', latest_text)
         if refusal_pattern or direct_image_request:
             if os.environ.get("CLOUDFLARE_ACCOUNT_ID") and os.environ.get("CLOUDFLARE_API_TOKEN"):
-                generated_images = await cloudflare_generate_images(image_prompt, 1)
+                generated_images = await cloudflare_generate_images(image_prompt, 1, 'photographic')
             elif api_key:
                 image_client = AsyncOpenAI(api_key=api_key)
                 image_result = await image_client.images.generate(
@@ -533,7 +550,7 @@ async def kchat_ai_image(request: Request):
 
         count = max(1, min(4, int(data.get("count", 1))))
         if cloudflare_ready:
-            images = await cloudflare_generate_images(prompt, count)
+            images = await cloudflare_generate_images(prompt, count, str(data.get('style', 'photographic')))
         else:
             client = AsyncOpenAI(api_key=api_key)
             size = str(data.get("size", "2048x1152"))
