@@ -429,8 +429,8 @@ def _cloudflare_generate_image(prompt):
 async def cloudflare_generate_images(prompt, count=1, style="photographic"):
     count = max(1, min(4, int(count)))
     style_prompts = {
-        "photographic": "Photorealistic professional photography, natural realistic lighting, lifelike textures, crisp focus, refined composition.",
-        "cinematic": "Cinematic film still, dramatic controlled lighting, rich atmosphere, sophisticated color grading, wide dynamic range.",
+        "photographic": "Create an authentic real-world photograph, as if captured by a professional photographer using a modern full-frame DSLR or mirrorless camera and a real lens. Strict photorealism: physically accurate human anatomy and proportions, natural realistic faces and skin texture with visible pores, lifelike eyes, believable hair and fabric, true-to-life materials, natural shadows, realistic reflections, accurate perspective, subtle camera depth of field, and documentary-quality detail. The result must look like an actual unedited photograph of a real scene. Do not make it a cartoon, anime, illustration, painting, drawing, 3D render, CGI, game art, plastic-looking image, or stylized concept art.",
+        "cinematic": "Create a photorealistic live-action movie still captured with a real cinema camera and lens. Real people and physically accurate objects, natural skin texture, believable lighting and shadows, realistic materials, subtle film grain, authentic depth of field, and detailed real-world environments. It must look like a frame from a live-action film, not animation, illustration, painting, cartoon, or CGI.",
         "3d": "Premium 3D render, physically based materials, realistic lighting, detailed surfaces, polished professional CGI.",
         "digital-art": "Highly detailed digital painting, confident brushwork, layered depth, refined color harmony, professional concept-art finish.",
         "watercolor": "Traditional watercolor painting, delicate pigment blooms, textured paper, layered transparent washes, elegant hand-painted detail.",
