@@ -4320,6 +4320,14 @@ document.addEventListener("keydown", event => {
 });
 
 $("sendMessageButton").addEventListener("click", sendMessage);
+$("kchatAiMentionButton").addEventListener("click", () => {
+    const input = $("messageInput");
+    const token = "@KCHAT AI ";
+    if (!input.value.trim()) input.value = token;
+    else input.value = input.value.replace(/\s*$/, " ") + token;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+});
 $("messageInput").addEventListener("input", handleTypingInput);
 $("messageInput").addEventListener("keydown", event => {
     if (event.key === "Enter") sendMessage();
