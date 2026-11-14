@@ -1404,11 +1404,11 @@ hr {
 </style>
 
 <style id="kchatAiStyles">
-.kchat-ai-fab{position:absolute;right:20px;bottom:146px;z-index:12;width:58px;height:58px;border:0;border-radius:50%;background:conic-gradient(from 25deg,#6b5cff,#19c7e8,#28d17c,#f5c34b,#ef4f9b,#6b5cff);color:#fff;box-shadow:0 5px 20px #0008;cursor:pointer;display:grid;place-items:center}
-.kchat-ai-logo-image{display:block;object-fit:contain;width:100%;height:100%;border:0!important;border-radius:50%;background:transparent!important;filter:drop-shadow(0 2px 8px #00baff55)}
-.kchat-ai-fab-mark{width:48px;height:48px;overflow:visible}
-.kchat-ai-brand-mark{width:43px;height:43px;flex:0 0 43px;overflow:visible}
-.kchat-ai-large-mark{width:112px;height:112px;margin:0 auto 20px;overflow:visible}
+.kchat-ai-fab{position:absolute;right:20px;bottom:146px;z-index:12;width:46px;height:46px;border:0;border-radius:50%;background:transparent;color:#fff;box-shadow:0 3px 12px #0008;cursor:pointer;display:grid;place-items:center}
+.kchat-ai-logo-image{display:block;object-fit:contain;width:100%;height:100%;border:0!important;border-radius:50%;background:transparent!important;filter:drop-shadow(0 2px 6px #00baff44)}
+.kchat-ai-fab-mark{width:40px;height:40px;overflow:visible}
+.kchat-ai-brand-mark{width:32px;height:32px;flex:0 0 32px;overflow:visible}
+.kchat-ai-large-mark{width:64px;height:64px;margin:0 auto 16px;overflow:visible}
 .kchat-search-wrap{display:flex;align-items:center;gap:8px}
 .kchat-search-wrap input{flex:1;min-width:0}
 .kchat-ai-ring{display:grid;place-items:center;flex:0 0 auto;border:0;border-radius:50%;padding:3px;background:conic-gradient(from 25deg,#6b5cff,#19c7e8,#28d17c,#f5c34b,#ef4f9b,#6b5cff);color:#fff;box-shadow:0 3px 12px #0008;cursor:pointer}
@@ -1427,11 +1427,12 @@ hr {
 .kchat-ai-heading{display:flex;flex-direction:column;gap:3px}.kchat-ai-heading strong{font-size:16px}.kchat-ai-heading small{font-size:12px;color:#8696a0}
 .kchat-ai-content{flex:1;overflow:auto;display:flex;flex-direction:column;align-items:center;padding:34px 20px 18px;background:radial-gradient(ellipse at center top,#142c30 0%,#0b141a 62%)}
 .kchat-ai-content{position:relative;scroll-behavior:smooth;scrollbar-width:thin}
-.kchat-ai-nav-controls{position:sticky;float:right;align-self:flex-end;bottom:16px;margin-top:auto;margin-right:2px;display:flex;flex-direction:column;gap:9px;z-index:8;pointer-events:none}
-.kchat-ai-nav-button{width:42px;height:42px;border:1px solid #ffffff35;border-radius:50%;background:#172b39eF;color:#eafaff;font-size:23px;line-height:1;display:grid;place-items:center;box-shadow:0 4px 16px #0008;cursor:pointer;pointer-events:auto;backdrop-filter:blur(8px);transition:transform .15s,background .15s}
-.kchat-ai-nav-button:active{transform:scale(.92);background:#176c91}
-.kchat-ai-nav-button:focus-visible{outline:2px solid #70d6ff;outline-offset:3px}
-@media(max-width:600px){.kchat-ai-nav-controls{margin-right:0;bottom:12px}.kchat-ai-nav-button{width:40px;height:40px}}
+.kchat-ai-nav-controls{position:sticky;align-self:center;bottom:14px;margin-top:auto;margin-right:0;display:flex;justify-content:center;z-index:8;pointer-events:none}
+.kchat-ai-nav-button{width:40px;height:40px;border:1px solid #ffffff35;border-radius:50%;background:#075e54;color:#fff;display:grid;place-items:center;box-shadow:0 3px 12px #0008;cursor:pointer;pointer-events:auto;backdrop-filter:blur(8px);transition:transform .15s,opacity .15s,background .15s}
+.kchat-ai-nav-button svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.kchat-ai-nav-button:active{transform:scale(.92);background:#128c7e}
+.kchat-ai-nav-button:focus-visible{outline:2px solid #25d366;outline-offset:3px}
+@media(max-width:600px){.kchat-ai-nav-controls{bottom:10px}.kchat-ai-nav-button{width:38px;height:38px}}
 .kchat-ai-welcome{margin:auto auto 24px;text-align:center;max-width:440px}
 .kchat-ai-large-mark{width:76px;height:76px;margin:0 auto 20px;color:#00a884;font-size:24px}
 .kchat-ai-welcome h1{font-size:25px;margin:0 0 10px}.kchat-ai-welcome p{font-size:19px;margin:0 0 10px;color:#d9fdd3}.kchat-ai-welcome span{font-size:13px;color:#aebac1}
@@ -1759,8 +1760,9 @@ hr {
                     <div id="kchatAiMessages" class="kchat-ai-messages" aria-live="polite"></div>
                     <div class="kchat-ai-connection-note">Your KCHAT AI assistant is ready.</div>
                     <div class="kchat-ai-nav-controls" aria-label="Conversation navigation">
-                        <button type="button" class="kchat-ai-nav-button" id="kchatAiScrollTop" aria-label="Jump to top of conversation" title="Jump to top">⬆️</button>
-                        <button type="button" class="kchat-ai-nav-button" id="kchatAiScrollBottom" aria-label="Jump to latest message" title="Jump to latest message">⬇️</button>
+                        <button type="button" class="kchat-ai-nav-button hidden" id="kchatAiScrollLatest" aria-label="Jump to latest message" title="Go to latest message">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M5.5 12.5 12 19l6.5-6.5"/></svg>
+                        </button>
                     </div>
                 </div>
                 <form id="kchatAiForm" class="kchat-ai-composer">
@@ -5187,8 +5189,14 @@ if (document.readyState === "loading") {
 (function(){
  const fab=document.getElementById("kchatAiFab"),screen=document.getElementById("kchatAiScreen"),back=document.getElementById("kchatAiBack"),form=document.getElementById("kchatAiForm"),input=document.getElementById("kchatAiInput"),messages=document.getElementById("kchatAiMessages"),historySelect=document.getElementById("kchatAiConversationSelect"),newChatButton=document.getElementById("kchatAiNewChat"),memoryButton=document.getElementById("kchatAiMemoryButton"),note=screen&&screen.querySelector(".kchat-ai-connection-note"),welcome=screen&&screen.querySelector(".kchat-ai-welcome");
  if(!fab||!screen||!back||!form||!input||!messages)return;
- const aiScrollArea=screen.querySelector(".kchat-ai-content"),scrollTopButton=document.getElementById("kchatAiScrollTop"),scrollBottomButton=document.getElementById("kchatAiScrollBottom");
- if(aiScrollArea&&scrollTopButton&&scrollBottomButton){scrollTopButton.addEventListener("click",()=>aiScrollArea.scrollTo({top:0,behavior:"smooth"}));scrollBottomButton.addEventListener("click",()=>aiScrollArea.scrollTo({top:aiScrollArea.scrollHeight,behavior:"smooth"}));}
+ const aiScrollArea=screen.querySelector(".kchat-ai-content"),scrollLatestButton=document.getElementById("kchatAiScrollLatest");
+ if(aiScrollArea&&scrollLatestButton){
+  const updateLatestButton=()=>{const awayFromLatest=aiScrollArea.scrollHeight-aiScrollArea.clientHeight-aiScrollArea.scrollTop>90;scrollLatestButton.classList.toggle("hidden",!awayFromLatest);};
+  aiScrollArea.addEventListener("scroll",updateLatestButton,{passive:true});
+  scrollLatestButton.addEventListener("click",()=>aiScrollArea.scrollTo({top:aiScrollArea.scrollHeight,behavior:"smooth"}));
+  if(typeof ResizeObserver!=="undefined"){new ResizeObserver(updateLatestButton).observe(aiScrollArea);}
+  updateLatestButton();
+ }
  let history=[],currentConversationId="",sending=false,historyLoaded=false,historyOwner="";
  const searchFab=document.getElementById("kchatAiSearchShortcut"),chatFab=document.getElementById("kchatAiChatFab");
  function addBubble(role,text){const bubble=document.createElement("div");bubble.className=role==="user"?"kchat-ai-user-message":"kchat-ai-assistant-message";const content=document.createElement("div");content.textContent=text;content.style.whiteSpace="pre-wrap";content.style.overflowWrap="anywhere";bubble.appendChild(content);if(role==="user"&&text.trim()){const remember=document.createElement("button");remember.type="button";remember.textContent="Remember";remember.title="Save this detail to your private KCHAT AI memory";remember.style.cssText="display:block;margin-top:7px;padding:3px 8px;border:1px solid currentColor;border-radius:12px;background:transparent;color:inherit;font-size:11px;opacity:.8;cursor:pointer";remember.addEventListener("click",async()=>{remember.disabled=true;try{const saved=await apiRequest("/api/ai/memories",{method:"POST",body:JSON.stringify({memory:text.slice(0,500)})});if(!saved?.success)throw new Error(saved?.error||"Could not save memory.");remember.textContent="Saved to memory";setStatus("This detail is now saved to your private KCHAT AI memory.",false);}catch(error){remember.disabled=false;setStatus(error.message||"Could not save memory.",true);}});bubble.appendChild(remember);}messages.appendChild(bubble);messages.scrollTop=messages.scrollHeight;return bubble;}
