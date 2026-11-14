@@ -3104,11 +3104,20 @@ async def chat(websocket: WebSocket, room: str):
                     "call_type": call_type,
                     "signal": signal
                 }
-                for target_socket in connected_sockets_for(target["username"]):
+                call_targets = connected_sockets_for(target["username"])
+                for target_socket in call_targets:
                     try:
                         await target_socket.send_json(event)
                     except Exception as error:
                         print("Call signalling error:", error)
+                if not call_targets:
+                    await websocket.send_json({
+                        "type": "call_signal",
+                        "from": target["username"],
+                        "call_id": call_id,
+                        "call_type": call_type,
+                        "signal": {"unavailable": True}
+                    })
 
             elif message_type == "typing":
                 recipient = str(data.get("to", "")).strip()[:30]
