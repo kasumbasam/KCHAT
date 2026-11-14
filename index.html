@@ -1405,12 +1405,14 @@ hr {
 
 <style id="kchatAiStyles">
 .kchat-ai-fab{position:absolute;right:20px;bottom:146px;z-index:12;width:58px;height:58px;border:0;border-radius:50%;background:conic-gradient(from 25deg,#6b5cff,#19c7e8,#28d17c,#f5c34b,#ef4f9b,#6b5cff);color:#fff;box-shadow:0 5px 20px #0008;cursor:pointer;display:grid;place-items:center}
-.kchat-ai-fab-mark,.kchat-ai-brand-mark,.kchat-ai-large-mark{display:grid;place-items:center;border:2px solid currentColor;border-radius:50%;font-weight:800;letter-spacing:-1px}
-.kchat-ai-fab-mark{width:43px;height:43px;font-size:14px;background:#101b24;border-color:#ffffffd9}
+.kchat-ai-logo-image{display:block;object-fit:contain;width:100%;height:100%;border:0!important;border-radius:50%;background:transparent!important;filter:drop-shadow(0 2px 8px #00baff55)}
+.kchat-ai-fab-mark{width:48px;height:48px;overflow:visible}
+.kchat-ai-brand-mark{width:43px;height:43px;flex:0 0 43px;overflow:visible}
+.kchat-ai-large-mark{width:112px;height:112px;margin:0 auto 20px;overflow:visible}
 .kchat-search-wrap{display:flex;align-items:center;gap:8px}
 .kchat-search-wrap input{flex:1;min-width:0}
 .kchat-ai-ring{display:grid;place-items:center;flex:0 0 auto;border:0;border-radius:50%;padding:3px;background:conic-gradient(from 25deg,#6b5cff,#19c7e8,#28d17c,#f5c34b,#ef4f9b,#6b5cff);color:#fff;box-shadow:0 3px 12px #0008;cursor:pointer}
-.kchat-ai-ring span{display:grid;place-items:center;width:100%;height:100%;border:1.5px solid #ffffffd9;border-radius:50%;background:#101b24;color:#fff;font:800 12px Arial,sans-serif;letter-spacing:-.5px}
+.kchat-ai-ring span{display:block;width:100%;height:100%;border:0;border-radius:50%;background:transparent;overflow:visible}.kchat-ai-ring .kchat-ai-logo-image{padding:1px}
 .kchat-ai-search-ring{width:38px;height:38px}
 .chat-screen{position:relative}
 .kchat-ai-chat-ring{position:absolute;right:20px;bottom:94px;z-index:18;width:54px;height:54px}
@@ -1568,7 +1570,7 @@ hr {
                 <div class="search-box kchat-search-wrap">
                     <input id="chatSearch" type="search"
                         placeholder="Search conversations">
-                    <button type="button" id="kchatAiSearchShortcut" class="kchat-ai-ring kchat-ai-search-ring" aria-label="Ask KCHAT AI" title="Ask KCHAT AI"><span>AI</span></button>
+                    <button type="button" id="kchatAiSearchShortcut" class="kchat-ai-ring kchat-ai-search-ring" aria-label="Ask KCHAT AI" title="Ask KCHAT AI"><span><img class="kchat-ai-logo-image" src="/kchat-ai-logo.svg" alt="KCHAT AI logo"></span></button>
                 </div>
             </div>
 
@@ -1595,7 +1597,7 @@ hr {
 
             <!-- KCHAT AI launcher sits directly above the new-conversation button -->
             <button type="button" id="kchatAiFab" class="kchat-ai-fab" aria-label="Open KCHAT AI" title="KCHAT AI">
-                <span class="kchat-ai-fab-mark">AI</span>
+                <span class="kchat-ai-fab-mark"><img class="kchat-ai-logo-image" src="/kchat-ai-logo.svg" alt="KCHAT AI logo"></span>
             </button>
 
             <!-- FLOATING CIRCULAR SELECT CONTACT / USER BUTTON AT BOTTOM RIGHT -->
@@ -1733,7 +1735,7 @@ hr {
             <section id="kchatAiScreen" class="kchat-ai-screen hidden" aria-label="KCHAT AI assistant">
                 <header class="kchat-ai-header">
                     <button type="button" id="kchatAiBack" class="kchat-ai-back" aria-label="Back to chats">‹</button>
-                    <div class="kchat-ai-brand-mark">AI</div>
+                    <div class="kchat-ai-brand-mark"><img class="kchat-ai-logo-image" src="/kchat-ai-logo.svg" alt="KCHAT AI logo"></div>
                     <div class="kchat-ai-heading"><strong>KCHAT AI</strong><small>KCHAT AI Assistant</small></div>
                     <div class="kchat-ai-history-controls">
                         <select id="kchatAiConversationSelect" aria-label="Previous KCHAT AI conversations"><option value="">Previous chats</option></select>
@@ -1743,7 +1745,7 @@ hr {
                 </header>
                 <div class="kchat-ai-content">
                     <div class="kchat-ai-welcome">
-                        <div class="kchat-ai-large-mark">AI</div>
+                        <div class="kchat-ai-large-mark"><img class="kchat-ai-logo-image" src="/kchat-ai-logo.svg" alt="KCHAT AI logo"></div>
                         <h1>Welcome to KCHAT AI</h1>
                         <p>Let me solve the problem for u!</p>
                         <span>Ask a question or tell me what you need help with.</span>
