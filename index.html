@@ -3496,7 +3496,6 @@ async function startKchatCall(type,peer){
         const offer=await pc.createOffer();await pc.setLocalDescription(offer);
         sendKchatCallSignal(peer,callId,type,{offer:pc.localDescription});
         setCallUi(peer,type,"Calling… waiting for answer");
-        await saveKchatCall(peer,type,"outgoing","cancelled",0);
     }catch(error){await finishKchatCall("cancelled",false);alert(error.message||"Could not start the call. Check microphone and camera permissions.");}
 }
 async function handleKchatCallSignal(item){
@@ -3532,7 +3531,6 @@ async function acceptKchatCall(){
         incomingCallPending=null;$("acceptCallButton").classList.add("hidden");$("muteCallButton").classList.remove("hidden");
         if(pending.type==="video")$("cameraCallButton").classList.remove("hidden");
         $("callStatusText").textContent="Connected";
-        await saveKchatCall(pending.peer,pending.type,"incoming","completed",0);
     }catch(error){alert(error.message||"Could not accept the call. Check device permissions.");await finishKchatCall("declined",true);}
 }
 async function finishKchatCall(status,notifyPeer=true){
@@ -3541,9 +3539,7 @@ async function finishKchatCall(status,notifyPeer=true){
     if(notifyPeer&&socket?.readyState===WebSocket.OPEN){try{sendKchatCallSignal(call.peer,call.id,call.type,{end:true,reason:status});}catch{}}
     if(call.local)call.local.getTracks().forEach(track=>track.stop());
     if(call.pc)call.pc.close();
-    if(call.direction==="incoming"&&status==="declined")await saveKchatCall(call.peer,call.type,"incoming","declined",duration);
-    if(call.direction==="incoming"&&status==="missed")await saveKchatCall(call.peer,call.type,"incoming","missed",duration);
-    if(call.direction==="outgoing"&&status!=="cancelled")await saveKchatCall(call.peer,call.type,"outgoing",status,duration);
+    await saveKchatCall(call.peer,call.type,call.direction,status,duration);
     kchatCall=null;incomingCallPending=null;callStartedAt=0;
     $("remoteCallAudio").srcObject=null;$("remoteCallVideo").srcObject=null;$("localCallVideo").srcObject=null;
     hide($("callOverlay"));if(activeTab==="call")renderCallHistory();
