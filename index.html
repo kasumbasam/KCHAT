@@ -1500,6 +1500,35 @@ hr {
 #mainMenu.whatsapp-main-menu button:hover{background:#ffffff12}
 #mainMenu.whatsapp-main-menu .wa-menu-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;color:#d1d7db;font-size:18px}
 </style>
+
+<style id="kchatThemeSettingsStyles">
+:root[data-kchat-theme="light"]{
+ --bg:#f0f2f5;--panel:#ffffff;--panel2:#e8edf2;--text:#17212b;
+ --muted:#64748b;--accent:#168b55;--green:#00a86b;--danger:#d93649;
+ --border:#d7dee6;--bubble:#e7edf2;color-scheme:light;
+}
+:root[data-kchat-theme="dark"]{color-scheme:dark}
+.kchat-theme-choice{display:flex;align-items:center;gap:14px;width:100%;padding:14px;margin:10px 0;border:1px solid var(--border);border-radius:13px;background:var(--panel);color:var(--text);cursor:pointer;text-align:left;transition:border-color .15s,background .15s}
+.kchat-theme-choice:hover{border-color:var(--accent)}
+.kchat-theme-choice.selected{border:2px solid var(--accent);padding:13px;background:var(--panel2)}
+.kchat-theme-choice-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+.kchat-theme-choice-copy strong{font-size:19px}
+.kchat-theme-choice-copy small{font-size:14px;color:var(--muted)}
+.kchat-theme-check{width:24px;height:24px;border:1px solid var(--border);border-radius:50%;display:grid;place-items:center;color:transparent;font-size:15px}
+.kchat-theme-choice.selected .kchat-theme-check{background:var(--accent);border-color:var(--accent);color:#fff}
+.kchat-theme-preview{width:55px;height:48px;flex:0 0 55px;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;border:1px solid var(--border)}
+.kchat-theme-preview i{display:block;height:7px;border-radius:5px}
+.kchat-theme-preview-dark{background:#101820}.kchat-theme-preview-dark i{background:#263845}.kchat-theme-preview-dark i:nth-child(2){width:72%;background:#25d366}.kchat-theme-preview-dark i:nth-child(3){width:85%}
+.kchat-theme-preview-light{background:#f4f6f8}.kchat-theme-preview-light i{background:#d9e1e8}.kchat-theme-preview-light i:nth-child(2){width:72%;background:#168b55}.kchat-theme-preview-light i:nth-child(3){width:85%}
+:root[data-kchat-theme="light"] body,:root[data-kchat-theme="light"] #appScreen,:root[data-kchat-theme="light"] .main-area{background-color:var(--bg);color:var(--text)}
+:root[data-kchat-theme="light"] .message-row.mine .message-bubble{background:#d9fdd3;color:#17212b}
+:root[data-kchat-theme="light"] .message-row:not(.mine) .message-bubble{background:#ffffff;color:#17212b;border:1px solid #e1e7ed}
+:root[data-kchat-theme="light"] .status-screen,:root[data-kchat-theme="light"] .updates-header{background:#f0f2f5;color:#17212b}
+:root[data-kchat-theme="light"] .my-status-card,:root[data-kchat-theme="light"] .status-story-card{color:#17212b}
+:root[data-kchat-theme="light"] .message-meta{color:#64748b}
+:root[data-kchat-theme="light"] .icon-btn{background:var(--panel2);color:var(--text)}
+</style>
+
 </head>
 
 <body>
@@ -2318,19 +2347,21 @@ hr {
 <div id="appearancePanel" class="panel-overlay hidden">
     <div class="side-panel">
         <div class="panel-heading">
-            <button class="icon-btn" id="closeAppearanceButton">←</button>
-            <h2>Appearance Settings</h2>
+            <button class="icon-btn" id="closeAppearanceButton" aria-label="Back to settings">←</button>
+            <h2>Appearance</h2>
         </div>
-        <div class="form-group" style="margin-bottom:14px;">
-            <label>Theme Option Strategy</label>
-            <input type="text" value="Consistent Pitch Black" disabled>
-            <small class="muted">The solid-black style is locked for standard application parameters.</small>
+        <p class="muted small" style="margin:4px 0 16px;">Choose how KCHAT looks. Your choice is saved on this device.</p>
+        <div class="kchat-theme-choice" id="kchatDarkThemeChoice">
+            <span class="kchat-theme-preview kchat-theme-preview-dark" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="kchat-theme-choice-copy"><strong>Dark mode</strong><small>Dark backgrounds with light text</small></span>
+            <span class="kchat-theme-check" id="kchatDarkThemeCheck" aria-hidden="true">✓</span>
         </div>
-        <div class="form-group" style="margin-bottom:14px;">
-            <label>Typography Matrix</label>
-            <input type="text" value="Consistent Handwriting Family" disabled>
-            <small class="muted">Handwriting design layout is active uniformly across viewport panels.</small>
+        <div class="kchat-theme-choice" id="kchatLightThemeChoice">
+            <span class="kchat-theme-preview kchat-theme-preview-light" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="kchat-theme-choice-copy"><strong>Light mode</strong><small>Light backgrounds with dark text</small></span>
+            <span class="kchat-theme-check" id="kchatLightThemeCheck" aria-hidden="true">✓</span>
         </div>
+        <p class="small muted" id="kchatThemeStatus" style="margin-top:12px;">Dark mode is selected.</p>
     </div>
 </div>
 
@@ -2523,9 +2554,43 @@ function show(element) {
     if (element) element.classList.remove("hidden");
 }
 
+
 function hide(element) {
     if (element) element.classList.add("hidden");
 }
+
+function getKchatTheme() {
+    return localStorage.getItem("kchat_theme") === "light" ? "light" : "dark";
+}
+
+function updateKchatThemeChoices() {
+    const theme = getKchatTheme();
+    const darkChoice = $("kchatDarkThemeChoice");
+    const lightChoice = $("kchatLightThemeChoice");
+    if (darkChoice) {
+        darkChoice.classList.toggle("selected", theme === "dark");
+        darkChoice.setAttribute("aria-pressed", String(theme === "dark"));
+    }
+    if (lightChoice) {
+        lightChoice.classList.toggle("selected", theme === "light");
+        lightChoice.setAttribute("aria-pressed", String(theme === "light"));
+    }
+    const darkCheck = $("kchatDarkThemeCheck");
+    const lightCheck = $("kchatLightThemeCheck");
+    if (darkCheck) darkCheck.textContent = theme === "dark" ? "✓" : "";
+    if (lightCheck) lightCheck.textContent = theme === "light" ? "✓" : "";
+    const status = $("kchatThemeStatus");
+    if (status) status.textContent = theme === "dark" ? "Dark mode is selected." : "Light mode is selected.";
+}
+
+function applyKchatTheme(theme, save = false) {
+    const selected = theme === "light" ? "light" : "dark";
+    document.documentElement.dataset.kchatTheme = selected;
+    if (save) localStorage.setItem("kchat_theme", selected);
+    updateKchatThemeChoices();
+}
+
+applyKchatTheme(getKchatTheme(), false);
 
 /*
  * Central Updates navigation handler.
@@ -3076,11 +3141,14 @@ $("closeChatsBackupsButton").addEventListener("click", () => {
 $("subOpenAppearance").addEventListener("click", () => {
     hide($("settingsPanel"));
     show($("appearancePanel"));
+    updateKchatThemeChoices();
 });
 $("closeAppearanceButton").addEventListener("click", () => {
     hide($("appearancePanel"));
     show($("settingsPanel"));
 });
+$("kchatDarkThemeChoice").addEventListener("click", () => applyKchatTheme("dark", true));
+$("kchatLightThemeChoice").addEventListener("click", () => applyKchatTheme("light", true));
 
 // Wallpaper from Gallery Functionality
 $("subOpenWallpaper").addEventListener("click", () => {
