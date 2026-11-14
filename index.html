@@ -1556,6 +1556,40 @@ hr {
 :root[data-kchat-theme="light"] .my-status-card,:root[data-kchat-theme="light"] .status-story-card{color:#17212b}
 :root[data-kchat-theme="light"] .message-meta{color:#64748b}
 :root[data-kchat-theme="light"] .icon-btn{background:var(--panel2);color:var(--text)}
+
+/* WhatsApp-inspired Calls screen */
+.call-history-screen{min-height:100%;padding:18px 14px 96px;overflow:auto;background:var(--bg)}
+.call-history-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 2px 22px}
+.call-history-heading h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.3px}
+.call-history-new,.call-history-start{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:22px;padding:10px 15px;background:#00a884;color:#fff;font-weight:700;cursor:pointer}
+.call-history-new span{font-size:20px;line-height:14px}
+.call-history-section-title{font-size:15px;font-weight:700;margin:8px 3px 12px}
+.call-history-filters{display:flex;gap:8px;margin:0 2px 12px}
+.call-history-filters button{border:1px solid var(--border);border-radius:18px;padding:7px 17px;background:var(--panel);color:var(--text);font-size:13px;font-weight:600}
+.call-history-filters button.active{background:#d9fdd3;color:#075e54;border-color:#d9fdd3}
+.call-history-list{display:flex;flex-direction:column}
+.call-history-row{display:flex;align-items:center;gap:10px;min-height:76px;padding:8px 2px;border-bottom:1px solid var(--border)}
+.call-history-person{display:flex;align-items:center;gap:12px;flex:1;min-width:0;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.call-history-avatar{width:50px;height:50px;flex:0 0 50px;display:grid;place-items:center;overflow:hidden;border-radius:50%;background:var(--panel2);font-size:19px;font-weight:700}
+.call-history-avatar img{width:100%;height:100%;object-fit:cover}
+.call-history-copy{display:flex;flex-direction:column;gap:5px;min-width:0}
+.call-history-copy strong{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.call-history-detail{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12px;white-space:nowrap}
+.call-history-detail.missed{color:#e53950}
+.call-direction-icon{width:15px;height:15px;display:inline-flex;flex:0 0 15px}
+.call-direction-icon svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.call-history-time{display:flex;flex-direction:column;gap:4px;align-items:flex-end;white-space:nowrap;color:var(--muted);font-size:11px}
+.call-history-time small{font-size:11px}
+.call-history-action{width:40px;height:40px;flex:0 0 40px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:#00a884;cursor:pointer}
+.call-history-action:active{background:#00a88420}
+.call-history-action svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.call-history-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:55px 20px;color:var(--muted)}
+.call-history-empty-icon{width:64px;height:64px;display:grid;place-items:center;margin-bottom:14px;border-radius:50%;background:var(--panel2);color:#00a884;font-size:29px}
+.call-history-empty strong{color:var(--text);font-size:16px}
+.call-history-empty p{max-width:260px;font-size:13px;line-height:1.5}
+.call-history-loading{padding:20px 4px}
+@media(max-width:600px){.call-history-screen{padding:15px 12px 90px}.call-history-heading{margin-bottom:20px}.call-history-row{min-height:72px}.call-history-time{font-size:10px}}
+
 </style>
 
 </head>
@@ -3541,7 +3575,7 @@ async function acceptKchatCall(){
         $("localCallVideo").srcObject=pending.type==="video"?kchatCall.local:null;
         const pc=new RTCPeerConnection(KCHAT_RTC_CONFIG);kchatCall.pc=pc;
         kchatCall.local.getTracks().forEach(track=>pc.addTrack(track,kchatCall.local));
-        pc.ontrack=event=>{const stream=event.streams[0];if(type==="video")$("remoteCallVideo").srcObject=stream;else $("remoteCallAudio").srcObject=stream;};
+        pc.ontrack=event=>{const stream=event.streams[0];if(pending.type==="video")$("remoteCallVideo").srcObject=stream;else $("remoteCallAudio").srcObject=stream;};
         pc.onicecandidate=event=>{if(event.candidate&&kchatCall)sendKchatCallSignal(pending.peer,pending.callId,pending.type,{candidate:event.candidate});};
         await pc.setRemoteDescription(new RTCSessionDescription(pending.offer));
         for(const candidate of (kchatCall.pendingIce||[])){try{await pc.addIceCandidate(new RTCIceCandidate(candidate));}catch{}}
@@ -3576,21 +3610,74 @@ $("cameraCallButton").addEventListener("click",()=>{
     const track=kchatCall?.local?.getVideoTracks()[0];if(!track)return;track.enabled=!track.enabled;
     $("cameraCallButton").textContent=track.enabled?"▣":"◻";
 });
+let callHistoryFilter = "all";
 async function renderCallHistory(){
-    const list=$("chatList");list.innerHTML='<div class="call-history-screen"><div class="call-history-title">Recent calls</div><p class="muted">Loading call history…</p></div>';
+    const list=$("chatList");
+    list.innerHTML='<section class="call-history-screen"><div class="call-history-heading"><h2>Calls</h2><button type="button" class="call-history-new" id="callHistoryNewButton" aria-label="Start a new call"><span>＋</span> New call</button></div><div class="call-history-section-title">Recent</div><div class="call-history-filters"><button type="button" class="active" data-call-filter="all">All</button><button type="button" data-call-filter="missed">Missed</button></div><p class="muted call-history-loading">Loading call history…</p></section>';
     try{
-        const result=await apiRequest("/api/calls");const calls=result.calls||[];
-        list.innerHTML='<div class="call-history-screen"><div class="call-history-title">Recent calls</div>'+
-            (calls.length?calls.map(call=>{
-                const missed=call.status==="missed"||call.status==="declined";
-                const when=call.created_at?new Date(call.created_at).toLocaleString(): "";
-                const direction=call.direction==="incoming"?"Incoming":"Outgoing";
-                const symbol=call.call_type==="video"?"▣":"☎";
-                const duration=Number(call.duration_seconds||0);
-                return '<div class="call-history-row" data-call-peer="'+escapeHTML(call.peer_username)+'" data-call-type="'+escapeHTML(call.call_type)+'"><div class="call-history-avatar">'+escapeHTML((call.peer_username||"?").charAt(0).toUpperCase())+'</div><div class="call-history-copy"><strong>'+escapeHTML(call.peer_username)+'</strong><small>'+direction+' '+call.call_type+' · '+escapeHTML(call.status)+' · '+escapeHTML(when)+(duration?' · '+duration+'s':'')+'</small></div><span class="call-history-kind '+(missed?'missed':'')+'">'+symbol+'</span></div>';
-            }).join(""):'<div class="conversation-media-empty">No calls yet. Start an audio or video call from a private chat.</div>')+'</div>';
-        list.querySelectorAll("[data-call-peer]").forEach(row=>row.addEventListener("click",()=>startKchatCall(row.dataset.callType,row.dataset.callPeer)));
-    }catch(error){list.innerHTML='<div class="conversation-media-empty">'+escapeHTML(error.message||"Could not load call history.")+'</div>';}
+        const result=await apiRequest("/api/calls");
+        const calls=Array.isArray(result.calls)?result.calls:[];
+        const filtered=calls.filter(call=>callHistoryFilter!=="missed"||call.status==="missed"||call.status==="declined");
+        const relativeDate=value=>{
+            if(!value)return "";
+            const date=new Date(value);
+            if(Number.isNaN(date.getTime()))return "";
+            const today=new Date();today.setHours(0,0,0,0);
+            const day=new Date(date);day.setHours(0,0,0,0);
+            const diff=Math.round((today-day)/86400000);
+            const label=diff===0?"Today":diff===1?"Yesterday":date.toLocaleDateString([], {day:"numeric",month:"short"});
+            return label+" · "+date.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+        };
+        const callIcon=type=>type==="video"
+            ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="m15 10 6-3v10l-6-3"/></svg>'
+            : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4l2 5-3 2a15 15 0 0 0 5 5l2-3 5 2v4c0 1-1 2-2 2C10 21 3 14 3 6c0-1 1-2 2-2Z"/></svg>';
+        const directionIcon=call=>call.direction==="incoming"
+            ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M8 17h9V8"/></svg>'
+            : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>';
+        const rows=filtered.map(call=>{
+            const peer=String(call.peer_username||"Unknown");
+            const contact=contacts.find(item=>contactName(item).toLowerCase()===peer.toLowerCase())||{};
+            const missed=call.status==="missed"||call.status==="declined";
+            const avatar=contact.profile_picture
+                ? '<img src="'+escapeHTML(contact.profile_picture)+'" alt="">'
+                : escapeHTML(peer.charAt(0).toUpperCase());
+            const duration=Number(call.duration_seconds||0);
+            const durationText=duration?Math.floor(duration/60)+":"+String(duration%60).padStart(2,"0"):"";
+            const details=(call.direction==="incoming"?"Incoming":"Outgoing")+" "+(call.call_type==="video"?"video call":"voice call");
+            return '<article class="call-history-row" data-call-peer="'+escapeHTML(peer)+'">'+
+                '<button type="button" class="call-history-person" data-open-call-chat="'+escapeHTML(peer)+'" aria-label="Open '+escapeHTML(peer)+' conversation">'+
+                    '<span class="call-history-avatar">'+avatar+'</span>'+
+                    '<span class="call-history-copy"><strong>'+escapeHTML(peer)+'</strong>'+
+                    '<small class="call-history-detail '+(missed?'missed':'')+'"><span class="call-direction-icon">'+directionIcon(call)+'</span>'+escapeHTML(details)+'</small></span>'+
+                '</button>'+
+                '<span class="call-history-time">'+escapeHTML(relativeDate(call.created_at))+(durationText?'<small>'+escapeHTML(durationText)+'</small>':'')+'</span>'+
+                '<button type="button" class="call-history-action" data-call-peer="'+escapeHTML(peer)+'" data-call-type="'+(call.call_type==="video"?"video":"audio")+'" aria-label="'+(call.call_type==="video"?"Video call":"Voice call")+' '+escapeHTML(peer)+'">'+callIcon(call.call_type)+'</button>'+
+            '</article>';
+        }).join("");
+        list.innerHTML='<section class="call-history-screen">'+
+            '<div class="call-history-heading"><h2>Calls</h2><button type="button" class="call-history-new" id="callHistoryNewButton"><span>＋</span> New call</button></div>'+
+            '<div class="call-history-section-title">Recent</div>'+
+            '<div class="call-history-filters"><button type="button" data-call-filter="all" class="'+(callHistoryFilter==="all"?"active":"")+'">All</button><button type="button" data-call-filter="missed" class="'+(callHistoryFilter==="missed"?"active":"")+'">Missed</button></div>'+
+            (rows?'<div class="call-history-list">'+rows+'</div>':'<div class="call-history-empty"><div class="call-history-empty-icon">☎</div><strong>'+(callHistoryFilter==="missed"?"No missed calls":"No calls yet")+'</strong><p>Your recent voice and video calls will appear here.</p><button type="button" class="call-history-start" id="callHistoryEmptyNew">Start a call</button></div>')+
+            '</section>';
+        $("callHistoryNewButton")?.addEventListener("click",openDeviceContactPicker);
+        $("callHistoryEmptyNew")?.addEventListener("click",openDeviceContactPicker);
+        list.querySelectorAll("[data-call-filter]").forEach(button=>button.addEventListener("click",()=>{
+            callHistoryFilter=button.dataset.callFilter;
+            renderCallHistory();
+        }));
+        list.querySelectorAll("[data-open-call-chat]").forEach(button=>button.addEventListener("click",()=>{
+            const peer=button.dataset.openCallChat;
+            openChat(peer);
+        }));
+        list.querySelectorAll(".call-history-action").forEach(button=>button.addEventListener("click",event=>{
+            event.stopPropagation();
+            startKchatCall(button.dataset.callType,button.dataset.callPeer);
+        }));
+    }catch(error){
+        list.innerHTML='<section class="call-history-screen"><div class="call-history-heading"><h2>Calls</h2><button type="button" class="call-history-new" id="callHistoryNewButton">＋ New call</button></div><div class="conversation-media-empty">'+escapeHTML(error.message||"Could not load call history.")+'</div></section>';
+        $("callHistoryNewButton")?.addEventListener("click",openDeviceContactPicker);
+    }
 }
 function renderContacts() {
     const list = $("chatList");
