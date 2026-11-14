@@ -596,7 +596,7 @@ async def kchat_ai_chat(request: Request):
                 FROM ai_messages
                 WHERE conversation_id = %s AND owner_id = %s
                 ORDER BY created_at DESC, id DESC
-                LIMIT 23
+                LIMIT 16
             """, (conversation_id, account["id"])).fetchall()
             conn.execute("""
                 INSERT INTO ai_messages (conversation_id, owner_id, role, content)
@@ -615,6 +615,9 @@ async def kchat_ai_chat(request: Request):
         ]
         safe_messages.append({"role": "user", "content": latest_text})
 
+        # Keep saved context lean: include memories that match this request,
+        # and include a few recent memories when the user explicitly refers to
+        # earlier personal context or an ongoing project.
         with get_db() as conn:
             memory_rows = conn.execute("""
                 SELECT memory FROM ai_memories
@@ -622,7 +625,49 @@ async def kchat_ai_chat(request: Request):
                 ORDER BY created_at DESC
                 LIMIT 30
             """, (account["id"],)).fetchall()
-        approved_memories = [row["memory"] for row in reversed(memory_rows)]
+
+        stop_words = {
+            "the", "and", "for", "that", "with", "this", "what", "when",
+            "where", "which", "would", "could", "should", "please", "from",
+            "have", "has", "was", "were", "are", "you", "your", "about",
+            "into", "then", "than", "them", "they", "their", "there", "here",
+            "how", "why", "who", "can", "will", "just", "now", "make"
+        }
+        request_words = {
+            word for word in re.findall(r"[a-z0-9_]{3,}", latest_text.lower())
+            if word not in stop_words
+        }
+        refers_to_personal_context = bool(re.search(
+            r"\\b(remember|earlier|previous|before|we discussed|we talked|"
+            r"my preference|my project|my app|my account|continue|last time)\\b",
+            latest_text.lower()
+        ))
+
+        ranked_memories = []
+        for position, row in enumerate(memory_rows):
+            memory_text = str(row["memory"] or "").strip()
+            if not memory_text:
+                continue
+            memory_words = {
+                word for word in re.findall(r"[a-z0-9_]{3,}", memory_text.lower())
+                if word not in stop_words
+            }
+            overlap = len(request_words.intersection(memory_words))
+            if overlap:
+                ranked_memories.append((overlap, -position, memory_text))
+
+        ranked_memories.sort(reverse=True)
+        approved_memories = [item[2] for item in ranked_memories[:6]]
+
+        if refers_to_personal_context and len(approved_memories) < 6:
+            selected = set(approved_memories)
+            for row in memory_rows:
+                memory_text = str(row["memory"] or "").strip()
+                if memory_text and memory_text not in selected:
+                    approved_memories.append(memory_text)
+                    selected.add(memory_text)
+                if len(approved_memories) >= 6:
+                    break
 
         if not cloudflare_token or not cloudflare_account_id:
             return JSONResponse({"error": "KCHAT AI is not connected to Cloudflare Workers AI yet. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in Render Environment."}, status_code=503)
