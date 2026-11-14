@@ -3407,6 +3407,8 @@ async function loadContacts() {
 
         const savedContacts = Array.isArray(contactData.contacts) ? contactData.contacts : [];
         const inboxItems = Array.isArray(inboxData.inbox) ? inboxData.inbox : [];
+        let groupItems = [];
+        try { const groupData = await apiRequest("/api/groups"); groupItems = Array.isArray(groupData.groups) ? groupData.groups : []; } catch {}
         const byName = new Map();
 
         // Keep every saved contact, including people with whom no message exists yet.
@@ -3421,6 +3423,17 @@ async function loadContacts() {
                 unread_count: 0,
                 hidden: false,
                 pinned: false
+            });
+        });
+
+        // Keep account memberships visible as groups, separately from private contacts.
+        groupItems.forEach(group => {
+            if (!group || !group.name) return;
+            byName.set(String(group.name).toLowerCase(), {
+                username: group.name, type: "group", is_group: true,
+                group_id: group.id, member_count: group.member_count,
+                role: group.role, last_message: "Group · " + Number(group.member_count || 0) + " members",
+                unread_count: 0, hidden: false, pinned: false
             });
         });
 
@@ -3485,7 +3498,7 @@ async function startKchatCall(type,peer){
     if(!socket||socket.readyState!==WebSocket.OPEN){alert("KCHAT is reconnecting. Wait until your connection is online, then call again.");return;}
     if(kchatCall){alert("You already have an active call.");return;}
     const callId=crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2);
-    kchatCall={id:callId,peer,type,direction:"outgoing",pc:null,local:null,started:0,accepted:false};
+    kchatCall={id:callId,peer,type,direction:"outgoing",pc:null,local:null,started:0,accepted:false,pendingIce:[]};
     try{
         kchatCall.local=await navigator.mediaDevices.getUserMedia({audio:true,video:type==="video"});
         $("localCallVideo").srcObject=type==="video"?kchatCall.local:null;
@@ -3503,15 +3516,15 @@ async function handleKchatCallSignal(item){
     if(signal.offer){
         if(kchatCall){sendKchatCallSignal(peer,callId,type,{end:true,reason:"busy"});return;}
         incomingCallPending={peer,callId,type,offer:signal.offer};
-        kchatCall={id:callId,peer,type,direction:"incoming",pc:null,local:null,started:0,accepted:false};
+        kchatCall={id:callId,peer,type,direction:"incoming",pc:null,local:null,started:0,accepted:false,pendingIce:[]};
         setCallUi(peer,type,"Incoming "+type+" call");
         $("acceptCallButton").classList.remove("hidden");
         $("muteCallButton").classList.add("hidden");$("cameraCallButton").classList.add("hidden");
         return;
     }
     if(!kchatCall||kchatCall.id!==callId)return;
-    if(signal.answer&&kchatCall.pc){await kchatCall.pc.setRemoteDescription(new RTCSessionDescription(signal.answer));kchatCall.accepted=true;kchatCall.started=Date.now();callStartedAt=kchatCall.started;$("callStatusText").textContent="Connected";}
-    if(signal.candidate&&kchatCall.pc){try{await kchatCall.pc.addIceCandidate(new RTCIceCandidate(signal.candidate));}catch(error){console.warn("ICE candidate rejected:",error);}}
+    if(signal.answer&&kchatCall.pc){await kchatCall.pc.setRemoteDescription(new RTCSessionDescription(signal.answer));for(const candidate of (kchatCall.pendingIce||[])){try{await kchatCall.pc.addIceCandidate(new RTCIceCandidate(candidate));}catch{}}kchatCall.pendingIce=[];kchatCall.accepted=true;kchatCall.started=Date.now();callStartedAt=kchatCall.started;$("callStatusText").textContent="Connected";}
+    if(signal.candidate&&kchatCall.pc){if(kchatCall.pc.remoteDescription){try{await kchatCall.pc.addIceCandidate(new RTCIceCandidate(signal.candidate));}catch(error){console.warn("ICE candidate rejected:",error);}}else{kchatCall.pendingIce=kchatCall.pendingIce||[];kchatCall.pendingIce.push(signal.candidate);}}
     if(signal.end){const status=signal.reason==="declined"?"declined":(kchatCall.accepted?"completed":"missed");await finishKchatCall(status,false);}
 }
 async function acceptKchatCall(){
@@ -3525,6 +3538,8 @@ async function acceptKchatCall(){
         pc.ontrack=event=>{const stream=event.streams[0];$("remoteCallAudio").srcObject=stream;$("remoteCallVideo").srcObject=stream;};
         pc.onicecandidate=event=>{if(event.candidate&&kchatCall)sendKchatCallSignal(pending.peer,pending.callId,pending.type,{candidate:event.candidate});};
         await pc.setRemoteDescription(new RTCSessionDescription(pending.offer));
+        for(const candidate of (kchatCall.pendingIce||[])){try{await pc.addIceCandidate(new RTCIceCandidate(candidate));}catch{}}
+        kchatCall.pendingIce=[];
         const answer=await pc.createAnswer();await pc.setLocalDescription(answer);
         sendKchatCallSignal(pending.peer,pending.callId,pending.type,{answer:pc.localDescription});
         kchatCall.accepted=true;kchatCall.started=Date.now();callStartedAt=kchatCall.started;
@@ -3637,7 +3652,14 @@ function renderContacts() {
     }).join("");
 
     list.querySelectorAll(".chat-item").forEach(item => {
-        item.addEventListener("click", () => openChat(item.dataset.username));
+        item.addEventListener("click", () => {
+            const selected = contacts.find(contact => contactName(contact) === item.dataset.username);
+            if (selected && (selected.type === "group" || selected.is_group === true)) {
+                openContactProfile(item.dataset.username);
+            } else {
+                openChat(item.dataset.username);
+            }
+        });
     });
 }
 
