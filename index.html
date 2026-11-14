@@ -1504,6 +1504,12 @@ hr {
 .panel-overlay .settings-option-arrow{font-size:21px;color:var(--muted);padding:0 3px}
 .panel-overlay .settings-row.settings-option[style*="display:flex"]{padding-top:15px;padding-bottom:15px}
 @media(max-width:600px){.panel-overlay .side-panel{padding:16px}.panel-overlay .settings-row.settings-option{min-height:66px}.panel-overlay .settings-option-title{font-size:14px}}
+
+/* WhatsApp-style main three-dot dropdown */
+#mainMenu.whatsapp-main-menu{min-width:230px;padding:8px 0;background:#233138;border:1px solid #34434a;border-radius:10px;box-shadow:0 8px 26px #0007;z-index:12000}
+#mainMenu.whatsapp-main-menu button{display:flex;align-items:center;gap:14px;width:100%;min-height:46px;padding:0 17px;border:0;border-radius:0;background:transparent;color:#e9edef;text-align:left;font-size:14px;font-weight:400;white-space:nowrap;cursor:pointer}
+#mainMenu.whatsapp-main-menu button:hover{background:#ffffff12}
+#mainMenu.whatsapp-main-menu .wa-menu-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;color:#d1d7db;font-size:18px}
 </style>
 </head>
 
@@ -1977,15 +1983,13 @@ hr {
     <button id="updatesSettingsMenu">Settings</button>
 </div>
 
-<!-- MAIN MENU -->
-<div id="mainMenu" class="menu-popup hidden">
-    <button id="menuNewGroup">👥 New group</button>
-    <button id="menuContacts">📇 Manage contacts</button>
-    <button id="menuInbox">📥 Inbox</button>
-    <button id="menuSearchMessages">🔎 Search messages</button>
-    <button id="menuBlocked">🚫 Blocked contacts</button>
-    <button id="menuSettings">⚙ Settings Centre</button>
-    <button id="menuLogout">↪ Logout</button>
+<!-- MAIN MENU: WhatsApp-style quick actions -->
+<div id="mainMenu" class="menu-popup hidden whatsapp-main-menu">
+    <button id="menuNewGroup"><span class="wa-menu-icon">♧</span>New group</button>
+    <button id="menuNewBroadcast"><span class="wa-menu-icon">◉</span>New broadcast</button>
+    <button id="menuLinkedDevices"><span class="wa-menu-icon">▣</span>Linked devices</button>
+    <button id="menuStarredMessages"><span class="wa-menu-icon">☆</span>Starred messages</button>
+    <button id="menuSettings"><span class="wa-menu-icon">⚙</span>Settings</button>
 </div>
 
 <!-- CHAT MENU -->
@@ -4599,6 +4603,20 @@ $("sidebarSelectContactBtn").addEventListener("click", openDeviceContactPicker);
 $("menuSettings").addEventListener("click", () => {
     hide($("mainMenu"));
     show($("settingsPanel"));
+});
+$("menuNewBroadcast").addEventListener("click", () => {
+    hide($("mainMenu"));
+    alert("New broadcast lists are not available in KCHAT yet.");
+});
+$("menuLinkedDevices").addEventListener("click", () => {
+    hide($("mainMenu"));
+    show($("settingsPanel"));
+    const devicesOption=$("subOpenDevices");
+    if(devicesOption)devicesOption.click();
+});
+$("menuStarredMessages").addEventListener("click", () => {
+    hide($("mainMenu"));
+    alert("Starred messages are not available in KCHAT yet.");
 });
 
 $("menuContacts").addEventListener("click", () => {
