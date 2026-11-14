@@ -5183,7 +5183,38 @@ if (document.readyState === "loading") {
  function clearConversation(){history=[];messages.replaceChildren();if(welcome)welcome.classList.remove("hidden");}
  async function loadConversationList(selectLatest){if(!historySelect||!authToken)return;try{const result=await apiRequest("/api/ai/conversations");if(!result?.success)return;const rows=result.conversations||[];historySelect.replaceChildren();const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent=rows.length?"Previous chats":"No previous chats";historySelect.appendChild(placeholder);rows.forEach(row=>{const option=document.createElement("option");option.value=row.id;option.textContent=(row.title||"New conversation").slice(0,65);historySelect.appendChild(option);});if(selectLatest&&rows.length){const chosen=rows.find(row=>row.id===currentConversationId)||rows[0];await loadConversation(chosen.id);}else if(currentConversationId){historySelect.value=currentConversationId;}}catch(error){setStatus("Could not load previous AI chats.",true);}}
  async function loadConversation(id){if(!id)return;try{const result=await apiRequest("/api/ai/conversations/"+encodeURIComponent(id));if(!result?.success)throw new Error(result?.error||"Could not open this conversation.");currentConversationId=id;history=(result.messages||[]).map(item=>({role:item.role,content:item.content}));messages.replaceChildren();history.forEach(item=>addBubble(item.role,item.content));if(welcome)welcome.classList.toggle("hidden",history.length>0);if(historySelect)historySelect.value=id;setStatus("Previous conversation restored.",false);}catch(error){setStatus(error.message||"Could not open previous chat.",true);}}
- async function openScreen(prompt){document.getElementById("appScreen")?.classList.add("mobile-ai-open");screen.classList.remove("hidden");fab.classList.add("hidden");if(searchFab)searchFab.classList.add("hidden");if(chatFab)chatFab.classList.add("hidden");if(historyOwner!==currentUser){historyOwner=currentUser;historyLoaded=false;currentConversationId="";history=[];clearConversation();}if(!historyLoaded&&authToken){historyLoaded=true;await loadConversationList(false);}if(typeof prompt==="string"&&prompt.trim())input.value=prompt.trim();input.focus();}
+ async function openScreen(prompt){
+  const app=document.getElementById("appScreen");
+  const main=document.getElementById("mainChatArea");
+  const status=document.getElementById("statusScreen");
+  if(app){
+   app.classList.remove("status-open");
+   app.classList.add("mobile-ai-open");
+  }
+  if(main){
+   main.style.setProperty("display","flex","important");
+   main.style.position="relative";
+  }
+  if(status){
+   status.classList.add("hidden");
+   status.style.removeProperty("display");
+   status.style.removeProperty("visibility");
+   status.style.removeProperty("z-index");
+  }
+  screen.style.setProperty("position","absolute","important");
+  screen.style.setProperty("inset","0","important");
+  screen.style.setProperty("z-index","10001","important");
+  screen.classList.remove("hidden");
+  fab.classList.add("hidden");
+  if(searchFab)searchFab.classList.add("hidden");
+  if(chatFab)chatFab.classList.add("hidden");
+  if(historyOwner!==currentUser){
+   historyOwner=currentUser;historyLoaded=false;currentConversationId="";history=[];clearConversation();
+  }
+  if(typeof prompt==="string"&&prompt.trim())input.value=prompt.trim();
+  input.focus();
+  if(!historyLoaded&&authToken){historyLoaded=true;await loadConversationList(false);}
+}
  window.openKchatAI=openScreen;
  fab.addEventListener("click",()=>openScreen());if(searchFab)searchFab.addEventListener("click",()=>openScreen());if(chatFab)chatFab.addEventListener("click",()=>openScreen());
  back.addEventListener("click",()=>{document.getElementById("appScreen")?.classList.remove("mobile-ai-open");screen.classList.add("hidden");fab.classList.remove("hidden");if(searchFab)searchFab.classList.remove("hidden");if(chatFab&&currentChat)chatFab.classList.remove("hidden");});
