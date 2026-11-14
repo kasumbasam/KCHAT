@@ -1390,6 +1390,35 @@ hr {
 .status-media-text-overlay:empty:before{content:attr(data-placeholder);color:#ffffffbb}
 .status-media-text-overlay:focus{outline:2px solid #25d366}
 .kchat-ai-assistant-message{align-self:flex-start;width:100%;max-width:100%;margin:8px 0;padding:8px 0;background:transparent;color:inherit;line-height:1.6;font-size:15px;white-space:pre-wrap;border:0;border-radius:0;box-shadow:none;}
+/* Calls, conversation information tabs and media */
+.call-history-screen{padding:14px 12px 30px;overflow:auto}
+.call-history-title{font-size:18px;font-weight:700;margin:8px 4px 14px}
+.call-history-row{display:flex;align-items:center;gap:12px;padding:13px 8px;border-bottom:1px solid var(--border);cursor:pointer}
+.call-history-avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--panel2);font-weight:700;flex:0 0 48px}
+.call-history-copy{flex:1;min-width:0}
+.call-history-copy strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.call-history-copy small{display:block;color:var(--muted);margin-top:4px}
+.call-history-kind{font-size:20px;color:var(--accent);padding:6px}
+.call-history-kind.missed{color:var(--danger)}
+.conversation-tabs{display:flex;gap:4px;padding:10px 12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--panel);z-index:2}
+.conversation-tabs button{flex:1;border:0;border-radius:18px;padding:10px 5px;background:transparent;color:var(--muted);font-weight:600}
+.conversation-tabs button.active{background:var(--panel2);color:var(--accent)}
+.conversation-tab-content{padding:16px;overflow:auto}
+.conversation-media-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.conversation-media-grid img,.conversation-media-grid video{width:100%;aspect-ratio:1;object-fit:cover;border-radius:9px;background:var(--panel2)}
+.conversation-media-empty{padding:30px 12px;text-align:center;color:var(--muted)}
+.group-member-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)}
+.call-overlay{position:fixed;inset:0;z-index:11000;background:#05090df2;color:#fff;display:flex;align-items:center;justify-content:center;padding:18px}
+.call-overlay.hidden{display:none}
+.call-card{width:min(100%,460px);min-height:360px;border-radius:22px;background:#111b22;border:1px solid #ffffff20;padding:22px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:16px;text-align:center}
+.call-peer-avatar{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:#263b45;font-size:42px;font-weight:700}
+.call-stage{width:100%;display:flex;flex-direction:column;gap:10px}
+.call-stage video{width:100%;max-height:42vh;object-fit:cover;border-radius:14px;background:#000}
+.call-controls{display:flex;justify-content:center;gap:18px;flex-wrap:wrap}
+.call-controls button{width:58px;height:58px;border:0;border-radius:50%;background:#2a3a43;color:#fff;font-size:22px}
+.call-controls button.end{background:#d93649}
+.call-controls button.accept{background:#16a765}
+@media(max-width:750px){.conversation-media-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.call-card{min-height:70vh}}
 </style>
 
 <style id="kchatAiStyles">
@@ -2424,36 +2453,63 @@ hr {
     </div>
 </div>
 
-<!-- CONTACT PROFILE -->
+<!-- PRIVATE / GROUP PROFILE, MEDIA AND SETTINGS -->
 <div id="contactProfilePanel" class="panel-overlay hidden">
     <div class="side-panel">
         <div class="panel-heading">
             <button class="icon-btn" id="closeContactProfile">←</button>
-            <h2>Contact information</h2>
+            <h2 id="conversationInfoHeading">Contact information</h2>
         </div>
-
-        <div class="profile-top">
-            <div class="avatar" id="contactProfileAvatar" style="width:95px;height:95px;margin:auto;font-size:35px;">K</div>
-            <div class="profile-name" id="contactProfileName"></div>
-            <p id="contactProfilePhone" class="muted"></p>
+        <nav class="conversation-tabs" aria-label="Conversation information tabs">
+            <button type="button" class="active" data-conversation-tab="profile">Profile</button>
+            <button type="button" data-conversation-tab="media">Media</button>
+            <button type="button" data-conversation-tab="settings">Settings</button>
+        </nav>
+        <div id="conversationProfileTab" class="conversation-tab-content">
+            <div class="profile-top">
+                <div class="avatar" id="contactProfileAvatar" style="width:95px;height:95px;margin:auto;font-size:35px;">K</div>
+                <div class="profile-name" id="contactProfileName"></div>
+                <p id="contactProfilePhone" class="muted"></p>
+            </div>
+            <div class="settings-section"><h3>About</h3><p id="contactProfileAbout" class="muted"></p></div>
+            <div id="groupMembersProfile"></div>
+            <button class="primary-btn" id="contactProfileMessage">Message this contact</button>
         </div>
-
-        <div class="settings-section">
-            <h3>About</h3>
-            <p id="contactProfileAbout" class="muted"></p>
+        <div id="conversationMediaTab" class="conversation-tab-content hidden">
+            <h3>Shared media, links and files</h3>
+            <div id="conversationMediaGrid" class="conversation-media-grid"></div>
+            <p id="conversationMediaEmpty" class="conversation-media-empty">Loading shared media…</p>
         </div>
+        <div id="conversationSettingsTab" class="conversation-tab-content hidden">
+            <div class="settings-section">
+                <h3>Conversation settings</h3>
+                <button class="settings-row" id="contactProfileBlock">Block contact <span>›</span></button>
+                <button class="settings-row" id="contactProfileRemove">Remove contact <span>›</span></button>
+                <button class="settings-row" id="conversationClearMedia">Clear local media view <span>›</span></button>
+            </div>
+            <div id="groupManagementSettings"></div>
+        </div>
+    </div>
+</div>
 
-        <div class="settings-section">
-            <h3>Actions</h3>
-            <button class="settings-row" id="contactProfileMessage">
-                Message this contact <span>›</span>
-            </button>
-            <button class="settings-row" id="contactProfileBlock">
-                Block contact <span>›</span>
-            </button>
-            <button class="settings-row" id="contactProfileRemove">
-                Remove contact <span>›</span>
-            </button>
+<!-- LIVE AUDIO / VIDEO CALL -->
+<div id="callOverlay" class="call-overlay hidden">
+    <div class="call-card">
+        <div>
+            <div id="callPeerAvatar" class="call-peer-avatar">K</div>
+            <h2 id="callPeerName">KCHAT call</h2>
+            <p id="callStatusText">Connecting…</p>
+        </div>
+        <div class="call-stage">
+            <video id="remoteCallVideo" autoplay playsinline></video>
+            <video id="localCallVideo" autoplay playsinline muted style="max-height:120px;"></video>
+            <audio id="remoteCallAudio" autoplay></audio>
+        </div>
+        <div class="call-controls">
+            <button type="button" id="acceptCallButton" class="accept" title="Accept" aria-label="Accept call">✓</button>
+            <button type="button" id="muteCallButton" title="Mute microphone" aria-label="Mute microphone">🎙</button>
+            <button type="button" id="cameraCallButton" title="Turn camera off" aria-label="Turn camera off">▣</button>
+            <button type="button" id="endCallButton" class="end" title="End call" aria-label="End call">✕</button>
         </div>
     </div>
 </div>
@@ -3402,8 +3458,128 @@ function contactName(contact) {
     return contact.username || contact.name || contact.display_name || "Unknown";
 }
 
+/* One-to-one WebRTC calls, persisted per account in call history. */
+let kchatCall = null;
+let incomingCallPending = null;
+let callStartedAt = 0;
+const KCHAT_RTC_CONFIG = {iceServers:[{urls:"stun:stun.l.google.com:19302"}]};
+function sendKchatCallSignal(to,callId,callType,signal){
+    if(!socket||socket.readyState!==WebSocket.OPEN)throw new Error("KCHAT connection is offline. Reconnect before calling.");
+    socket.send(JSON.stringify({type:"call_signal",to,call_id:callId,call_type:callType,signal}));
+}
+async function saveKchatCall(peer,type,direction,status,duration=0){
+    try{await apiRequest("/api/calls",{method:"POST",body:JSON.stringify({peer_username:peer,call_type:type,direction,status,duration_seconds:duration})});}
+    catch(error){console.warn("Call history could not be saved:",error);}
+}
+function setCallUi(peer,type,status){
+    $("callPeerName").textContent=peer;
+    $("callPeerAvatar").textContent=(peer||"K").charAt(0).toUpperCase();
+    $("callStatusText").textContent=status;
+    $("acceptCallButton").classList.toggle("hidden",!incomingCallPending);
+    $("cameraCallButton").classList.toggle("hidden",type!=="video");
+    show($("callOverlay"));
+}
+async function startKchatCall(type,peer){
+    if(!peer){alert("Open a private conversation before starting a call.");return;}
+    if(!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection){alert("This browser does not support WebRTC calling. Try an updated browser.");return;}
+    if(!socket||socket.readyState!==WebSocket.OPEN){alert("KCHAT is reconnecting. Wait until your connection is online, then call again.");return;}
+    if(kchatCall){alert("You already have an active call.");return;}
+    const callId=crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2);
+    kchatCall={id:callId,peer,type,direction:"outgoing",pc:null,local:null,started:0,accepted:false};
+    try{
+        kchatCall.local=await navigator.mediaDevices.getUserMedia({audio:true,video:type==="video"});
+        $("localCallVideo").srcObject=type==="video"?kchatCall.local:null;
+        const pc=new RTCPeerConnection(KCHAT_RTC_CONFIG);kchatCall.pc=pc;
+        kchatCall.local.getTracks().forEach(track=>pc.addTrack(track,kchatCall.local));
+        pc.ontrack=event=>{const stream=event.streams[0];$("remoteCallAudio").srcObject=stream;$("remoteCallVideo").srcObject=stream;};
+        pc.onicecandidate=event=>{if(event.candidate&&kchatCall)sendKchatCallSignal(peer,callId,type,{candidate:event.candidate});};
+        const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+        sendKchatCallSignal(peer,callId,type,{offer:pc.localDescription});
+        setCallUi(peer,type,"Calling… waiting for answer");
+        await saveKchatCall(peer,type,"outgoing","cancelled",0);
+    }catch(error){await finishKchatCall("cancelled",false);alert(error.message||"Could not start the call. Check microphone and camera permissions.");}
+}
+async function handleKchatCallSignal(item){
+    const signal=item.signal||{},peer=item.from,callId=item.call_id,type=item.call_type||"audio";
+    if(signal.offer){
+        if(kchatCall){sendKchatCallSignal(peer,callId,type,{end:true,reason:"busy"});return;}
+        incomingCallPending={peer,callId,type,offer:signal.offer};
+        kchatCall={id:callId,peer,type,direction:"incoming",pc:null,local:null,started:0,accepted:false};
+        setCallUi(peer,type,"Incoming "+type+" call");
+        $("acceptCallButton").classList.remove("hidden");
+        $("muteCallButton").classList.add("hidden");$("cameraCallButton").classList.add("hidden");
+        return;
+    }
+    if(!kchatCall||kchatCall.id!==callId)return;
+    if(signal.answer&&kchatCall.pc){await kchatCall.pc.setRemoteDescription(new RTCSessionDescription(signal.answer));kchatCall.accepted=true;kchatCall.started=Date.now();callStartedAt=kchatCall.started;$("callStatusText").textContent="Connected";}
+    if(signal.candidate&&kchatCall.pc){try{await kchatCall.pc.addIceCandidate(new RTCIceCandidate(signal.candidate));}catch(error){console.warn("ICE candidate rejected:",error);}}
+    if(signal.end){const status=signal.reason==="declined"?"declined":(kchatCall.accepted?"completed":"missed");await finishKchatCall(status,false);}
+}
+async function acceptKchatCall(){
+    if(!incomingCallPending||!kchatCall)return;
+    const pending=incomingCallPending;
+    try{
+        kchatCall.local=await navigator.mediaDevices.getUserMedia({audio:true,video:pending.type==="video"});
+        $("localCallVideo").srcObject=pending.type==="video"?kchatCall.local:null;
+        const pc=new RTCPeerConnection(KCHAT_RTC_CONFIG);kchatCall.pc=pc;
+        kchatCall.local.getTracks().forEach(track=>pc.addTrack(track,kchatCall.local));
+        pc.ontrack=event=>{const stream=event.streams[0];$("remoteCallAudio").srcObject=stream;$("remoteCallVideo").srcObject=stream;};
+        pc.onicecandidate=event=>{if(event.candidate&&kchatCall)sendKchatCallSignal(pending.peer,pending.callId,pending.type,{candidate:event.candidate});};
+        await pc.setRemoteDescription(new RTCSessionDescription(pending.offer));
+        const answer=await pc.createAnswer();await pc.setLocalDescription(answer);
+        sendKchatCallSignal(pending.peer,pending.callId,pending.type,{answer:pc.localDescription});
+        kchatCall.accepted=true;kchatCall.started=Date.now();callStartedAt=kchatCall.started;
+        incomingCallPending=null;$("acceptCallButton").classList.add("hidden");$("muteCallButton").classList.remove("hidden");
+        if(pending.type==="video")$("cameraCallButton").classList.remove("hidden");
+        $("callStatusText").textContent="Connected";
+        await saveKchatCall(pending.peer,pending.type,"incoming","completed",0);
+    }catch(error){alert(error.message||"Could not accept the call. Check device permissions.");await finishKchatCall("declined",true);}
+}
+async function finishKchatCall(status,notifyPeer=true){
+    if(!kchatCall){hide($("callOverlay"));incomingCallPending=null;return;}
+    const call=kchatCall,duration=call.started?Math.max(0,Math.floor((Date.now()-call.started)/1000)):0;
+    if(notifyPeer&&socket?.readyState===WebSocket.OPEN){try{sendKchatCallSignal(call.peer,call.id,call.type,{end:true,reason:status});}catch{}}
+    if(call.local)call.local.getTracks().forEach(track=>track.stop());
+    if(call.pc)call.pc.close();
+    if(call.direction==="incoming"&&status==="declined")await saveKchatCall(call.peer,call.type,"incoming","declined",duration);
+    if(call.direction==="incoming"&&status==="missed")await saveKchatCall(call.peer,call.type,"incoming","missed",duration);
+    if(call.direction==="outgoing"&&status!=="cancelled")await saveKchatCall(call.peer,call.type,"outgoing",status,duration);
+    kchatCall=null;incomingCallPending=null;callStartedAt=0;
+    $("remoteCallAudio").srcObject=null;$("remoteCallVideo").srcObject=null;$("localCallVideo").srcObject=null;
+    hide($("callOverlay"));if(activeTab==="call")renderCallHistory();
+}
+$("acceptCallButton").addEventListener("click",acceptKchatCall);
+$("endCallButton").addEventListener("click",()=>finishKchatCall(incomingCallPending?"declined":(kchatCall?.accepted?"completed":"cancelled"),true));
+$("muteCallButton").addEventListener("click",()=>{
+    const track=kchatCall?.local?.getAudioTracks()[0];if(!track)return;track.enabled=!track.enabled;
+    $("muteCallButton").textContent=track.enabled?"🎙":"🔇";
+});
+$("cameraCallButton").addEventListener("click",()=>{
+    const track=kchatCall?.local?.getVideoTracks()[0];if(!track)return;track.enabled=!track.enabled;
+    $("cameraCallButton").textContent=track.enabled?"▣":"◻";
+});
+async function renderCallHistory(){
+    const list=$("chatList");list.innerHTML='<div class="call-history-screen"><div class="call-history-title">Recent calls</div><p class="muted">Loading call history…</p></div>';
+    try{
+        const result=await apiRequest("/api/calls");const calls=result.calls||[];
+        list.innerHTML='<div class="call-history-screen"><div class="call-history-title">Recent calls</div>'+
+            (calls.length?calls.map(call=>{
+                const missed=call.status==="missed"||call.status==="declined";
+                const when=call.created_at?new Date(call.created_at).toLocaleString(): "";
+                const direction=call.direction==="incoming"?"Incoming":"Outgoing";
+                const symbol=call.call_type==="video"?"▣":"☎";
+                const duration=Number(call.duration_seconds||0);
+                return '<div class="call-history-row" data-call-peer="'+escapeHTML(call.peer_username)+'" data-call-type="'+escapeHTML(call.call_type)+'"><div class="call-history-avatar">'+escapeHTML((call.peer_username||"?").charAt(0).toUpperCase())+'</div><div class="call-history-copy"><strong>'+escapeHTML(call.peer_username)+'</strong><small>'+direction+' '+call.call_type+' · '+escapeHTML(call.status)+' · '+escapeHTML(when)+(duration?' · '+duration+'s':'')+'</small></div><span class="call-history-kind '+(missed?'missed':'')+'">'+symbol+'</span></div>';
+            }).join(""):'<div class="conversation-media-empty">No calls yet. Start an audio or video call from a private chat.</div>')+'</div>';
+        list.querySelectorAll("[data-call-peer]").forEach(row=>row.addEventListener("click",()=>startKchatCall(row.dataset.callType,row.dataset.callPeer)));
+    }catch(error){list.innerHTML='<div class="conversation-media-empty">'+escapeHTML(error.message||"Could not load call history.")+'</div>';}
+}
 function renderContacts() {
     const list = $("chatList");
+    if (activeTab === "call") {
+        renderCallHistory();
+        return;
+    }
     const search = $("chatSearch").value.toLowerCase();
 
     let filtered = contacts.filter(contact => {
@@ -4711,19 +4887,80 @@ $("chatMenuProfile").addEventListener("click", async () => {
     await openContactProfile(currentChat);
 });
 
+let activeConversationInfoUser = "";
+let activeConversationInfoGroup = null;
 async function openContactProfile(username) {
     if (!username) return;
+    activeConversationInfoUser = username;
+    activeConversationInfoGroup = null;
     const contact = contacts.find(item => contactName(item) === username) || {};
+    const isGroup = contact.type === "group" || contact.is_group === true;
+    $("conversationInfoHeading").textContent = isGroup ? "Group information" : "Contact information";
     $("contactProfileName").textContent = username;
-    $("contactProfilePhone").textContent = contact.phone_number || "+256 700 000000";
-    $("contactProfileAbout").textContent = contact.about || "Available on KCHAT";
+    $("contactProfilePhone").textContent = isGroup ? "KCHAT group" : (contact.phone_number || "Registered KCHAT contact");
+    $("contactProfileAbout").textContent = contact.about || (isGroup ? "Group conversation and shared information." : "Available on KCHAT");
     $("contactProfileAvatar").textContent = username.charAt(0).toUpperCase();
+    $("groupMembersProfile").innerHTML = "";
+    $("groupManagementSettings").innerHTML = "";
+    document.querySelectorAll("[data-conversation-tab]").forEach(button=>button.classList.toggle("active",button.dataset.conversationTab==="profile"));
+    show($("conversationProfileTab"));hide($("conversationMediaTab"));hide($("conversationSettingsTab"));
     show($("contactProfilePanel"));
+    if (isGroup) {
+        try {
+            const result = await apiRequest("/api/groups");
+            activeConversationInfoGroup = (result.groups||[]).find(group=>group.name===username)||null;
+            if (activeConversationInfoGroup) {
+                $("contactProfilePhone").textContent = Number(activeConversationInfoGroup.member_count||0)+" members";
+                const memberResult = await apiRequest("/api/groups/"+activeConversationInfoGroup.id+"/members");
+                $("groupMembersProfile").innerHTML = '<div class="settings-section"><h3>Members</h3>'+ (memberResult.members||[]).map(member=>'<div class="group-member-row"><span>'+escapeHTML(member.username)+'</span><small>'+escapeHTML(member.role)+'</small></div>').join("")+'</div>';
+                if (activeConversationInfoGroup.role==="admin") {
+                    $("groupManagementSettings").innerHTML = '<div class="settings-section"><h3>Group administration</h3><label>Add member by KCHAT username</label><input id="groupAddMemberName" placeholder="Username"><button class="primary-btn" id="groupAddMemberButton">Add member</button><p id="groupManagementMessage" class="small muted"></p></div>';
+                    $("groupAddMemberButton").addEventListener("click",async()=>{
+                        const name=$("groupAddMemberName").value.trim();if(!name)return;
+                        try{await apiRequest("/api/groups/"+activeConversationInfoGroup.id+"/members",{method:"POST",body:JSON.stringify({username:name})});$("groupManagementMessage").textContent="Member added.";await openContactProfile(username);}
+                        catch(error){$("groupManagementMessage").textContent=error.message||"Could not add member.";}
+                    });
+                }
+            }
+        } catch(error) { $("groupMembersProfile").textContent=error.message||"Could not load group members."; }
+    }
 }
 
 $("closeContactProfile").addEventListener("click", () => {
     hide($("contactProfilePanel"));
 });
+
+document.querySelectorAll("[data-conversation-tab]").forEach(button=>button.addEventListener("click",async()=>{
+    const tab=button.dataset.conversationTab;
+    document.querySelectorAll("[data-conversation-tab]").forEach(item=>item.classList.toggle("active",item===button));
+    show($("conversationProfileTab"));hide($("conversationMediaTab"));hide($("conversationSettingsTab"));
+    if(tab==="profile")show($("conversationProfileTab"));
+    if(tab==="settings")show($("conversationSettingsTab"));
+    if(tab==="media"){show($("conversationMediaTab"));await loadConversationMedia();}
+}));
+async function loadConversationMedia(){
+    const grid=$("conversationMediaGrid"),empty=$("conversationMediaEmpty");
+    grid.innerHTML="";empty.textContent="Loading shared media…";show(empty);
+    try{
+        let items=[];
+        if(activeConversationInfoGroup){
+            const result=await apiRequest("/api/groups/"+activeConversationInfoGroup.id+"/media");items=result.media||[];
+        }else{
+            const result=await apiRequest("/api/messages/"+encodeURIComponent(activeConversationInfoUser));items=result.messages||[];
+        }
+        items=items.filter(item=>String(item.text||"").startsWith("data:image/")||String(item.text||"").startsWith("data:video/")||String(item.text||"").startsWith("https://"));
+        grid.innerHTML=items.map(item=>{
+            const url=String(item.text||"");
+            if(url.startsWith("data:video/"))return '<video controls preload="metadata" src="'+escapeHTML(url)+'"></video>';
+            if(url.startsWith("data:image/"))return '<img loading="lazy" src="'+escapeHTML(url)+'" alt="Shared media">';
+            return '<a href="'+escapeHTML(url)+'" target="_blank" rel="noopener">Open shared link</a>';
+        }).join("");
+        empty.textContent=items.length?"":"No shared media or links found in this conversation.";
+        if(items.length)hide(empty);
+    }catch(error){empty.textContent=error.message||"Could not load shared media.";}
+}
+$("conversationClearMedia").addEventListener("click",()=>{$("conversationMediaGrid").innerHTML="";$("conversationMediaEmpty").textContent="Media view cleared on this screen. Messages are unchanged.";show($("conversationMediaEmpty"));});
+
 
 $("contactProfileMessage").addEventListener("click", () => {
     hide($("contactProfilePanel"));
@@ -5119,13 +5356,8 @@ $("voiceMessageButton").addEventListener("click", async () => {
     renderMessages();
 });
 
-$("chatAudioCallButton").addEventListener("click", () => {
-    alert("Initiating secure audio call stream...");
-});
-
-$("chatVideoCallButton").addEventListener("click", () => {
-    alert("Initiating secure video call stream...");
-});
+$("chatAudioCallButton").addEventListener("click", () => startKchatCall("audio", currentChat));
+$("chatVideoCallButton").addEventListener("click", () => startKchatCall("video", currentChat));
 
 function logout() {
     if (socket) {
@@ -5164,7 +5396,9 @@ function connectWebSocket() {
             let item;
             try { item = JSON.parse(event.data); } catch { return; }
 
-            if (item.type === "typing") {
+            if (item.type === "call_signal") {
+                handleKchatCallSignal(item).catch(error=>console.warn("Call signal error:",error));
+            } else if (item.type === "typing") {
                 setRemoteTyping(item.username, item.active === true);
             } else if (item.type === "presence") {
                 updateContactPresence(item.username, item.online === true);
