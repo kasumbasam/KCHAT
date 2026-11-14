@@ -3067,10 +3067,7 @@ async function register() {
     }
 
     // The server has confirmed that the account and login session were created.
-    authToken = data.token;
-    currentUser = data.username;
-    localStorage.setItem("kchat_token", authToken);
-    localStorage.setItem("kchat_username", currentUser);
+    saveKchatSession(data.token, data.username);
     status.textContent = "Account created successfully.";
 
     button.disabled = true;
@@ -3109,7 +3106,7 @@ async function loadMyProfile() {
         const data = await apiRequest("/api/profile/" + encodeURIComponent(currentUser));
         currentProfile = data.profile || data.user || data;
         currentUser = currentProfile.username || currentUser;
-        localStorage.setItem("kchat_username", currentUser);
+        saveKchatSession(authToken, currentUser);
     } catch (error) {
         throw error;
     }
