@@ -5232,7 +5232,16 @@ if (document.readyState === "loading") {
   history.push({role:"user",content:value});
   input.value="";
   lock(true);
-  setStatus("KCHAT AI is connecting…",false);
+  const startedAt=Date.now();
+  setStatus("KCHAT AI is working…",false);
+  const workTimer=setInterval(()=>{
+   const elapsed=Math.floor((Date.now()-startedAt)/1000);
+   if(elapsed<60)setStatus("KCHAT AI is working · "+elapsed+" sec…",false);
+   else{
+    const mins=Math.floor(elapsed/60),secs=elapsed%60;
+    setStatus("KCHAT AI is working · "+mins+" min"+(secs?" "+secs+" sec":"")+"…",false);
+   }
+  },1000);
   const thinking=addBubble("assistant","");
   let received="";
   try{
@@ -5263,7 +5272,7 @@ if (document.readyState === "loading") {
    if(received){thinking.textContent=received+"\n\n[Connection interrupted. The answer may be incomplete.]";history.push({role:"assistant",content:received});}
    else thinking.textContent=error.message||"KCHAT AI could not respond.";
    setStatus("Message not completed. You can try again.",true);
-  }finally{lock(false);input.focus();}
+  }finally{clearInterval(workTimer);lock(false);input.focus();}
  });
  input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(typeof form.requestSubmit==="function")form.requestSubmit();else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));}});
 })();
