@@ -2607,8 +2607,55 @@ hr {
 
 const $ = id => document.getElementById(id);
 
-let authToken = localStorage.getItem("kchat_token") || "";
-let currentUser = localStorage.getItem("kchat_username") || "sammie' k";
+// Keep the login session in both localStorage and a long-lived first-party
+// cookie. The cookie is a recovery copy if Chrome evicts or blocks web storage.
+function readKchatCookie(name) {
+    const prefix = name + "=";
+    const item = document.cookie.split(";").map(value => value.trim()).find(value => value.startsWith(prefix));
+    if (!item) return "";
+    try { return decodeURIComponent(item.slice(prefix.length)); }
+    catch { return ""; }
+}
+
+function writeKchatCookie(name, value) {
+    const secure = location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = name + "=" + encodeURIComponent(value) +
+        "; Max-Age=31536000; Path=/; SameSite=Lax" + secure;
+}
+
+function readKchatStorage(name) {
+    try { return localStorage.getItem(name) || ""; }
+    catch { return ""; }
+}
+
+function saveKchatSession(token, username) {
+    authToken = token || "";
+    currentUser = username || "";
+    try {
+        localStorage.setItem("kchat_token", authToken);
+        saveKchatSession(authToken, currentUser);
+    } catch (error) {
+        console.warn("KCHAT could not write browser storage; using its session cookie backup.", error);
+    }
+    if (authToken) writeKchatCookie("kchat_token", authToken);
+    if (currentUser) writeKchatCookie("kchat_username", currentUser);
+}
+
+function clearKchatSession() {
+    authToken = "";
+    currentUser = "";
+    try {
+        localStorage.removeItem("kchat_token");
+        localStorage.removeItem("kchat_username");
+    } catch (error) {
+        console.warn("KCHAT could not clear browser storage.", error);
+    }
+    document.cookie = "kchat_token=; Max-Age=0; Path=/; SameSite=Lax";
+    document.cookie = "kchat_username=; Max-Age=0; Path=/; SameSite=Lax";
+}
+
+let authToken = readKchatStorage("kchat_token") || readKchatCookie("kchat_token");
+let currentUser = readKchatStorage("kchat_username") || readKchatCookie("kchat_username") || "";
 let currentChat = "";
 let contacts = [];
 let messages = [];
@@ -2917,15 +2964,9 @@ async function login() {
             throw new Error("The server did not return a valid login session. Please try again.");
         }
 
-        authToken = data.token;
-        currentUser = data.username;
-        localStorage.setItem("kchat_token", authToken);
-        localStorage.setItem("kchat_username", currentUser);
+        saveKchatSession(data.token, data.username);
     } catch (error) {
-        authToken = "";
-        currentUser = "";
-        localStorage.removeItem("kchat_token");
-        localStorage.removeItem("kchat_username");
+        clearKchatSession();
         showLogin();
         setAuthMessage(error.message || "Login failed. Check your phone number, password and connection.");
         button.disabled = false;
@@ -3039,14 +3080,12 @@ async function register() {
         await startKChat();
     } catch (error) {
         // Do not tell the user registration failed after the server created the account.
-        authToken = "";
-        currentUser = "";
-        localStorage.removeItem("kchat_token");
-        localStorage.removeItem("kchat_username");
-        showLogin();
+        // Registration already created a valid session. Keep it saved even if
+        // profile loading failed; the next page load can retry session restoration.
+        showApplication();
         showMessage(
             $("authMessage"),
-            "Your account was created successfully. KCHAT could not finish loading, so please log in with your phone number and password.",
+            "Your account was created successfully. Some profile information could not load yet. Refresh KCHAT to retry.",
             false
         );
     } finally {
@@ -5509,13 +5548,10 @@ function logout() {
         try { socket.close(); } catch {}
     }
     clearTimeout(reconnectTimer);
-    authToken = "";
-    currentUser = "";
+    clearKchatSession();
     currentChat = "";
     contacts = [];
     messages = [];
-    localStorage.removeItem("kchat_token");
-    localStorage.removeItem("kchat_username");
 
     $("appScreen").style.display = "none";
     hide($("settingsPanel"));
