@@ -1452,8 +1452,17 @@ hr {
 </style>
 
 <style>
-.kchat-ai-history-controls{display:flex;align-items:center;gap:8px;margin-left:auto;min-width:0}.kchat-ai-history-controls select,.kchat-ai-history-controls button{max-width:180px;min-width:0;border:1px solid rgba(130,150,175,.35);border-radius:18px;background:rgba(255,255,255,.07);color:inherit;padding:8px 11px;font:inherit;font-size:12px}.kchat-ai-history-controls button{cursor:pointer;white-space:nowrap}.kchat-ai-history-controls select option{color:#111}
-@media(max-width:600px){.kchat-ai-history-controls{gap:4px}.kchat-ai-history-controls select{max-width:112px;padding:7px 5px}.kchat-ai-history-controls button{max-width:88px;padding:7px 6px;font-size:11px}.kchat-ai-header{gap:7px}}
+.kchat-ai-menu-wrap{position:relative;margin-left:auto;flex:0 0 auto}
+.kchat-ai-more-button{width:42px;height:42px;border:0;border-radius:50%;background:transparent;color:#e9edef;font-size:28px;line-height:1;cursor:pointer}
+.kchat-ai-more-button:hover,.kchat-ai-more-button[aria-expanded="true"]{background:#ffffff14}
+.kchat-ai-more-menu{position:absolute;right:0;top:48px;z-index:10020;width:235px;padding:10px;display:flex;flex-direction:column;gap:8px;background:#202c33;border:1px solid #394950;border-radius:12px;box-shadow:0 10px 30px #0008}
+.kchat-ai-more-menu.hidden{display:none!important}
+.kchat-ai-more-menu label{font-size:12px;color:#aebac1;padding:2px 4px}
+.kchat-ai-more-menu select,.kchat-ai-more-menu button{width:100%;min-height:42px;padding:10px 12px;border:0;border-radius:8px;background:#2a3942;color:#e9edef;text-align:left;font:inherit;font-size:14px}
+.kchat-ai-more-menu select option{color:#111}
+.kchat-ai-more-menu button{cursor:pointer}
+.kchat-ai-more-menu button:hover{background:#35464f}
+@media(max-width:600px){.kchat-ai-header{gap:7px;padding:0 12px}.kchat-ai-more-menu{width:min(235px,calc(100vw - 28px))}}
 </style>
 </head>
 
@@ -1583,7 +1592,6 @@ hr {
                 <div class="search-box kchat-search-wrap">
                     <input id="chatSearch" type="search"
                         placeholder="Search conversations">
-                    <button type="button" id="kchatAiSearchShortcut" class="kchat-ai-ring kchat-ai-search-ring" aria-label="Ask KCHAT AI" title="Ask KCHAT AI"><span><img class="kchat-ai-logo-image" src="/kchat-ai-logo.svg" alt="KCHAT AI logo"></span></button>
                 </div>
             </div>
 
@@ -1750,10 +1758,14 @@ hr {
                     <button type="button" id="kchatAiBack" class="kchat-ai-back" aria-label="Back to chats">‹</button>
                     <div class="kchat-ai-brand-mark"><img class="kchat-ai-logo-image" src="/kchat-ai-logo.svg" alt="KCHAT AI logo"></div>
                     <div class="kchat-ai-heading"><strong>KCHAT AI</strong><small>KCHAT AI Assistant</small></div>
-                    <div class="kchat-ai-history-controls">
-                        <select id="kchatAiConversationSelect" aria-label="Previous KCHAT AI conversations"><option value="">Previous chats</option></select>
-                        <button type="button" id="kchatAiMemoryButton" title="View and manage approved AI memories">Memory</button>
-                        <button type="button" id="kchatAiNewChat">＋ New chat</button>
+                    <div class="kchat-ai-menu-wrap">
+                        <button type="button" id="kchatAiMoreButton" class="kchat-ai-more-button" aria-label="More options" aria-expanded="false" title="More options">⋮</button>
+                        <div id="kchatAiMoreMenu" class="kchat-ai-more-menu hidden">
+                            <label for="kchatAiConversationSelect">Previous conversations</label>
+                            <select id="kchatAiConversationSelect" aria-label="Previous KCHAT AI conversations"><option value="">Choose a conversation</option></select>
+                            <button type="button" id="kchatAiNewChat">＋ New chat</button>
+                            <button type="button" id="kchatAiMemoryButton">Memory</button>
+                        </div>
                     </div>
                 </header>
                 <div class="kchat-ai-content">
@@ -5209,6 +5221,12 @@ if (document.readyState === "loading") {
    input.dispatchEvent(new Event("input",{bubbles:true}));
   });
  });
+ const moreButton=document.getElementById("kchatAiMoreButton"),moreMenu=document.getElementById("kchatAiMoreMenu");
+ if(moreButton&&moreMenu){
+  moreButton.addEventListener("click",event=>{event.stopPropagation();const opening=moreMenu.classList.contains("hidden");moreMenu.classList.toggle("hidden",!opening);moreButton.setAttribute("aria-expanded",String(opening));});
+  document.addEventListener("click",event=>{if(!moreMenu.contains(event.target)&&event.target!==moreButton){moreMenu.classList.add("hidden");moreButton.setAttribute("aria-expanded","false");}});
+  moreMenu.querySelectorAll("button,select").forEach(control=>control.addEventListener("click",()=>{if(control.tagName!=="SELECT"){moreMenu.classList.add("hidden");moreButton.setAttribute("aria-expanded","false");}}));
+ }
  const aiScrollArea=screen.querySelector(".kchat-ai-content"),scrollLatestButton=document.getElementById("kchatAiScrollLatest");
  if(aiScrollArea&&scrollLatestButton){
   const updateLatestButton=()=>{const awayFromLatest=aiScrollArea.scrollHeight-aiScrollArea.clientHeight-aiScrollArea.scrollTop>90;scrollLatestButton.classList.toggle("hidden",!awayFromLatest);};
