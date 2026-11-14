@@ -3588,9 +3588,11 @@ async function renderCallHistory(){
 function renderContacts() {
     const list = $("chatList");
     if (activeTab === "call") {
+        document.querySelector(".filter-row")?.classList.add("hidden");
         renderCallHistory();
         return;
     }
+    document.querySelector(".filter-row")?.classList.remove("hidden");
     const search = $("chatSearch").value.toLowerCase();
 
     let filtered = contacts.filter(contact => {
@@ -4918,6 +4920,9 @@ async function openContactProfile(username) {
     $("contactProfilePhone").textContent = isGroup ? "KCHAT group" : (contact.phone_number || "Registered KCHAT contact");
     $("contactProfileAbout").textContent = contact.about || (isGroup ? "Group conversation and shared information." : "Available on KCHAT");
     $("contactProfileAvatar").textContent = username.charAt(0).toUpperCase();
+    $("contactProfileBlock").classList.toggle("hidden", isGroup);
+    $("contactProfileRemove").classList.toggle("hidden", isGroup);
+    $("conversationClearMedia").classList.toggle("hidden", isGroup);
     $("groupMembersProfile").innerHTML = "";
     $("groupManagementSettings").innerHTML = "";
     document.querySelectorAll("[data-conversation-tab]").forEach(button=>button.classList.toggle("active",button.dataset.conversationTab==="profile"));
@@ -4955,6 +4960,20 @@ async function openContactProfile(username) {
 $("closeContactProfile").addEventListener("click", () => {
     hide($("contactProfilePanel"));
 });
+
+$("contactProfileBlock").addEventListener("click",async()=>{
+    const peer=activeConversationInfoUser;if(!peer||activeConversationInfoGroup)return;
+    if(!confirm("Block "+peer+"? They will no longer be able to contact you."))return;
+    try{await apiRequest("/api/blocks",{method:"POST",body:JSON.stringify({username:peer})});hide($("contactProfilePanel"));await loadContacts();alert(peer+" has been blocked.");}
+    catch(error){alert(error.message||"Could not block this contact.");}
+});
+$("contactProfileRemove").addEventListener("click",async()=>{
+    const peer=activeConversationInfoUser;if(!peer||activeConversationInfoGroup)return;
+    if(!confirm("Remove "+peer+" from your KCHAT contacts?"))return;
+    try{await apiRequest("/api/contacts/"+encodeURIComponent(peer),{method:"DELETE"});hide($("contactProfilePanel"));await loadContacts();alert("Contact removed. Existing messages are not deleted.");}
+    catch(error){alert(error.message||"Could not remove this contact.");}
+});
+
 
 document.querySelectorAll("[data-conversation-tab]").forEach(button=>button.addEventListener("click",async()=>{
     const tab=button.dataset.conversationTab;
