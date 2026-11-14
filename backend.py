@@ -686,11 +686,11 @@ async def kchat_ai_chat(request: Request):
                     piece = chunk.choices[0].delta.content or ""
                     if piece:
                         answer_parts.append(piece)
-                        yield json.dumps({"type": "delta", "content": piece}, ensure_ascii=False) + "\\n"
+                        yield json.dumps({"type": "delta", "content": piece}, ensure_ascii=False) + "\n"
 
                 answer = "".join(answer_parts).strip()
                 if not answer:
-                    yield json.dumps({"type": "error", "error": "KCHAT AI could not produce a reply. Please try again."}) + "\\n"
+                    yield json.dumps({"type": "error", "error": "KCHAT AI could not produce a reply. Please try again."}) + "\n"
                     return
                 with get_db() as conn:
                     conn.execute("""
@@ -701,7 +701,7 @@ async def kchat_ai_chat(request: Request):
                         UPDATE ai_conversations SET updated_at = NOW()
                         WHERE id = %s AND owner_id = %s
                     """, (conversation_id, account["id"]))
-                yield json.dumps({"type": "done", "conversation_id": conversation_id}, ensure_ascii=False) + "\\n"
+                yield json.dumps({"type": "done", "conversation_id": conversation_id}, ensure_ascii=False) + "\n"
             except Exception as error:
                 print("KCHAT AI streaming request error:", repr(error))
                 detail = str(error).strip()
@@ -713,7 +713,7 @@ async def kchat_ai_chat(request: Request):
                     message = "Cloudflare could not access GLM-4.7-Flash. Check the Workers AI model availability for this account."
                 else:
                     message = "Cloudflare Workers AI connection error: " + (detail[:260] if detail else "Unknown error")
-                yield json.dumps({"type": "error", "error": message}, ensure_ascii=False) + "\\n"
+                yield json.dumps({"type": "error", "error": message}, ensure_ascii=False) + "\n"
 
         return StreamingResponse(
             stream_reply(),
