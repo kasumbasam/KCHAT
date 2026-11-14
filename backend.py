@@ -2887,6 +2887,11 @@ async def send_online_users(room):
 
 # ---------------- WEBSITE ----------------
 
+@app.get("/kchat-ai-logo.svg")
+async def kchat_ai_logo():
+    return FileResponse("kchat-ai-logo.svg", media_type="image/svg+xml")
+
+
 @app.get("/")
 async def home():
     return FileResponse("index.html")
