@@ -3,13 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script>
-try {
-    if (localStorage.getItem("kchat_token") && localStorage.getItem("kchat_username")) {
-        document.documentElement.classList.add("kchat-session-pending");
-    }
-} catch (error) {}
-</script>
 <title>KCHAT - WhatsApp Layout</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -58,10 +51,6 @@ button:disabled {
 .hidden {
     display:none !important;
 }
-html.kchat-session-pending #loginScreen {
-    display:none !important;
-}
-
 .muted {
     color:var(--muted);
 }
