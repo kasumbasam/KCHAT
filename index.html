@@ -1465,6 +1465,27 @@ hr {
 @media(max-width:600px){.kchat-ai-header{gap:7px;padding:0 12px}.kchat-ai-more-menu{width:min(235px,calc(100vw - 28px))}}
 
 
+
+/* Strong mobile-first WhatsApp-style Settings overrides */
+#settingsPanel .side-panel{width:min(430px,100%)!important;padding:0 18px 24px!important;background:var(--panel)!important;border:0!important}
+#settingsPanel .panel-heading{position:sticky;top:0;z-index:3;margin:0 -18px 0!important;padding:16px 18px!important;background:var(--panel)!important;border-bottom:1px solid var(--border)!important}
+#settingsPanel .panel-heading h2{font-size:20px!important;font-weight:600!important}
+#settingsPanel .settings-profile-header{display:flex!important;align-items:center!important;padding:18px 2px!important;margin:0!important;gap:15px!important;border-bottom:1px solid var(--border)!important}
+#settingsPanel .settings-profile-avatar{width:62px!important;height:62px!important;min-width:62px!important;border:0!important;box-shadow:none!important}
+#settingsPanel .settings-profile-avatar::after{display:none!important;content:none!important}
+#settingsPanel .settings-profile-name{font-size:18px!important;font-weight:600!important}
+#settingsPanel .settings-row.settings-option{display:flex!important;align-items:center!important;justify-content:flex-start!important;min-height:68px!important;padding:12px 2px!important;margin:0!important;gap:15px!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+#settingsPanel .settings-row.settings-option:hover{background:var(--panel2)!important}
+#settingsPanel .settings-option-icon{width:25px!important;min-width:25px!important;height:25px!important;display:flex!important;align-items:center!important;justify-content:center!important;color:var(--muted)!important;font-family:Arial,sans-serif!important;font-size:21px!important;font-weight:400!important}
+#settingsPanel .settings-option-copy{flex:1!important;display:flex!important;flex-direction:column!important;gap:3px!important}
+#settingsPanel .settings-option-title{font-size:15px!important;font-weight:500!important;color:var(--text)!important}
+#settingsPanel .settings-option small{font-size:12px!important;line-height:1.35!important;color:var(--muted)!important;margin:0!important}
+#settingsPanel .settings-option-arrow{margin-left:auto!important;font-size:21px!important;color:var(--muted)!important}
+#settingsPanel .settings-row.settings-option[style*="display:flex"]{min-height:82px!important}
+#settingsPanel .settings-row.settings-option button{font-size:13px!important}
+#settingsPanel .danger-btn{border-radius:8px!important}
+@media(max-width:600px){#settingsPanel .side-panel{width:100%!important;padding:0 16px 22px!important}#settingsPanel .panel-heading{margin:0 -16px!important;padding:15px 16px!important}#settingsPanel .settings-row.settings-option{min-height:64px!important;gap:13px!important}#settingsPanel .settings-option-title{font-size:14px!important}}
+
 /* WhatsApp-inspired clean settings list: compact outline-style icons, no decorative artwork */
 .panel-overlay .side-panel{background:var(--panel);padding:18px 20px}
 .panel-overlay .panel-heading{gap:14px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)}
