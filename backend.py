@@ -638,7 +638,7 @@ async def kchat_ai_chat(request: Request):
             if word not in stop_words
         }
         refers_to_personal_context = bool(re.search(
-            r"\\b(remember|earlier|previous|before|we discussed|we talked|"
+            r"\b(remember|earlier|previous|before|we discussed|we talked|"
             r"my preference|my project|my app|my account|continue|last time)\\b",
             latest_text.lower()
         ))
