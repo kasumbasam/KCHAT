@@ -2633,7 +2633,7 @@ function saveKchatSession(token, username) {
     currentUser = username || "";
     try {
         localStorage.setItem("kchat_token", authToken);
-        saveKchatSession(authToken, currentUser);
+        localStorage.setItem("kchat_username", currentUser);
     } catch (error) {
         console.warn("KCHAT could not write browser storage; using its session cookie backup.", error);
     }
