@@ -235,6 +235,23 @@ def init_db():
         """)
 
         conn.execute("""
+            CREATE TABLE IF NOT EXISTS call_history (
+                id BIGSERIAL PRIMARY KEY,
+                owner_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                peer_username TEXT NOT NULL,
+                call_type TEXT NOT NULL CHECK(call_type IN ('audio','video')),
+                direction TEXT NOT NULL CHECK(direction IN ('incoming','outgoing')),
+                status TEXT NOT NULL DEFAULT 'missed',
+                duration_seconds INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS call_history_owner_created_idx
+            ON call_history(owner_id, created_at DESC)
+        """)
+
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS ai_conversations (
                 id TEXT PRIMARY KEY,
                 owner_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
@@ -2885,6 +2902,68 @@ async def send_online_users(room):
     })
 
 
+# ---------------- CALL HISTORY ----------------
+
+@app.get("/api/calls")
+async def list_call_history(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT id, peer_username, call_type, direction, status,
+                   duration_seconds, created_at
+            FROM call_history
+            WHERE owner_id = %s
+            ORDER BY created_at DESC
+            LIMIT 300
+        """, (account["id"],)).fetchall()
+    return {"success": True, "calls": [
+        {**row, "created_at": row["created_at"].isoformat()}
+        for row in rows
+    ]}
+
+
+@app.post("/api/calls")
+async def create_call_history(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    try:
+        data = await request.json()
+        peer = str(data.get("peer_username", "")).strip()[:30]
+        call_type = str(data.get("call_type", "audio")).lower()
+        direction = str(data.get("direction", "outgoing")).lower()
+        status = str(data.get("status", "missed")).lower()
+        duration = max(0, min(int(data.get("duration_seconds", 0)), 86400))
+        if not peer or peer.lower() == account["username"].lower():
+            return JSONResponse({"error": "Choose a valid call contact."}, status_code=400)
+        if call_type not in ("audio", "video") or direction not in ("incoming", "outgoing"):
+            return JSONResponse({"error": "Invalid call details."}, status_code=400)
+        if status not in ("missed", "declined", "completed", "cancelled"):
+            return JSONResponse({"error": "Invalid call status."}, status_code=400)
+        with get_db() as conn:
+            target = conn.execute(
+                "SELECT username FROM accounts WHERE username_key = %s",
+                (peer.lower(),)
+            ).fetchone()
+            if not target:
+                return JSONResponse({"error": "That KCHAT user was not found."}, status_code=404)
+            row = conn.execute("""
+                INSERT INTO call_history
+                    (owner_id, peer_username, call_type, direction, status, duration_seconds)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id, peer_username, call_type, direction, status,
+                          duration_seconds, created_at
+            """, (account["id"], target["username"], call_type, direction, status, duration)).fetchone()
+        return {"success": True, "call": {**row, "created_at": row["created_at"].isoformat()}}
+    except (TypeError, ValueError):
+        return JSONResponse({"error": "Invalid call duration."}, status_code=400)
+    except Exception as error:
+        print("Call history save error:", repr(error))
+        return JSONResponse({"error": "Could not save call history."}, status_code=500)
+
+
 # ---------------- WEBSITE ----------------
 
 @app.get("/kchat-ai-logo.svg")
@@ -2974,7 +3053,36 @@ async def chat(websocket: WebSocket, room: str):
                 print(username, "logged out")
                 break
 
-            if message_type == "typing":
+            if message_type == "call_signal":
+                recipient = str(data.get("to", "")).strip()[:30]
+                signal = data.get("signal")
+                call_id = str(data.get("call_id", ""))[:80]
+                call_type = str(data.get("call_type", "audio")).lower()
+                if (not recipient or recipient.lower() == username.lower()
+                        or call_type not in ("audio", "video")
+                        or not isinstance(signal, dict) or len(json.dumps(signal)) > 200000):
+                    continue
+                with get_db() as conn:
+                    target = conn.execute("""
+                        SELECT id, username FROM accounts
+                        WHERE username_key = %s
+                    """, (recipient.lower(),)).fetchone()
+                if not target or users_blocked(account["id"], target["id"]):
+                    continue
+                event = {
+                    "type": "call_signal",
+                    "from": username,
+                    "call_id": call_id,
+                    "call_type": call_type,
+                    "signal": signal
+                }
+                for target_socket in connected_sockets_for(target["username"]):
+                    try:
+                        await target_socket.send_json(event)
+                    except Exception as error:
+                        print("Call signalling error:", error)
+
+            elif message_type == "typing":
                 recipient = str(data.get("to", "")).strip()[:30]
                 active = data.get("active") is True
                 if not recipient or recipient.lower() == username.lower():
