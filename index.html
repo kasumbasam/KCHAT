@@ -5201,19 +5201,40 @@ if (document.readyState === "loading") {
   history.push({role:"user",content:value});
   input.value="";
   lock(true);
-  setStatus("KCHAT AI is thinking…",false);
-  const thinking=addBubble("assistant","Thinking…");
+  setStatus("KCHAT AI is connecting…",false);
+  const thinking=addBubble("assistant","");
+  let received="";
   try{
-   const result=await apiRequest("/api/ai/chat",{method:"POST",body:JSON.stringify({messages:history,conversation_id:currentConversationId||null})});
-   if(!result||!result.success||!result.reply)throw new Error(result&&result.error?result.error:"KCHAT AI did not return a reply.");
-   if(result.conversation_id)currentConversationId=result.conversation_id;
-   thinking.textContent=result.reply;
-   history.push({role:"assistant",content:result.reply});
+   const response=await fetch("/api/ai/chat",{method:"POST",headers:{Authorization:"Bearer "+authToken,"Content-Type":"application/json"},body:JSON.stringify({messages:history,conversation_id:currentConversationId||null})});
+   if(!response.ok){let data={};try{data=await response.json();}catch{}throw new Error(data.error||data.detail||"KCHAT AI request failed ("+response.status+").");}
+   if(!response.body)throw new Error("Your browser does not support live AI responses. Please update your browser.");
+   const reader=response.body.getReader(),decoder=new TextDecoder();
+   let buffer="",finished=false;
+   while(!finished){
+    const part=await reader.read();
+    buffer+=decoder.decode(part.value||new Uint8Array(),{stream:!part.done});
+    const lines=buffer.split("\\n");buffer=lines.pop()||"";
+    for(const line of lines){
+     if(!line.trim())continue;
+     const item=JSON.parse(line);
+     if(item.type==="delta"){received+=item.content||"";thinking.textContent=received;messages.scrollTop=messages.scrollHeight;setStatus("KCHAT AI is replying…",false);}
+     else if(item.type==="error")throw new Error(item.error||"KCHAT AI could not complete the reply.");
+     else if(item.type==="done"&&item.conversation_id)currentConversationId=item.conversation_id;
+    }
+    finished=part.done;
+   }
+   if(buffer.trim()){const item=JSON.parse(buffer);if(item.type==="error")throw new Error(item.error||"KCHAT AI could not complete the reply.");if(item.type==="done"&&item.conversation_id)currentConversationId=item.conversation_id;}
+   if(!received.trim())throw new Error("KCHAT AI ended without returning an answer. Please try again.");
+   history.push({role:"assistant",content:received});
    await loadConversationList(false);
    setStatus("KCHAT AI is ready.",false);
-  }catch(error){thinking.textContent=error.message||"KCHAT AI could not respond.";setStatus("Message not completed. You can try again.",true);}
-  finally{lock(false);input.focus();}
+  }catch(error){
+   if(received){thinking.textContent=received+"\\n\\n[Connection interrupted. The answer may be incomplete.]";history.push({role:"assistant",content:received});}
+   else thinking.textContent=error.message||"KCHAT AI could not respond.";
+   setStatus("Message not completed. You can try again.",true);
+  }finally{lock(false);input.focus();}
  });
+;
  input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(typeof form.requestSubmit==="function")form.requestSubmit();else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));}});
 })();
 </script>
