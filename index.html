@@ -4910,7 +4910,15 @@ async function openContactProfile(username) {
                 const memberResult = await apiRequest("/api/groups/"+activeConversationInfoGroup.id+"/members");
                 $("groupMembersProfile").innerHTML = '<div class="settings-section"><h3>Members</h3>'+ (memberResult.members||[]).map(member=>'<div class="group-member-row"><span>'+escapeHTML(member.username)+'</span><small>'+escapeHTML(member.role)+'</small></div>').join("")+'</div>';
                 if (activeConversationInfoGroup.role==="admin") {
-                    $("groupManagementSettings").innerHTML = '<div class="settings-section"><h3>Group administration</h3><label>Add member by KCHAT username</label><input id="groupAddMemberName" placeholder="Username"><button class="primary-btn" id="groupAddMemberButton">Add member</button><p id="groupManagementMessage" class="small muted"></p></div>';
+                    $("groupManagementSettings").innerHTML = '<div class="settings-section"><h3>Group administration</h3><label>Add member by KCHAT username</label><input id="groupAddMemberName" placeholder="Username"><button class="primary-btn" id="groupAddMemberButton">Add member</button><p id="groupManagementMessage" class="small muted"></p><h3 style="margin-top:18px;">Manage members</h3><div id="groupAdminMemberList"></div></div>';
+                    $("groupAdminMemberList").innerHTML=(memberResult.members||[]).filter(member=>member.username!==currentUser).map(member=>'<div class="group-member-row"><span>'+escapeHTML(member.username)+' · '+escapeHTML(member.role)+'</span><button type="button" class="secondary-btn" data-remove-group-member="'+escapeHTML(member.username)+'">Remove</button></div>').join("");
+                    $("groupAdminMemberList").querySelectorAll("[data-remove-group-member]").forEach(button=>button.addEventListener("click",async()=>{
+                        const memberName=button.dataset.removeGroupMember;
+                        if(!confirm("Remove "+memberName+" from this group?"))return;
+                        button.disabled=true;
+                        try{await apiRequest("/api/groups/"+activeConversationInfoGroup.id+"/members/"+encodeURIComponent(memberName),{method:"DELETE"});await openContactProfile(username);}
+                        catch(error){button.disabled=false;$("groupManagementMessage").textContent=error.message||"Could not remove member.";}
+                    }));
                     $("groupAddMemberButton").addEventListener("click",async()=>{
                         const name=$("groupAddMemberName").value.trim();if(!name)return;
                         try{await apiRequest("/api/groups/"+activeConversationInfoGroup.id+"/members",{method:"POST",body:JSON.stringify({username:name})});$("groupManagementMessage").textContent="Member added.";await openContactProfile(username);}
@@ -4944,12 +4952,13 @@ async function loadConversationMedia(){
         }else{
             const result=await apiRequest("/api/messages/"+encodeURIComponent(activeConversationInfoUser));items=result.messages||[];
         }
-        items=items.filter(item=>String(item.text||"").startsWith("data:image/")||String(item.text||"").startsWith("data:video/")||String(item.text||"").startsWith("https://"));
+        items=items.filter(item=>String(item.text||"").startsWith("data:image/")||String(item.text||"").startsWith("data:video/")||String(item.text||"").startsWith("data:application/")||String(item.text||"").startsWith("https://"));
         grid.innerHTML=items.map(item=>{
             const url=String(item.text||"");
             if(url.startsWith("data:video/"))return '<video controls preload="metadata" src="'+escapeHTML(url)+'"></video>';
             if(url.startsWith("data:image/"))return '<img loading="lazy" src="'+escapeHTML(url)+'" alt="Shared media">';
-            return '<a href="'+escapeHTML(url)+'" target="_blank" rel="noopener">Open shared link</a>';
+            if(url.startsWith("data:application/"))return '<a href="'+escapeHTML(url)+'" download="kchat-shared-file" style="grid-column:span 3;padding:14px;border:1px solid var(--border);border-radius:9px;">📄 Open / save shared document</a>';
+            return '<a href="'+escapeHTML(url)+'" target="_blank" rel="noopener" style="grid-column:span 3;padding:14px;">🔗 Open shared link</a>';
         }).join("");
         empty.textContent=items.length?"":"No shared media or links found in this conversation.";
         if(items.length)hide(empty);
