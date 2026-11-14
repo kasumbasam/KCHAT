@@ -4926,7 +4926,9 @@ async function openContactProfile(username) {
     $("contactProfileName").textContent = username;
     $("contactProfilePhone").textContent = isGroup ? "KCHAT group" : (contact.phone_number || "Registered KCHAT contact");
     $("contactProfileAbout").textContent = contact.about || (isGroup ? "Group conversation and shared information." : "Available on KCHAT");
-    $("contactProfileAvatar").textContent = username.charAt(0).toUpperCase();
+    $("contactProfileAvatar").innerHTML = !isGroup && contact.profile_picture
+        ? '<img src="'+escapeHTML(contact.profile_picture)+'" alt="Profile photo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">'
+        : escapeHTML(username.charAt(0).toUpperCase());
     $("contactProfileBlock").classList.toggle("hidden", isGroup);
     $("contactProfileRemove").classList.toggle("hidden", isGroup);
     $("conversationClearMedia").classList.toggle("hidden", isGroup);
@@ -4943,6 +4945,9 @@ async function openContactProfile(username) {
                 $("contactProfilePhone").textContent = Number(activeConversationInfoGroup.member_count||0)+" members";
                 const memberResult = await apiRequest("/api/groups/"+activeConversationInfoGroup.id+"/members");
                 $("groupMembersProfile").innerHTML = '<div class="settings-section"><h3>Members</h3>'+ (memberResult.members||[]).map(member=>'<div class="group-member-row"><span>'+escapeHTML(member.username)+'</span><small>'+escapeHTML(member.role)+'</small></div>').join("")+'</div>';
+                if (activeConversationInfoGroup.role!=="admin") {
+                    $("groupManagementSettings").innerHTML = '<div class="settings-section"><h3>Group settings</h3><p class="muted">You are a group member. Only the group creator can add or remove members.</p></div>';
+                }
                 if (activeConversationInfoGroup.role==="admin") {
                     $("groupManagementSettings").innerHTML = '<div class="settings-section"><h3>Group administration</h3><label>Add member by KCHAT username</label><input id="groupAddMemberName" placeholder="Username"><button class="primary-btn" id="groupAddMemberButton">Add member</button><p id="groupManagementMessage" class="small muted"></p><h3 style="margin-top:18px;">Manage members</h3><div id="groupAdminMemberList"></div></div>';
                     $("groupAdminMemberList").innerHTML=(memberResult.members||[]).filter(member=>member.username!==currentUser).map(member=>'<div class="group-member-row"><span>'+escapeHTML(member.username)+' · '+escapeHTML(member.role)+'</span><button type="button" class="secondary-btn" data-remove-group-member="'+escapeHTML(member.username)+'">Remove</button></div>').join("");
