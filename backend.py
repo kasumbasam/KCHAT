@@ -1518,7 +1518,7 @@ async def get_group_media(group_id: int, request: Request):
             FROM messages
             WHERE room = %s AND type = 'chat'
               AND (expires_at IS NULL OR expires_at > NOW())
-              AND (text LIKE 'data:image/%' OR text LIKE 'data:video/%' OR text LIKE 'https://%')
+              AND (text LIKE 'data:image/%' OR text LIKE 'data:video/%' OR text LIKE 'data:application/%' OR text LIKE 'https://%')
             ORDER BY created_at DESC
             LIMIT 300
         """, (room,)).fetchall()
