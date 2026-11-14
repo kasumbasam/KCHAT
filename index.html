@@ -1436,6 +1436,12 @@ hr {
 .kchat-ai-welcome{margin:auto auto 24px;text-align:center;max-width:440px}
 .kchat-ai-large-mark{width:76px;height:76px;margin:0 auto 20px;color:#00a884;font-size:24px}
 .kchat-ai-welcome h1{font-size:25px;margin:0 0 10px}.kchat-ai-welcome p{font-size:19px;margin:0 0 10px;color:#d9fdd3}.kchat-ai-welcome span{font-size:13px;color:#aebac1}
+.kchat-ai-suggestions{width:min(100%,430px);display:flex;flex-direction:column;gap:10px;margin:28px auto 0;text-align:left}
+.kchat-ai-suggestions button{width:100%;min-height:52px;display:flex;align-items:center;gap:13px;padding:12px 16px;border:1px solid #ffffff08;border-radius:15px;background:#202c33;color:#e9edef;text-align:left;cursor:pointer;transition:background .15s,transform .15s}
+.kchat-ai-suggestions button>span{font-size:15px;color:#e9edef}
+.kchat-ai-suggestions button:hover{background:#293940}
+.kchat-ai-suggestions button:active{transform:scale(.985)}
+@media(max-width:600px){.kchat-ai-suggestions{gap:8px;margin-top:22px}.kchat-ai-suggestions button{min-height:48px;padding:10px 13px}.kchat-ai-suggestions button>span{font-size:14px}}
 .kchat-ai-messages{width:min(760px,100%);display:flex;flex-direction:column;gap:10px}
 .kchat-ai-user-message{align-self:flex-end;max-width:88%;padding:7px 0;margin:8px 0 8px auto;background:transparent;color:#d9fdd3;text-align:right;white-space:pre-wrap;overflow-wrap:anywhere;border:0;border-radius:0;box-shadow:none}
 .kchat-ai-connection-note{width:min(760px,100%);margin-top:20px;text-align:center;color:#8696a0;font-size:12px}
@@ -1756,6 +1762,13 @@ hr {
                         <h1>Welcome to KCHAT AI</h1>
                         <p>Let me solve the problem for u!</p>
                         <span>Ask a question or tell me what you need help with.</span>
+                        <div class="kchat-ai-suggestions" aria-label="Suggested prompts">
+                            <button type="button" data-ai-prompt="I need help with my school assignment">▤ <span>I need help with my school assignment</span></button>
+                            <button type="button" data-ai-prompt="I need to search for something">▤ <span>I need to search for something</span></button>
+                            <button type="button" data-ai-prompt="I want to write a message to a coworker">▤ <span>I want to write a message to a coworker</span></button>
+                            <button type="button" data-ai-prompt="I want to write an email">▤ <span>I want to write an email</span></button>
+                            <button type="button" data-ai-prompt="I want to understand a new word">▤ <span>I want to understand a new word</span></button>
+                        </div>
                     </div>
                     <div id="kchatAiMessages" class="kchat-ai-messages" aria-live="polite"></div>
                     <div class="kchat-ai-connection-note">Your KCHAT AI assistant is ready.</div>
@@ -5189,6 +5202,13 @@ if (document.readyState === "loading") {
 (function(){
  const fab=document.getElementById("kchatAiFab"),screen=document.getElementById("kchatAiScreen"),back=document.getElementById("kchatAiBack"),form=document.getElementById("kchatAiForm"),input=document.getElementById("kchatAiInput"),messages=document.getElementById("kchatAiMessages"),historySelect=document.getElementById("kchatAiConversationSelect"),newChatButton=document.getElementById("kchatAiNewChat"),memoryButton=document.getElementById("kchatAiMemoryButton"),note=screen&&screen.querySelector(".kchat-ai-connection-note"),welcome=screen&&screen.querySelector(".kchat-ai-welcome");
  if(!fab||!screen||!back||!form||!input||!messages)return;
+ screen.querySelectorAll("[data-ai-prompt]").forEach(button=>{
+  button.addEventListener("click",()=>{
+   input.value=button.getAttribute("data-ai-prompt")||"";
+   input.focus();
+   input.dispatchEvent(new Event("input",{bubbles:true}));
+  });
+ });
  const aiScrollArea=screen.querySelector(".kchat-ai-content"),scrollLatestButton=document.getElementById("kchatAiScrollLatest");
  if(aiScrollArea&&scrollLatestButton){
   const updateLatestButton=()=>{const awayFromLatest=aiScrollArea.scrollHeight-aiScrollArea.clientHeight-aiScrollArea.scrollTop>90;scrollLatestButton.classList.toggle("hidden",!awayFromLatest);};
