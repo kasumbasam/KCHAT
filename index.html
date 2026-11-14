@@ -3489,7 +3489,10 @@ function setCallUi(peer,type,status){
     $("callPeerAvatar").textContent=(peer||"K").charAt(0).toUpperCase();
     $("callStatusText").textContent=status;
     $("acceptCallButton").classList.toggle("hidden",!incomingCallPending);
-    $("cameraCallButton").classList.toggle("hidden",type!=="video");
+    $("cameraCallButton").classList.toggle("hidden",type!=="video"||Boolean(incomingCallPending));
+    $("remoteCallVideo").classList.toggle("hidden",type!=="video");
+    $("localCallVideo").classList.toggle("hidden",type!=="video");
+    $("remoteCallAudio").classList.toggle("hidden",type==="video");
     show($("callOverlay"));
 }
 async function startKchatCall(type,peer){
@@ -3504,7 +3507,7 @@ async function startKchatCall(type,peer){
         $("localCallVideo").srcObject=type==="video"?kchatCall.local:null;
         const pc=new RTCPeerConnection(KCHAT_RTC_CONFIG);kchatCall.pc=pc;
         kchatCall.local.getTracks().forEach(track=>pc.addTrack(track,kchatCall.local));
-        pc.ontrack=event=>{const stream=event.streams[0];$("remoteCallAudio").srcObject=stream;$("remoteCallVideo").srcObject=stream;};
+        pc.ontrack=event=>{const stream=event.streams[0];if(type==="video")$("remoteCallVideo").srcObject=stream;else $("remoteCallAudio").srcObject=stream;};
         pc.onicecandidate=event=>{if(event.candidate&&kchatCall)sendKchatCallSignal(peer,callId,type,{candidate:event.candidate});};
         const offer=await pc.createOffer();await pc.setLocalDescription(offer);
         sendKchatCallSignal(peer,callId,type,{offer:pc.localDescription});
@@ -3538,7 +3541,7 @@ async function acceptKchatCall(){
         $("localCallVideo").srcObject=pending.type==="video"?kchatCall.local:null;
         const pc=new RTCPeerConnection(KCHAT_RTC_CONFIG);kchatCall.pc=pc;
         kchatCall.local.getTracks().forEach(track=>pc.addTrack(track,kchatCall.local));
-        pc.ontrack=event=>{const stream=event.streams[0];$("remoteCallAudio").srcObject=stream;$("remoteCallVideo").srcObject=stream;};
+        pc.ontrack=event=>{const stream=event.streams[0];if(type==="video")$("remoteCallVideo").srcObject=stream;else $("remoteCallAudio").srcObject=stream;};
         pc.onicecandidate=event=>{if(event.candidate&&kchatCall)sendKchatCallSignal(pending.peer,pending.callId,pending.type,{candidate:event.candidate});};
         await pc.setRemoteDescription(new RTCSessionDescription(pending.offer));
         for(const candidate of (kchatCall.pendingIce||[])){try{await pc.addIceCandidate(new RTCIceCandidate(candidate));}catch{}}
