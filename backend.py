@@ -1500,6 +1500,34 @@ async def create_group(request: Request):
         return JSONResponse({"error": "Could not create the group."}, status_code=500)
 
 
+@app.get("/api/groups/{group_id}/media")
+async def get_group_media(group_id: int, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    room = "group_" + str(group_id)
+    with get_db() as conn:
+        membership = conn.execute("""
+            SELECT 1 FROM group_members
+            WHERE group_id = %s AND account_id = %s
+        """, (group_id, account["id"])).fetchone()
+        if not membership:
+            return JSONResponse({"error": "You are not a member of this group."}, status_code=403)
+        rows = conn.execute("""
+            SELECT id, username, text, created_at
+            FROM messages
+            WHERE room = %s AND type = 'chat'
+              AND (expires_at IS NULL OR expires_at > NOW())
+              AND (text LIKE 'data:image/%' OR text LIKE 'data:video/%' OR text LIKE 'https://%')
+            ORDER BY created_at DESC
+            LIMIT 300
+        """, (room,)).fetchall()
+    return {"success": True, "media": [
+        {**row, "created_at": row["created_at"].isoformat()}
+        for row in rows
+    ]}
+
+
 @app.get("/api/groups/{group_id}/members")
 async def get_group_members(group_id: int, request: Request):
     account = get_account_from_request(request)
