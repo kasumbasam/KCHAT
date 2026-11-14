@@ -12,7 +12,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from starlette.websockets import WebSocketState
 
 app = FastAPI()
@@ -670,25 +670,56 @@ async def kchat_ai_chat(request: Request):
                 "and ask them to provide links or source text."
             )
         }
-        response = await client.chat.completions.create(
-            model="@cf/zai-org/glm-4.7-flash",
-            messages=[system_message] + safe_messages,
-            max_completion_tokens=25000,
-            temperature=0.6
+        async def stream_reply():
+            answer_parts = []
+            try:
+                response_stream = await client.chat.completions.create(
+                    model="@cf/zai-org/glm-4.7-flash",
+                    messages=[system_message] + safe_messages,
+                    max_completion_tokens=25000,
+                    temperature=0.6,
+                    stream=True
+                )
+                async for chunk in response_stream:
+                    if not chunk.choices:
+                        continue
+                    piece = chunk.choices[0].delta.content or ""
+                    if piece:
+                        answer_parts.append(piece)
+                        yield json.dumps({"type": "delta", "content": piece}, ensure_ascii=False) + "\\n"
+
+                answer = "".join(answer_parts).strip()
+                if not answer:
+                    yield json.dumps({"type": "error", "error": "KCHAT AI could not produce a reply. Please try again."}) + "\\n"
+                    return
+                with get_db() as conn:
+                    conn.execute("""
+                        INSERT INTO ai_messages (conversation_id, owner_id, role, content)
+                        VALUES (%s, %s, 'assistant', %s)
+                    """, (conversation_id, account["id"], answer))
+                    conn.execute("""
+                        UPDATE ai_conversations SET updated_at = NOW()
+                        WHERE id = %s AND owner_id = %s
+                    """, (conversation_id, account["id"]))
+                yield json.dumps({"type": "done", "conversation_id": conversation_id}, ensure_ascii=False) + "\\n"
+            except Exception as error:
+                print("KCHAT AI streaming request error:", repr(error))
+                detail = str(error).strip()
+                if "401" in detail or "authentication" in detail.lower() or "unauthorized" in detail.lower():
+                    message = "Cloudflare rejected the API token. Check that CLOUDFLARE_API_TOKEN has Account > Workers AI > Read permission."
+                elif "429" in detail or "quota" in detail.lower() or "rate limit" in detail.lower() or "neurons" in detail.lower():
+                    message = "Cloudflare Workers AI is temporarily rate-limited or its free daily allowance may be used up. Please wait and try again."
+                elif "model" in detail.lower() and ("not found" in detail.lower() or "access" in detail.lower()):
+                    message = "Cloudflare could not access GLM-4.7-Flash. Check the Workers AI model availability for this account."
+                else:
+                    message = "Cloudflare Workers AI connection error: " + (detail[:260] if detail else "Unknown error")
+                yield json.dumps({"type": "error", "error": message}, ensure_ascii=False) + "\\n"
+
+        return StreamingResponse(
+            stream_reply(),
+            media_type="application/x-ndjson",
+            headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"}
         )
-        answer = (response.choices[0].message.content or "").strip()
-        if not answer:
-            return JSONResponse({"error": "KCHAT AI could not produce a reply. Please try again."}, status_code=502)
-        with get_db() as conn:
-            conn.execute("""
-                INSERT INTO ai_messages (conversation_id, owner_id, role, content)
-                VALUES (%s, %s, 'assistant', %s)
-            """, (conversation_id, account["id"], answer))
-            conn.execute("""
-                UPDATE ai_conversations SET updated_at = NOW()
-                WHERE id = %s AND owner_id = %s
-            """, (conversation_id, account["id"]))
-        return {"success": True, "conversation_id": conversation_id, "reply": answer}
 
     except Exception as error:
         print("KCHAT AI request error:", repr(error))
