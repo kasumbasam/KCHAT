@@ -5213,7 +5213,7 @@ if (document.readyState === "loading") {
    while(!finished){
     const part=await reader.read();
     buffer+=decoder.decode(part.value||new Uint8Array(),{stream:!part.done});
-    const lines=buffer.split("\\n");buffer=lines.pop()||"";
+    const lines=buffer.split("\n");buffer=lines.pop()||"";
     for(const line of lines){
      if(!line.trim())continue;
      const item=JSON.parse(line);
@@ -5229,7 +5229,7 @@ if (document.readyState === "loading") {
    await loadConversationList(false);
    setStatus("KCHAT AI is ready.",false);
   }catch(error){
-   if(received){thinking.textContent=received+"\\n\\n[Connection interrupted. The answer may be incomplete.]";history.push({role:"assistant",content:received});}
+   if(received){thinking.textContent=received+"\n\n[Connection interrupted. The answer may be incomplete.]";history.push({role:"assistant",content:received});}
    else thinking.textContent=error.message||"KCHAT AI could not respond.";
    setStatus("Message not completed. You can try again.",true);
   }finally{lock(false);input.focus();}
