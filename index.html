@@ -1426,6 +1426,12 @@ hr {
 .kchat-ai-brand-mark{width:39px;height:39px;color:#00a884;font-size:14px}
 .kchat-ai-heading{display:flex;flex-direction:column;gap:3px}.kchat-ai-heading strong{font-size:16px}.kchat-ai-heading small{font-size:12px;color:#8696a0}
 .kchat-ai-content{flex:1;overflow:auto;display:flex;flex-direction:column;align-items:center;padding:34px 20px 18px;background:radial-gradient(ellipse at center top,#142c30 0%,#0b141a 62%)}
+.kchat-ai-content{position:relative;scroll-behavior:smooth;scrollbar-width:thin}
+.kchat-ai-nav-controls{position:sticky;float:right;align-self:flex-end;bottom:16px;margin-top:auto;margin-right:2px;display:flex;flex-direction:column;gap:9px;z-index:8;pointer-events:none}
+.kchat-ai-nav-button{width:42px;height:42px;border:1px solid #ffffff35;border-radius:50%;background:#172b39eF;color:#eafaff;font-size:23px;line-height:1;display:grid;place-items:center;box-shadow:0 4px 16px #0008;cursor:pointer;pointer-events:auto;backdrop-filter:blur(8px);transition:transform .15s,background .15s}
+.kchat-ai-nav-button:active{transform:scale(.92);background:#176c91}
+.kchat-ai-nav-button:focus-visible{outline:2px solid #70d6ff;outline-offset:3px}
+@media(max-width:600px){.kchat-ai-nav-controls{margin-right:0;bottom:12px}.kchat-ai-nav-button{width:40px;height:40px}}
 .kchat-ai-welcome{margin:auto auto 24px;text-align:center;max-width:440px}
 .kchat-ai-large-mark{width:76px;height:76px;margin:0 auto 20px;color:#00a884;font-size:24px}
 .kchat-ai-welcome h1{font-size:25px;margin:0 0 10px}.kchat-ai-welcome p{font-size:19px;margin:0 0 10px;color:#d9fdd3}.kchat-ai-welcome span{font-size:13px;color:#aebac1}
@@ -1752,6 +1758,10 @@ hr {
                     </div>
                     <div id="kchatAiMessages" class="kchat-ai-messages" aria-live="polite"></div>
                     <div class="kchat-ai-connection-note">Your KCHAT AI assistant is ready.</div>
+                    <div class="kchat-ai-nav-controls" aria-label="Conversation navigation">
+                        <button type="button" class="kchat-ai-nav-button" id="kchatAiScrollTop" aria-label="Jump to top of conversation" title="Jump to top">⬆️</button>
+                        <button type="button" class="kchat-ai-nav-button" id="kchatAiScrollBottom" aria-label="Jump to latest message" title="Jump to latest message">⬇️</button>
+                    </div>
                 </div>
                 <form id="kchatAiForm" class="kchat-ai-composer">
                     <textarea id="kchatAiInput" rows="2" maxlength="100000" placeholder="Message KCHAT AI (text only)" aria-label="Message KCHAT AI"></textarea>
@@ -5177,6 +5187,8 @@ if (document.readyState === "loading") {
 (function(){
  const fab=document.getElementById("kchatAiFab"),screen=document.getElementById("kchatAiScreen"),back=document.getElementById("kchatAiBack"),form=document.getElementById("kchatAiForm"),input=document.getElementById("kchatAiInput"),messages=document.getElementById("kchatAiMessages"),historySelect=document.getElementById("kchatAiConversationSelect"),newChatButton=document.getElementById("kchatAiNewChat"),memoryButton=document.getElementById("kchatAiMemoryButton"),note=screen&&screen.querySelector(".kchat-ai-connection-note"),welcome=screen&&screen.querySelector(".kchat-ai-welcome");
  if(!fab||!screen||!back||!form||!input||!messages)return;
+ const aiScrollArea=screen.querySelector(".kchat-ai-content"),scrollTopButton=document.getElementById("kchatAiScrollTop"),scrollBottomButton=document.getElementById("kchatAiScrollBottom");
+ if(aiScrollArea&&scrollTopButton&&scrollBottomButton){scrollTopButton.addEventListener("click",()=>aiScrollArea.scrollTo({top:0,behavior:"smooth"}));scrollBottomButton.addEventListener("click",()=>aiScrollArea.scrollTo({top:aiScrollArea.scrollHeight,behavior:"smooth"}));}
  let history=[],currentConversationId="",sending=false,historyLoaded=false,historyOwner="";
  const searchFab=document.getElementById("kchatAiSearchShortcut"),chatFab=document.getElementById("kchatAiChatFab");
  function addBubble(role,text){const bubble=document.createElement("div");bubble.className=role==="user"?"kchat-ai-user-message":"kchat-ai-assistant-message";const content=document.createElement("div");content.textContent=text;content.style.whiteSpace="pre-wrap";content.style.overflowWrap="anywhere";bubble.appendChild(content);if(role==="user"&&text.trim()){const remember=document.createElement("button");remember.type="button";remember.textContent="Remember";remember.title="Save this detail to your private KCHAT AI memory";remember.style.cssText="display:block;margin-top:7px;padding:3px 8px;border:1px solid currentColor;border-radius:12px;background:transparent;color:inherit;font-size:11px;opacity:.8;cursor:pointer";remember.addEventListener("click",async()=>{remember.disabled=true;try{const saved=await apiRequest("/api/ai/memories",{method:"POST",body:JSON.stringify({memory:text.slice(0,500)})});if(!saved?.success)throw new Error(saved?.error||"Could not save memory.");remember.textContent="Saved to memory";setStatus("This detail is now saved to your private KCHAT AI memory.",false);}catch(error){remember.disabled=false;setStatus(error.message||"Could not save memory.",true);}});bubble.appendChild(remember);}messages.appendChild(bubble);messages.scrollTop=messages.scrollHeight;return bubble;}
