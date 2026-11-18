@@ -72,6 +72,12 @@
     }
   }
 
+  // Cancel native AI form navigation while allowing its app submit handler to run.
+  document.addEventListener("submit", function (event) {
+    const form = event.target;
+    if (form && form.id === "kchatAiForm") event.preventDefault();
+  }, true);
+
   document.addEventListener("pointerup", function (event) {
     const target = event.target instanceof Element ? event.target : null;
     if (!target || !target.closest("#kchatAiFab")) return;
