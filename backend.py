@@ -2645,6 +2645,20 @@ def private_pair(user1, user2):
     return sorted([user1.lower(), user2.lower()])
 
 
+def users_blocked(user1_id, user2_id):
+    """Return True when either participant has blocked the other."""
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM blocked_users
+                WHERE (owner_id = %s AND blocked_id = %s)
+                   OR (owner_id = %s AND blocked_id = %s)
+            ) AS blocked
+        """, (user1_id, user2_id, user2_id, user1_id)).fetchone()
+    return bool(row and row["blocked"])
+
+
 def save_message(item, room):
     expires_at = None
 
