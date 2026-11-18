@@ -2820,7 +2820,7 @@ async function apiRequest(path, options = {}) {
         headers["Content-Type"] = "application/json";
     }
 
-    const response = await fetch(path, { ...options, headers });
+    const response = await fetch(path, { ...options, headers, credentials: "same-origin" });
     let data = {};
     try {
         data = await response.json();
@@ -3104,7 +3104,7 @@ async function register() {
 }
 
 async function startKChat() {
-    if (!authToken || !currentUser) {
+    if (!currentUser) {
         throw new Error("Please log in again.");
     }
     await loadMyProfile();
@@ -5603,6 +5603,16 @@ $("chatAudioCallButton").addEventListener("click", () => startKchatCall("audio",
 $("chatVideoCallButton").addEventListener("click", () => startKchatCall("video", currentChat));
 
 function logout() {
+    // Revoke the server-side session and clear the HttpOnly cookie as well.
+    try {
+        fetch("/api/logout", {
+            method: "POST",
+            headers: authToken ? { Authorization: "Bearer " + authToken } : {},
+            credentials: "same-origin"
+        }).catch(error => console.warn("KCHAT logout cleanup failed:", error));
+    } catch (error) {
+        console.warn("KCHAT logout cleanup failed:", error);
+    }
     if (socket) {
         try { socket.close(); } catch {}
     }
@@ -5619,7 +5629,7 @@ function logout() {
 }
 
 function connectWebSocket() {
-    if (!authToken || !currentUser || dndMode) return;
+    if (!currentUser || dndMode) return;
     const protocol = location.protocol === "https:" ? "wss://" : "ws://";
     const url = protocol + location.host + "/ws/" + encodeURIComponent(currentUser) + "?token=" + encodeURIComponent(authToken);
     try {
@@ -5769,22 +5779,17 @@ async function restoreSession() {
     if (sessionRestoreStarted) return;
     sessionRestoreStarted = true;
 
-    // A valid saved token is the source of truth. The username is only a
-    // convenience cache and can be recovered from the server after a reload.
-    if (!authToken) {
-        showLogin();
-        return;
-    }
-
+    // Restore through the secure HttpOnly cookie even if browser storage was cleared.
     try {
-        if (!currentUser) {
+        if (!currentUser || !authToken) {
             const session = await apiRequest("/api/session");
             if (!session || !session.username) {
                 const error = new Error("Your saved session could not be verified.");
                 error.status = 401;
                 throw error;
             }
-            saveKchatSession(authToken, session.username);
+            currentUser = session.username;
+            if (authToken) saveKchatSession(authToken, currentUser);
         }
         await startKChat();
     } catch (error) {
