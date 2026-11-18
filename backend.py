@@ -733,27 +733,57 @@ async def kchat_ai_chat(request: Request):
             )
         }
         async def stream_reply():
-            answer_parts = []
             try:
-                response_stream = await client.chat.completions.create(
+                # Use a complete chat completion rather than depending on the
+                # provider's streaming delta format, which was returning no text.
+                completion = await client.chat.completions.create(
                     model="@cf/zai-org/glm-4.7-flash",
                     messages=[system_message] + safe_messages,
-                    max_completion_tokens=25000,
+                    max_completion_tokens=4096,
                     temperature=0.6,
-                    stream=True
+                    stream=False
                 )
-                async for chunk in response_stream:
-                    if not chunk.choices:
-                        continue
-                    piece = chunk.choices[0].delta.content or ""
-                    if piece:
-                        answer_parts.append(piece)
-                        yield json.dumps({"type": "delta", "content": piece}, ensure_ascii=False) + "\n"
+                answer = ""
+                if completion.choices:
+                    message = completion.choices[0].message
+                    content = message.content
+                    if isinstance(content, str):
+                        answer = content.strip()
+                    elif isinstance(content, list):
+                        answer = "".join(
+                            part.get("text", "") if isinstance(part, dict) else getattr(part, "text", "")
+                            for part in content
+                        ).strip()
 
-                answer = "".join(answer_parts).strip()
                 if not answer:
-                    yield json.dumps({"type": "error", "error": "KCHAT AI could not produce a reply. Please try again."}) + "\n"
+                    print("KCHAT AI returned empty GLM response:", repr(completion))
+                    # Try a second widely supported text model instead of
+                    # returning an empty assistant bubble.
+                    fallback = await client.chat.completions.create(
+                        model="@cf/meta/llama-3.1-8b-instruct",
+                        messages=[system_message] + safe_messages,
+                        max_completion_tokens=4096,
+                        temperature=0.6,
+                        stream=False
+                    )
+                    if fallback.choices:
+                        fallback_content = fallback.choices[0].message.content
+                        if isinstance(fallback_content, str):
+                            answer = fallback_content.strip()
+                        elif isinstance(fallback_content, list):
+                            answer = "".join(
+                                part.get("text", "") if isinstance(part, dict) else getattr(part, "text", "")
+                                for part in fallback_content
+                            ).strip()
+
+                if not answer:
+                    yield json.dumps({
+                        "type": "error",
+                        "error": "Cloudflare returned an empty answer from both available AI models. Check the Render logs for the KCHAT AI response details."
+                    }, ensure_ascii=False) + "\n"
                     return
+
+                yield json.dumps({"type": "delta", "content": answer}, ensure_ascii=False) + "\n"
                 with get_db() as conn:
                     conn.execute("""
                         INSERT INTO ai_messages (conversation_id, owner_id, role, content)
@@ -765,14 +795,14 @@ async def kchat_ai_chat(request: Request):
                     """, (conversation_id, account["id"]))
                 yield json.dumps({"type": "done", "conversation_id": conversation_id}, ensure_ascii=False) + "\n"
             except Exception as error:
-                print("KCHAT AI streaming request error:", repr(error))
+                print("KCHAT AI completion request error:", repr(error))
                 detail = str(error).strip()
                 if "401" in detail or "authentication" in detail.lower() or "unauthorized" in detail.lower():
                     message = "Cloudflare rejected the API token. Check that CLOUDFLARE_API_TOKEN has Account > Workers AI > Read permission."
                 elif "429" in detail or "quota" in detail.lower() or "rate limit" in detail.lower() or "neurons" in detail.lower():
                     message = "Cloudflare Workers AI is temporarily rate-limited or its free daily allowance may be used up. Please wait and try again."
                 elif "model" in detail.lower() and ("not found" in detail.lower() or "access" in detail.lower()):
-                    message = "Cloudflare could not access GLM-4.7-Flash. Check the Workers AI model availability for this account."
+                    message = "Cloudflare could not access the requested AI model. Check Workers AI model availability for this account."
                 else:
                     message = "Cloudflare Workers AI connection error: " + (detail[:260] if detail else "Unknown error")
                 yield json.dumps({"type": "error", "error": message}, ensure_ascii=False) + "\n"
