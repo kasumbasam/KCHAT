@@ -5769,25 +5769,38 @@ async function restoreSession() {
     if (sessionRestoreStarted) return;
     sessionRestoreStarted = true;
 
-    if (!authToken || !currentUser) {
+    // A valid saved token is the source of truth. The username is only a
+    // convenience cache and can be recovered from the server after a reload.
+    if (!authToken) {
         showLogin();
         return;
     }
 
     try {
+        if (!currentUser) {
+            const session = await apiRequest("/api/session");
+            if (!session || !session.username) {
+                const error = new Error("Your saved session could not be verified.");
+                error.status = 401;
+                throw error;
+            }
+            saveKchatSession(authToken, session.username);
+        }
         await startKChat();
     } catch (error) {
         console.error("KCHAT session restore error:", error);
 
-        // Only clear saved credentials when the server explicitly rejects the session.
-        // A temporary network/server problem must not sign the user out.
+        // Only clear credentials when the server explicitly rejects them.
+        // Network or temporary startup errors must never force a fresh login.
         if (error.status === 401) {
             logout();
             return;
         }
 
         showApplication();
-        await loadContacts();
+        try { await loadContacts(); } catch (loadError) {
+            console.warn("KCHAT could not refresh contacts during session recovery:", loadError);
+        }
         connectWebSocket();
     }
 }
