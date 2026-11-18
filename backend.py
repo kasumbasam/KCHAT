@@ -421,9 +421,35 @@ def get_account_from_token(token):
 
 def get_account_from_request(request):
     authorization = request.headers.get("Authorization", "")
-    token = authorization.replace("Bearer ", "", 1)
+    token = authorization.replace("Bearer ", "", 1) or request.cookies.get("kchat_session", "")
 
     return get_account_from_token(token)
+
+
+def auth_response(payload, token):
+    response = JSONResponse(payload)
+    response.set_cookie(
+        key="kchat_session",
+        value=token,
+        max_age=60 * 60 * 24 * 365,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        path="/"
+    )
+    return response
+
+
+@app.post("/api/logout")
+async def logout_session(request: Request):
+    authorization = request.headers.get("Authorization", "")
+    token = authorization.replace("Bearer ", "", 1) or request.cookies.get("kchat_session", "")
+    if token:
+        with get_db() as conn:
+            conn.execute("DELETE FROM sessions WHERE token_hash = %s", (token_hash(token),))
+    response = JSONResponse({"success": True})
+    response.delete_cookie("kchat_session", path="/", secure=True, httponly=True, samesite="lax")
+    return response
 
 
 @app.get("/api/session")
@@ -911,12 +937,12 @@ async def register(request: Request):
 
         token = create_session(account["id"])
 
-        return {
+        return auth_response({
             "success": True,
             "token": token,
             "username": account["username"],
             "phone_number": account["phone_number"]
-        }
+        }, token)
 
     except psycopg.errors.UniqueViolation:
         return JSONResponse({
@@ -975,12 +1001,12 @@ async def login(request: Request):
 
         token = create_session(account["id"])
 
-        return {
+        return auth_response({
             "success": True,
             "token": token,
             "username": account["username"],
             "phone_number": account["phone_number"]
-        }
+        }, token)
 
     except Exception as error:
         print("Login error:", error)
@@ -3072,7 +3098,7 @@ async def home():
 async def chat(websocket: WebSocket, room: str):
     await websocket.accept()
 
-    token = websocket.query_params.get("token", "")
+    token = websocket.query_params.get("token", "") or websocket.cookies.get("kchat_session", "")
     account = get_account_from_token(token)
 
     if not account:
