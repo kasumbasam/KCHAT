@@ -5898,7 +5898,7 @@ if (document.readyState === "loading") {
  if(historySelect)historySelect.addEventListener("change",()=>{if(historySelect.value)loadConversation(historySelect.value);});
  if(memoryButton)memoryButton.addEventListener("click",async()=>{try{const result=await apiRequest("/api/ai/memories");if(!result?.success)throw new Error(result?.error||"Could not load memories.");const rows=result.memories||[];const summary=rows.length?rows.map(row=>row.id+". "+row.memory).join("\n"):"No saved memories yet.";const choice=window.prompt("Your private KCHAT AI memories:\n"+summary+"\n\nEnter a memory ID to delete it, or leave blank to add a new memory:");if(choice===null)return;if(choice.trim()&&/^\d+$/.test(choice.trim())){const id=Number(choice.trim());const target=rows.find(row=>row.id===id);if(!target){setStatus("That memory ID was not found.",true);return;}if(window.confirm("Delete this saved memory?\n"+target.memory)){const removed=await apiRequest("/api/ai/memories/"+id,{method:"DELETE"});if(!removed?.success)throw new Error(removed?.error||"Could not delete memory.");setStatus("Saved memory deleted.",false);}return;}if(choice.trim()){const added=await apiRequest("/api/ai/memories",{method:"POST",body:JSON.stringify({memory:choice.trim()})});if(!added?.success)throw new Error(added?.error||"Could not save memory.");setStatus("Memory saved privately to your KCHAT account.",false);}}catch(error){setStatus(error.message||"Memory manager failed.",true);}});
  if(newChatButton)newChatButton.addEventListener("click",async()=>{try{const result=await apiRequest("/api/ai/conversations",{method:"POST",body:JSON.stringify({})});if(!result?.success||!result.conversation?.id)throw new Error(result?.error||"Could not start a new chat.");currentConversationId=result.conversation.id;clearConversation();await loadConversationList(false);if(historySelect)historySelect.value=currentConversationId;setStatus("New conversation started.",false);input.focus();}catch(error){setStatus(error.message||"Could not start a new chat.",true);}});
- form.addEventListener("submit",async function(event){
+ async function sendKchatAIMessage(event){
   event.preventDefault();
   const value=input.value.trim();
   if(!value||sending)return;
@@ -5950,8 +5950,11 @@ if (document.readyState === "loading") {
    else thinking.textContent=error.message||"KCHAT AI could not respond.";
    setStatus("Message not completed. You can try again.",true);
   }finally{clearInterval(workTimer);lock(false);input.focus();}
- });
+ }
  const sendButton=document.getElementById("kchatAiSendButton");
+ // Handle the Send tap directly instead of relying on mobile form-submit synthesis.
+ if(sendButton)sendButton.addEventListener("click",function(event){event.preventDefault();sendKchatAIMessage();});
+ form.addEventListener("submit",sendKchatAIMessage);
  if(sendButton)sendButton.disabled=false;
  input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(typeof form.requestSubmit==="function")form.requestSubmit(sendButton||undefined);else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));}});
 })();
