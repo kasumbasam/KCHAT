@@ -3013,6 +3013,11 @@ async def kchat_ai_logo():
     return FileResponse("kchat-ai-logo.svg", media_type="image/svg+xml")
 
 
+@app.get("/kchat-ai-launcher.js")
+async def kchat_ai_launcher():
+    return FileResponse("kchat-ai-launcher.js", media_type="application/javascript")
+
+
 @app.get("/")
 async def home():
     return FileResponse("index.html")
