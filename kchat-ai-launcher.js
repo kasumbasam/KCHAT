@@ -44,7 +44,14 @@
     const app = document.getElementById("appScreen");
     const menu = document.getElementById("kchatAiMoreMenu");
     const more = document.getElementById("kchatAiMoreButton");
-    if (screen) screen.classList.add("hidden");
+    if (screen) {
+      screen.classList.add("hidden");
+      // Opening applies important inline styles for mobile visibility.
+      // Remove them on close so the hidden class can actually hide the screen.
+      ["display", "visibility", "pointer-events", "position", "inset", "z-index"].forEach(property => {
+        screen.style.removeProperty(property);
+      });
+    }
     if (menu) menu.classList.add("hidden");
     if (more) more.setAttribute("aria-expanded", "false");
     if (app) app.classList.remove("mobile-ai-open");
