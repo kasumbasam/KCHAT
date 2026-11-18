@@ -5869,11 +5869,30 @@ if (document.readyState === "loading") {
   if(!historyLoaded&&authToken){historyLoaded=true;await loadConversationList(false);}
 }
  window.openKchatAI=openScreen;
- // Delegate launcher taps so clicks still work if mobile layout layers are rebuilt.
+ // Capture the launcher tap before any app-level handler can cancel or swallow it.
+ function launchKchatAI(event){
+  if(event){event.preventDefault();event.stopPropagation();}
+  try{
+   if(screen.parentElement!==document.body)document.body.appendChild(screen);
+   screen.classList.remove("hidden");
+   screen.style.setProperty("position","fixed","important");
+   screen.style.setProperty("inset","0","important");
+   screen.style.setProperty("z-index","2147483000","important");
+   openScreen();
+  }catch(error){
+   console.error("KCHAT AI could not open:",error);
+   screen.classList.remove("hidden");
+   screen.style.setProperty("display","flex","important");
+   screen.style.setProperty("visibility","visible","important");
+   screen.style.setProperty("pointer-events","auto","important");
+   setStatus("KCHAT AI opened with a loading problem. Please reload and try again.",true);
+  }
+ }
+ fab.addEventListener("click",launchKchatAI,true);
  document.addEventListener("click",event=>{
   const launcher=event.target instanceof Element?event.target.closest("#kchatAiFab"):null;
-  if(launcher){event.preventDefault();openScreen();}
- });
+  if(launcher)launchKchatAI(event);
+ },true);
  if(searchFab)searchFab.addEventListener("click",()=>openScreen());if(chatFab)chatFab.addEventListener("click",()=>openScreen());
  back.addEventListener("click",()=>{document.getElementById("appScreen")?.classList.remove("mobile-ai-open");screen.classList.add("hidden");fab.classList.remove("hidden");if(searchFab)searchFab.classList.remove("hidden");if(chatFab&&currentChat)chatFab.classList.remove("hidden");});
  if(historySelect)historySelect.addEventListener("change",()=>{if(historySelect.value)loadConversation(historySelect.value);});
