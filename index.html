@@ -3795,6 +3795,26 @@ function renderContacts() {
     });
 }
 
+// Reliable delegated chat-row tap handling (works after every list refresh).
+// Use capture phase so recreated rows cannot lose their conversation action.
+document.addEventListener("click", event => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const row = target?.closest("#chatList .chat-item[data-username]");
+    if (!row) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const username = row.dataset.username;
+    if (!username) return;
+    const selected = contacts.find(contact =>
+        contactName(contact).toLowerCase() === username.toLowerCase()
+    );
+    if (selected && (selected.type === "group" || selected.is_group === true)) {
+        openContactProfile(username);
+    } else {
+        openChat(username);
+    }
+}, true);
+
 $("chatSearch").addEventListener("input", renderContacts);
 
 function showUpdatesMenu() {
@@ -4461,6 +4481,30 @@ document.querySelectorAll(".filter-btn").forEach(button => {
 
 async function openChat(username) {
     if (!username) return;
+
+    // Always clear any full-screen layer before showing a conversation.
+    const appScreen = $("appScreen");
+    const aiScreen = $("kchatAiScreen");
+    const statusScreen = $("statusScreen");
+    if (appScreen) appScreen.classList.remove("mobile-ai-open", "status-open");
+    if (aiScreen) {
+        aiScreen.classList.add("hidden");
+        aiScreen.style.removeProperty("z-index");
+        aiScreen.style.removeProperty("position");
+        aiScreen.style.removeProperty("inset");
+    }
+    if (statusScreen) {
+        statusScreen.classList.add("hidden");
+        statusScreen.style.removeProperty("display");
+        statusScreen.style.removeProperty("visibility");
+        statusScreen.style.removeProperty("z-index");
+    }
+    const mainArea = $("mainChatArea");
+    if (mainArea) {
+        mainArea.style.removeProperty("position");
+        mainArea.style.removeProperty("display");
+    }
+
     stopLocalTyping();
     currentChat = username;
     updateChatMenuPinLabel();
@@ -4471,6 +4515,10 @@ async function openChat(username) {
     hide($("welcomeScreen"));
     show($("chatScreen"));
     $("appScreen").classList.add("mobile-chat-open");
+
+    // Keep the selected conversation in front on small screens.
+    hide($("welcomeScreen"));
+    show($("chatScreen"));
 
     await loadMessages(username);
     try {
