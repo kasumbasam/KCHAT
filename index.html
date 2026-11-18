@@ -4501,8 +4501,7 @@ async function openChat(username) {
     // Show the conversation immediately; network and menu updates must not
     // prevent navigation if a secondary operation fails.
     currentChat = username;
-    const appScreen = $("appScreen");
-    if (appScreen) appScreen.classList.add("mobile-chat-open");
+    if ($("appScreen")) $("appScreen").classList.add("mobile-chat-open");
     hide($("welcomeScreen"));
     show($("chatScreen"));
     $("activeChatName").textContent = username;
