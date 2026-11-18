@@ -1757,7 +1757,7 @@ hr {
             </div>
 
             <!-- KCHAT AI launcher sits directly above the new-conversation button -->
-            <button type="button" id="kchatAiFab" class="kchat-ai-fab" aria-label="Open KCHAT AI" title="KCHAT AI">
+            <button type="button" id="kchatAiFab" class="kchat-ai-fab" aria-label="Open KCHAT AI" title="KCHAT AI" onclick="(function(){var screen=document.getElementById('kchatAiScreen');if(!screen)return;if(screen.parentElement!==document.body)document.body.appendChild(screen);screen.classList.remove('hidden');screen.style.setProperty('display','flex','important');screen.style.setProperty('visibility','visible','important');screen.style.setProperty('pointer-events','auto','important');screen.style.setProperty('position','fixed','important');screen.style.setProperty('inset','0','important');screen.style.setProperty('z-index','2147483000','important');var app=document.getElementById('appScreen');if(app)app.classList.add('mobile-ai-open');if(typeof window.openKchatAI==='function')window.openKchatAI();this.classList.add('hidden');}).call(this)">
                 <span class="kchat-ai-fab-mark"><img class="kchat-ai-logo-image" src="/kchat-ai-logo.svg" alt="KCHAT AI logo"></span>
             </button>
 
