@@ -83,7 +83,7 @@
       const stored = localStorage.getItem("kchat_token");
       if (stored) return stored;
     } catch (_) {}
-    const match = document.cookie.match(/(?:^|;\\s*)kchat_token=([^;]*)/);
+    const match = document.cookie.match(/(?:^|;\s*)kchat_token=([^;]*)/);
     if (!match) return "";
     try { return decodeURIComponent(match[1]); } catch (_) { return match[1]; }
   }
@@ -154,7 +154,7 @@
       while (true) {
         const part = await reader.read();
         buffer += decoder.decode(part.value || new Uint8Array(), { stream: !part.done });
-        const rows = buffer.split("\\n");
+        const rows = buffer.split("\n");
         buffer = rows.pop() || "";
         for (const row of rows) {
           if (!row.trim()) continue;
