@@ -1932,7 +1932,7 @@ hr {
                 </div>
                 <form id="kchatAiForm" class="kchat-ai-composer">
                     <textarea id="kchatAiInput" rows="2" maxlength="100000" placeholder="Message KCHAT AI (text only)" aria-label="Message KCHAT AI"></textarea>
-                    <button type="submit" aria-label="Send message" title="Send">➤</button>
+                    <button type="button" id="kchatAiSendButton" aria-label="Send message" title="Send">➤</button>
                 </form>
             </section>
 </main>
@@ -5951,7 +5951,10 @@ if (document.readyState === "loading") {
    setStatus("Message not completed. You can try again.",true);
   }finally{clearInterval(workTimer);lock(false);input.focus();}
  });
- input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(typeof form.requestSubmit==="function")form.requestSubmit();else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));}});
+ const sendButton=document.getElementById("kchatAiSendButton");
+ function submitKchatAIMessage(){form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));}
+ if(sendButton)sendButton.addEventListener("click",submitKchatAIMessage);
+ input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();submitKchatAIMessage();}});
 })();
 </script>
 
