@@ -426,6 +426,19 @@ def get_account_from_request(request):
     return get_account_from_token(token)
 
 
+@app.get("/api/session")
+async def get_current_session(request: Request):
+    """Return the signed-in account for restoring a saved browser session."""
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Your saved session has expired. Please log in again."}, status_code=401)
+    return {
+        "success": True,
+        "username": account["username"],
+        "phone_number": account["phone_number"]
+    }
+
+
 
 # ---------------- KCHAT AI (OPENAI) ----------------
 
