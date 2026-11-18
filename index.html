@@ -293,12 +293,24 @@ hr {
 }
 
 .chat-item {
+    appearance:none;
+    -webkit-appearance:none;
+    width:100%;
+    margin:0;
     padding:13px 15px;
     display:flex;
     align-items:center;
     gap:12px;
+    border:0;
     border-bottom:1px solid #ffffff08;
+    border-radius:0;
+    background:transparent;
+    color:inherit;
+    font:inherit;
+    text-align:left;
     cursor:pointer;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
 }
 
 .chat-item:hover {
@@ -3769,17 +3781,17 @@ function renderContacts() {
             : "";
 
         return `
-            <div class="chat-item${contact.pinned ? " is-pinned" : ""}" data-username="${escapeHTML(name)}">
-                <div class="avatar">${avatarContent}</div>
-                <div class="chat-item-info">
-                    <div class="chat-item-name"><span>${escapeHTML(name)}</span>${contact.pinned ? '<span class="chat-pin-indicator" title="Pinned chat" aria-label="Pinned chat">📌</span>' : ""}</div>
-                    <div class="chat-item-preview${isTyping ? " typing-preview" : ""}"><span>${isTyping ? "" : report}</span><span>${escapeHTML(preview)}</span></div>
-                </div>
-                <div class="chat-item-time">
-                    <div>${escapeHTML(time)}</div>
-                    ${unread ? '<div class="inbox-unread-count">' + unread + '</div>' : ""}
-                </div>
-            </div>
+            <button type="button" class="chat-item${contact.pinned ? " is-pinned" : ""}" data-username="${escapeHTML(name)}" aria-label="Open conversation with ${escapeHTML(name)}">
+                <span class="avatar">${avatarContent}</span>
+                <span class="chat-item-info">
+                    <span class="chat-item-name"><span>${escapeHTML(name)}</span>${contact.pinned ? '<span class="chat-pin-indicator" title="Pinned chat" aria-label="Pinned chat">📌</span>' : ""}</span>
+                    <span class="chat-item-preview${isTyping ? " typing-preview" : ""}"><span>${isTyping ? "" : report}</span><span>${escapeHTML(preview)}</span></span>
+                </span>
+                <span class="chat-item-time">
+                    <span>${escapeHTML(time)}</span>
+                    ${unread ? '<span class="inbox-unread-count">' + unread + '</span>' : ""}
+                </span>
+            </button>
         `;
     }).join("");
 
@@ -3797,13 +3809,8 @@ function renderContacts() {
 
 // Reliable delegated chat-row tap handling (works after every list refresh).
 // Use capture phase so recreated rows cannot lose their conversation action.
-document.addEventListener("click", event => {
-    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
-    const row = target?.closest("#chatList .chat-item[data-username]");
-    if (!row) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    const username = row.dataset.username;
+function openSelectedChatRow(row) {
+    const username = row?.dataset?.username;
     if (!username) return;
     const selected = contacts.find(contact =>
         contactName(contact).toLowerCase() === username.toLowerCase()
@@ -3813,6 +3820,15 @@ document.addEventListener("click", event => {
     } else {
         openChat(username);
     }
+}
+
+document.addEventListener("click", event => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const row = target?.closest("#chatList .chat-item[data-username]");
+    if (!row) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    openSelectedChatRow(row);
 }, true);
 
 $("chatSearch").addEventListener("input", renderContacts);
@@ -4482,6 +4498,17 @@ document.querySelectorAll(".filter-btn").forEach(button => {
 async function openChat(username) {
     if (!username) return;
 
+    // Show the conversation immediately; network and menu updates must not
+    // prevent navigation if a secondary operation fails.
+    currentChat = username;
+    const appScreen = $("appScreen");
+    if (appScreen) appScreen.classList.add("mobile-chat-open");
+    hide($("welcomeScreen"));
+    show($("chatScreen"));
+    $("activeChatName").textContent = username;
+    $("activeChatAvatar").textContent = username.charAt(0).toUpperCase();
+    $("activeChatStatus").textContent = onlineUsers.has(username.toLowerCase()) ? "Online" : "Offline";
+
     // Always clear any full-screen layer before showing a conversation.
     const appScreen = $("appScreen");
     const aiScreen = $("kchatAiScreen");
@@ -4505,20 +4532,8 @@ async function openChat(username) {
         mainArea.style.removeProperty("display");
     }
 
-    stopLocalTyping();
-    currentChat = username;
-    updateChatMenuPinLabel();
-    $("activeChatName").textContent = username;
-    $("activeChatAvatar").textContent = username.charAt(0).toUpperCase();
-    $("activeChatStatus").textContent = onlineUsers.has(username.toLowerCase()) ? "Online" : "Offline";
-
-    hide($("welcomeScreen"));
-    show($("chatScreen"));
-    $("appScreen").classList.add("mobile-chat-open");
-
-    // Keep the selected conversation in front on small screens.
-    hide($("welcomeScreen"));
-    show($("chatScreen"));
+    try { stopLocalTyping(); } catch (error) { console.warn("Could not stop typing indicator:", error); }
+    try { updateChatMenuPinLabel(); } catch (error) { console.warn("Could not update chat menu:", error); }
 
     await loadMessages(username);
     try {
