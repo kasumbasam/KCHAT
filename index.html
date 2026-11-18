@@ -5781,7 +5781,7 @@ async function restoreSession() {
 
         // Only clear saved credentials when the server explicitly rejects the session.
         // A temporary network/server problem must not sign the user out.
-        if (error.status === 401 || error.status === 403) {
+        if (error.status === 401) {
             logout();
             return;
         }
