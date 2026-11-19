@@ -5998,15 +5998,19 @@ if (document.readyState === "loading") {
    setStatus("Message not completed. You can try again.",true);
   }finally{clearInterval(workTimer);lock(false);input.focus();}
  }
+ // Use the form's native submit event for the AI composer. This makes the
+ // visible Send button, keyboard submission, and requestSubmit() all use the
+ // same AI-only handler while leaving normal Chats sending untouched.
  const sendButton=document.getElementById("kchatAiSendButton");
- // Match the working normal Chats send button: one direct click listener.
- // Keep AI sending separate from the normal Chats API and preserve its own
- // conversation/history handling.
- if(sendButton){
-  sendButton.type="button";
-  sendButton.addEventListener("click",sendKchatAIMessage);
- }
- input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();sendKchatAIMessage(event);}});
+ if(sendButton)sendButton.type="submit";
+ form.addEventListener("submit",sendKchatAIMessage);
+ input.addEventListener("keydown",event=>{
+  if(event.key==="Enter"&&!event.shiftKey){
+   event.preventDefault();
+   if(typeof form.requestSubmit==="function")form.requestSubmit();
+   else sendKchatAIMessage(event);
+  }
+ });
 })();
 </script>
 
