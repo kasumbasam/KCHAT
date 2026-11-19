@@ -6362,7 +6362,55 @@ if (document.readyState === "loading") {
 })();
 </script>
 
-<script src="/kchat-ai-launcher.js" defer></script>
+<script src="/kchat-ai-launcher.js" defer>
+/* KCHAT BACK ARROW RELIABILITY FIX */
+(function(){
+  function closeKchatNavigation(event){
+    const button=event.target instanceof Element ? event.target.closest("#backToChats, #kchatAiBack, #closeContactProfile") : null;
+    if(!button) return;
+
+    // Run in the capture phase so parent handlers or mobile touch wrappers
+    // cannot swallow the navigation tap.
+    event.preventDefault();
+    event.stopPropagation();
+    if(typeof event.stopImmediatePropagation==="function") event.stopImmediatePropagation();
+
+    if(button.id==="backToChats"){
+      const app=document.getElementById("appScreen");
+      const status=document.getElementById("statusScreen");
+      if(app) app.classList.remove("mobile-chat-open","status-open");
+      if(status){
+        status.classList.add("hidden");
+        status.style.removeProperty("display");
+        status.style.removeProperty("visibility");
+        status.style.removeProperty("z-index");
+      }
+      return;
+    }
+
+    if(button.id==="kchatAiBack"){
+      const app=document.getElementById("appScreen");
+      const screen=document.getElementById("kchatAiScreen");
+      const fab=document.getElementById("kchatAiFab");
+      const searchFab=document.getElementById("kchatAiSearchShortcut");
+      const chatFab=document.getElementById("kchatAiChatFab");
+      if(app) app.classList.remove("mobile-ai-open");
+      if(screen) screen.classList.add("hidden");
+      if(fab) fab.classList.remove("hidden");
+      if(searchFab) searchFab.classList.remove("hidden");
+      if(chatFab && window.currentChat) chatFab.classList.remove("hidden");
+      return;
+    }
+
+    if(button.id==="closeContactProfile"){
+      const panel=document.getElementById("contactProfilePanel");
+      if(panel) panel.classList.add("hidden");
+    }
+  }
+
+  document.addEventListener("click",closeKchatNavigation,true);
+})();
+</script>
 
 </body>
 </html>
