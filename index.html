@@ -1672,6 +1672,43 @@ hr {
 .call-history-loading{padding:20px 4px}
 @media(max-width:600px){.call-history-screen{padding:15px 12px 90px}.call-history-heading{margin-bottom:20px}.call-history-row{min-height:72px}.call-history-time{font-size:10px}}
 
+
+/* WhatsApp-inspired Stories list: familiar contact-row layout with KCHAT accents. */
+.my-status-card{
+ min-height:82px;padding:11px 18px;gap:14px;background:transparent;
+ border-bottom:1px solid rgba(255,255,255,.055);cursor:pointer;
+}
+.my-status-photo{
+ width:58px;height:58px;flex-basis:58px;border:2px solid #64717a;
+ background:#202b33;color:#eaf4f7;
+}
+.my-status-photo.has-status{border:2px solid #25d366;padding:2px}
+.my-status-add{
+ left:59px;top:50px;width:22px;height:22px;border:2px solid #101820;
+ background:#00c8d7;color:#041318;font-size:18px;line-height:1;
+}
+.my-status-copy{gap:5px}
+.my-status-copy strong{font-size:16px;font-weight:650;letter-spacing:.05px}
+.my-status-copy small{font-size:13.5px;color:#a0abb2}
+.my-status-preview{font-size:12px}
+.my-story-trailing{
+ width:30px;height:30px;flex:0 0 30px;border-radius:50%;
+ display:grid;place-items:center;color:#00c8d7;
+ background:rgba(0,200,215,.09);font-size:17px;font-weight:600;
+}
+.my-status-card:active,.status-story-card:active{background:rgba(255,255,255,.055)}
+.status-section-title{font-size:15px;font-weight:650;letter-spacing:.2px;color:#aeb8bd;margin:18px 18px 6px}
+.status-story-card{padding-top:10px;padding-bottom:10px}
+.status-story-avatar{width:56px;height:56px;flex-basis:56px}
+:root[data-kchat-theme="light"] .my-status-card{border-bottom-color:rgba(15,23,42,.08)}
+:root[data-kchat-theme="light"] .my-status-copy small{color:#64748b}
+:root[data-kchat-theme="light"] .my-story-trailing{background:rgba(0,160,180,.10);color:#008b9b}
+@media(max-width:750px){
+ .my-status-card{min-height:80px;padding-left:16px;padding-right:16px}
+ .my-status-add{left:57px;top:49px}
+ .status-section-title{margin-left:16px;margin-right:16px}
+}
+
 </style>
 
 </head>
@@ -1923,10 +1960,15 @@ hr {
                 <div class="status-page-scroll">
                     <div class="status-section-title">Stories</div>
                     <div class="status-stories" id="statusStories">
-                        <button type="button" class="my-status-card" id="myStatusCard">
+                        <button type="button" class="my-status-card" id="myStatusCard" aria-label="My story. Tap to add or view your story">
                             <span class="my-status-photo" id="myStatusPhoto"><span id="myStatusInitial">S</span></span>
-                            <span class="my-status-add">+</span>
-                            <span class="my-status-copy"><strong id="myStatusTitle">My story</strong><small id="myStatusSubtitle">Tap to add story</small><span id="myStatusPreview" class="my-status-preview hidden"></span></span>
+                            <span class="my-status-add" aria-hidden="true">+</span>
+                            <span class="my-status-copy">
+                                <strong id="myStatusTitle">My story</strong>
+                                <small id="myStatusSubtitle">Tap to add story</small>
+                                <span id="myStatusPreview" class="my-status-preview hidden"></span>
+                            </span>
+                            <span class="my-story-trailing" id="myStoryTrailing" aria-hidden="true">＋</span>
                         </button>
                     </div>
                     <div class="status-section-title">Recent stories</div>
@@ -4469,11 +4511,11 @@ function renderStatusStories(){
     const photo=currentProfile?.profile_picture;
     $("myStatusPhoto").innerHTML=photo?'<img src="'+escapeHTML(photo)+'" alt="My profile">':'<span id="myStatusInitial">'+escapeHTML((currentUser||"S").charAt(0).toUpperCase())+'</span>';
     $("myStatusPhoto").classList.toggle("has-status",mine.length>0);
-    $("myStatusTitle").textContent=mine.length?"My status · "+mine.length:"My status";
+    $("myStatusTitle").textContent="My story";
     const latestMine=mine[0]||null;
     const subtitle=$("myStatusSubtitle");
     const preview=$("myStatusPreview");
-    subtitle.textContent=latestMine?"Tap to view · "+new Date(latestMine.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"Tap to add status";
+    subtitle.textContent=latestMine?"Tap to view your story · "+new Date(latestMine.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"Tap to add story";
     preview.className="my-status-preview hidden";
     preview.textContent="";
     preview.style.background="";
@@ -4505,7 +4547,7 @@ function renderStatusStories(){
         const pic=item.profile_picture?'<img src="'+escapeHTML(item.profile_picture)+'" alt="">':escapeHTML((item.username||"?").charAt(0).toUpperCase());
         const time=item.created_at?new Date(item.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"";
         return '<button class="status-story-card" type="button" data-status-id="'+escapeHTML(item.id)+'"><span class="status-story-avatar">'+pic+'</span><span class="status-story-copy"><span class="status-story-name">'+escapeHTML(item.username)+'</span><span class="status-story-time">'+escapeHTML(time)+'</span></span></button>';
-    }).join(""):'<div class="status-empty-card">No recent updates</div>';
+    }).join("") :'<div class="status-empty-card">No recent stories</div>';
     $("otherStatusStories").querySelectorAll("[data-status-id]").forEach(card=>card.addEventListener("click",()=>{
         const selected=statuses.find(status=>status.id===card.dataset.statusId);
         if(!selected)return;
