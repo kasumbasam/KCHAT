@@ -4029,7 +4029,7 @@ function renderContacts() {
     list.querySelectorAll(".chat-swipe-shell[data-swipe-chat]").forEach(shell => {
         let start = null;
         shell.addEventListener("pointerdown", event => {
-            if (event.pointerType === "mouse") return;
+            if (event.pointerType === "mouse" && event.button !== 0) return;
             try { shell.setPointerCapture(event.pointerId); } catch {}
             start = { x: event.clientX, y: event.clientY };
         }, { passive: true });
@@ -5227,15 +5227,17 @@ function renderMessages() {
             openMessageActionMenu(id, bubble, event.clientX, event.clientY);
         });
         bubble.addEventListener("pointerdown", event => {
-            if (event.pointerType === "mouse") return;
+            if (event.pointerType === "mouse" && event.button !== 0) return;
             try { bubble.setPointerCapture(event.pointerId); } catch {}
             swipeStart = { x: event.clientX, y: event.clientY };
             longPressTriggered = false;
             clearTimeout(longPressTimer);
-            longPressTimer = setTimeout(() => {
-                longPressTriggered = true;
-                openMessageActionMenu(id, bubble, event.clientX || bubble.getBoundingClientRect().left, event.clientY || bubble.getBoundingClientRect().top);
-            }, 550);
+            if (event.pointerType !== "mouse") {
+                longPressTimer = setTimeout(() => {
+                    longPressTriggered = true;
+                    openMessageActionMenu(id, bubble, event.clientX || bubble.getBoundingClientRect().left, event.clientY || bubble.getBoundingClientRect().top);
+                }, 550);
+            }
         });
         bubble.addEventListener("pointerup", event => {
             clearTimeout(longPressTimer);
