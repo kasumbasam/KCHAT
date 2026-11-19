@@ -420,10 +420,18 @@ def get_account_from_token(token):
 
 
 def get_account_from_request(request):
+    # Prefer the bearer token, but fall back to the persistent HttpOnly cookie
+    # when browser storage contains an old or stale token.
     authorization = request.headers.get("Authorization", "")
-    token = authorization.replace("Bearer ", "", 1) or request.cookies.get("kchat_session", "")
+    bearer_token = authorization.replace("Bearer ", "", 1).strip()
+    cookie_token = request.cookies.get("kchat_session", "")
 
-    return get_account_from_token(token)
+    account = get_account_from_token(bearer_token) if bearer_token else None
+    if account:
+        return account
+    if cookie_token and cookie_token != bearer_token:
+        return get_account_from_token(cookie_token)
+    return None
 
 
 def auth_response(payload, token):
@@ -3098,8 +3106,12 @@ async def home():
 async def chat(websocket: WebSocket, room: str):
     await websocket.accept()
 
-    token = websocket.query_params.get("token", "") or websocket.cookies.get("kchat_session", "")
-    account = get_account_from_token(token)
+    # A stale query-string token must not override a valid persistent cookie.
+    token = websocket.query_params.get("token", "")
+    cookie_token = websocket.cookies.get("kchat_session", "")
+    account = get_account_from_token(token) if token else None
+    if not account and cookie_token and cookie_token != token:
+        account = get_account_from_token(cookie_token)
 
     if not account:
         await websocket.close(code=4401)
