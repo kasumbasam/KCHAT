@@ -16,7 +16,7 @@
     --text:#FFFFFF;
     --muted:#aaaaaa;
     --accent:#00e5ff;
-    --green:#00D084;
+    --green:#00D9FF;
     --danger:#FF5364;
     --border:#2c2c2c;
     --bubble:#1a1a1a;
@@ -1347,7 +1347,7 @@ hr {
  #textStatusModal .text-status-top-tools button{width:38px!important;height:38px!important;min-width:38px!important}
 }
 
-.status-sticker-overlay{position:absolute;z-index:30;transform:translate(-50%,-50%);display:inline-flex;align-items:center;justify-content:center;min-width:54px;min-height:48px;padding:8px 12px;border-radius:16px;background:linear-gradient(135deg,#075e54,#128c7e);box-shadow:0 3px 12px #0008;color:#fff;font:clamp(34px,9vw,64px) Arial,sans-serif;line-height:1;cursor:grab;touch-action:none;user-select:none}
+.status-sticker-overlay{position:absolute;z-index:30;transform:translate(-50%,-50%);display:inline-flex;align-items:center;justify-content:center;min-width:54px;min-height:48px;padding:8px 12px;border-radius:16px;background:linear-gradient(135deg,#063B46,#00B8D9);box-shadow:0 3px 12px #0008;color:#fff;font:clamp(34px,9vw,64px) Arial,sans-serif;line-height:1;cursor:grab;touch-action:none;user-select:none}
 .status-sticker-overlay.is-selected{outline:1.5px solid #ffffff;outline-offset:7px;border-radius:3px;cursor:move}
 .status-sticker-overlay .sticker-resize-handle,.status-media-text-overlay .sticker-resize-handle{position:absolute;width:13px;height:13px;min-width:13px;min-height:13px;padding:0;margin:0;border:1.5px solid #202326;border-radius:2px;background:#fff;box-shadow:0 1px 4px #000b;z-index:12;touch-action:none;cursor:nwse-resize;box-sizing:border-box}
 .status-sticker-overlay .sticker-resize-handle.nw,.status-media-text-overlay .sticker-resize-handle.nw{left:-14px;top:-14px;cursor:nwse-resize}
@@ -1399,7 +1399,7 @@ hr {
 .status-draw-palette.hidden{display:none!important}
 .status-draw-palette button[data-draw-color]{display:block!important;opacity:1!important;visibility:visible!important;background:var(--draw-colour)!important;border:2px solid #fff!important;box-shadow:0 1px 4px #000!important;pointer-events:auto!important}
 .status-draw-palette button.selected{outline:3px solid #00e5ff!important;outline-offset:3px}
-.status-media-text-overlay{position:absolute;z-index:31;left:50%;top:48%;min-width:90px;max-width:85%;padding:9px 14px;color:#fff;background:linear-gradient(135deg,#075e54,#128c7e);border:1px solid #ffffff55;border-radius:10px;box-shadow:0 3px 12px #0008;text-align:center;font:700 28px Arial,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;outline:1px dashed #ffffff99;touch-action:none;user-select:text;cursor:move;transform:translate(-50%,-50%)}
+.status-media-text-overlay{position:absolute;z-index:31;left:50%;top:48%;min-width:90px;max-width:85%;padding:9px 14px;color:#fff;background:linear-gradient(135deg,#063B46,#00B8D9);border:1px solid #ffffff55;border-radius:10px;box-shadow:0 3px 12px #0008;text-align:center;font:700 28px Arial,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;outline:1px dashed #ffffff99;touch-action:none;user-select:text;cursor:move;transform:translate(-50%,-50%)}
 .status-media-text-overlay:empty:before{content:attr(data-placeholder);color:#ffffffbb}
 .status-media-text-overlay:focus{outline:2px solid #00e5ff}
 .kchat-ai-assistant-message{align-self:flex-start;width:100%;max-width:100%;margin:8px 0;padding:8px 0;background:transparent;color:inherit;line-height:1.6;font-size:15px;white-space:pre-wrap;border:0;border-radius:0;box-shadow:none;}
@@ -1524,19 +1524,19 @@ hr {
 .kchat-ai-screen.hidden{display:none!important}
 .kchat-ai-header{height:68px;flex:0 0 68px;display:flex;align-items:center;gap:13px;padding:0 20px;background:#202c33;border-bottom:1px solid #2a3942}
 .kchat-ai-back{border:0;background:none;color:#e9edef;font-size:32px;cursor:pointer}
-.kchat-ai-brand-mark{width:39px;height:39px;color:#00a884;font-size:14px}
+.kchat-ai-brand-mark{width:39px;height:39px;color:#00D9FF;font-size:14px}
 .kchat-ai-heading{display:flex;flex-direction:column;gap:3px}.kchat-ai-heading strong{font-size:16px}.kchat-ai-heading small{font-size:12px;color:#8696a0}
 .kchat-ai-content{flex:1;overflow:auto;display:flex;flex-direction:column;align-items:center;padding:34px 20px 18px;background:radial-gradient(ellipse at center top,#142c30 0%,#0b141a 62%)}
 .kchat-ai-content{position:relative;scroll-behavior:smooth;scrollbar-width:thin}
 .kchat-ai-nav-controls{position:sticky;align-self:center;bottom:14px;margin-top:auto;margin-right:0;display:flex;justify-content:center;z-index:8;pointer-events:none}
-.kchat-ai-nav-button{width:40px;height:40px;border:1px solid #ffffff35;border-radius:50%;background:#075e54;color:#fff;display:grid;place-items:center;box-shadow:0 3px 12px #0008;cursor:pointer;pointer-events:auto;backdrop-filter:blur(8px);transition:transform .15s,opacity .15s,background .15s}
+.kchat-ai-nav-button{width:40px;height:40px;border:1px solid #ffffff35;border-radius:50%;background:#063B46;color:#fff;display:grid;place-items:center;box-shadow:0 3px 12px #0008;cursor:pointer;pointer-events:auto;backdrop-filter:blur(8px);transition:transform .15s,opacity .15s,background .15s}
 .kchat-ai-nav-button svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-.kchat-ai-nav-button:active{transform:scale(.92);background:#128c7e}
+.kchat-ai-nav-button:active{transform:scale(.92);background:#00B8D9}
 .kchat-ai-nav-button:focus-visible{outline:2px solid #00e5ff;outline-offset:3px}
 @media(max-width:600px){.kchat-ai-nav-controls{bottom:10px}.kchat-ai-nav-button{width:38px;height:38px}}
 .kchat-ai-welcome{margin:auto auto 24px;text-align:center;max-width:440px}
-.kchat-ai-large-mark{width:76px;height:76px;margin:0 auto 20px;color:#00a884;font-size:24px}
-.kchat-ai-welcome h1{font-size:25px;margin:0 0 10px}.kchat-ai-welcome p{font-size:19px;margin:0 0 10px;color:#d9fdd3}.kchat-ai-welcome span{font-size:13px;color:#aebac1}
+.kchat-ai-large-mark{width:76px;height:76px;margin:0 auto 20px;color:#00D9FF;font-size:24px}
+.kchat-ai-welcome h1{font-size:25px;margin:0 0 10px}.kchat-ai-welcome p{font-size:19px;margin:0 0 10px;color:#CFFAFE}.kchat-ai-welcome span{font-size:13px;color:#aebac1}
 .kchat-ai-suggestions{width:min(100%,430px);display:flex;flex-direction:column;gap:10px;margin:28px auto 0;text-align:left}
 .kchat-ai-suggestions button{width:100%;min-height:52px;display:flex;align-items:center;gap:13px;padding:12px 16px;border:1px solid #ffffff08;border-radius:15px;background:#202c33;color:#e9edef;text-align:left;cursor:pointer;transition:background .15s,transform .15s}
 .kchat-ai-suggestions button>span{font-size:15px;color:#e9edef}
@@ -1544,11 +1544,11 @@ hr {
 .kchat-ai-suggestions button:active{transform:scale(.985)}
 @media(max-width:600px){.kchat-ai-suggestions{gap:8px;margin-top:22px}.kchat-ai-suggestions button{min-height:48px;padding:10px 13px}.kchat-ai-suggestions button>span{font-size:14px}}
 .kchat-ai-messages{width:min(760px,100%);display:flex;flex-direction:column;gap:10px}
-.kchat-ai-user-message{align-self:flex-end;max-width:88%;padding:7px 0;margin:8px 0 8px auto;background:transparent;color:#d9fdd3;text-align:right;white-space:pre-wrap;overflow-wrap:anywhere;border:0;border-radius:0;box-shadow:none}
+.kchat-ai-user-message{align-self:flex-end;max-width:88%;padding:7px 0;margin:8px 0 8px auto;background:transparent;color:#CFFAFE;text-align:right;white-space:pre-wrap;overflow-wrap:anywhere;border:0;border-radius:0;box-shadow:none}
 .kchat-ai-connection-note{width:min(760px,100%);margin-top:20px;text-align:center;color:#8696a0;font-size:12px}
 .kchat-ai-composer{display:flex;gap:12px;align-items:flex-end;padding:14px max(18px,calc((100% - 800px)/2));background:#202c33}
-.kchat-ai-image-option{max-width:112px;min-width:0;height:42px;align-self:center;padding:0 7px;border:1px solid #52636b;border-radius:12px;background:#2a3942;color:#e9edef;font-size:12px}.kchat-ai-image-button{width:46px;height:46px;flex:0 0 46px;border:1px solid #52636b;border-radius:50%;background:#2a3942;color:#d9fdd3;font-size:23px;cursor:pointer}.kchat-ai-image-button:disabled,.kchat-ai-composer button:disabled{opacity:.55;cursor:wait}.kchat-ai-generated-image{display:block;max-width:min(100%,560px);height:auto;border-radius:12px;margin:8px 0;border:1px solid #ffffff22}.kchat-ai-image-result{align-self:flex-start;width:100%;margin:8px 0}.kchat-ai-image-download{display:inline-block;margin-top:8px;color:#d9fdd3;font-size:13px;text-decoration:underline}.kchat-ai-image-button:hover{background:#354a53}kchat-ai-composer textarea{flex:1;resize:none;max-height:130px;border:0;outline:0;border-radius:22px;padding:13px 17px;background:#2a3942;color:#e9edef;font:15px Arial,sans-serif}
-.kchat-ai-composer button{width:46px;height:46px;border:0;border-radius:50%;background:#00a884;color:#062e26;font-size:21px;cursor:pointer}
+.kchat-ai-image-option{max-width:112px;min-width:0;height:42px;align-self:center;padding:0 7px;border:1px solid #52636b;border-radius:12px;background:#2a3942;color:#e9edef;font-size:12px}.kchat-ai-image-button{width:46px;height:46px;flex:0 0 46px;border:1px solid #52636b;border-radius:50%;background:#2a3942;color:#CFFAFE;font-size:23px;cursor:pointer}.kchat-ai-image-button:disabled,.kchat-ai-composer button:disabled{opacity:.55;cursor:wait}.kchat-ai-generated-image{display:block;max-width:min(100%,560px);height:auto;border-radius:12px;margin:8px 0;border:1px solid #ffffff22}.kchat-ai-image-result{align-self:flex-start;width:100%;margin:8px 0}.kchat-ai-image-download{display:inline-block;margin-top:8px;color:#CFFAFE;font-size:13px;text-decoration:underline}.kchat-ai-image-button:hover{background:#354a53}kchat-ai-composer textarea{flex:1;resize:none;max-height:130px;border:0;outline:0;border-radius:22px;padding:13px 17px;background:#2a3942;color:#e9edef;font:15px Arial,sans-serif}
+.kchat-ai-composer button{width:46px;height:46px;border:0;border-radius:50%;background:#00D9FF;color:#062e26;font-size:21px;cursor:pointer}
 @media(max-width:700px){.kchat-ai-fab{right:20px;bottom:146px}.kchat-ai-content{padding:24px 16px 14px}.kchat-ai-welcome h1{font-size:22px}.kchat-ai-composer{gap:6px;padding:10px}.kchat-ai-image-option{max-width:88px;font-size:11px}.kchat-ai-image-button,.kchat-ai-composer button{width:40px;height:40px;flex-basis:40px}}
 </style>
 
@@ -1616,7 +1616,7 @@ hr {
 <style id="kchatThemeSettingsStyles">
 :root[data-kchat-theme="light"]{
  --bg:#f0f2f5;--panel:#ffffff;--panel2:#e8edf2;--text:#17212b;
- --muted:#64748b;--accent:#168b55;--green:#00a86b;--danger:#d93649;
+ --muted:#64748b;--accent:#00B8D9;--green:#00D9FF;--danger:#d93649;
  --border:#d7dee6;--bubble:#e7edf2;color-scheme:light;
 }
 :root[data-kchat-theme="dark"]{color-scheme:dark}
@@ -1631,9 +1631,9 @@ hr {
 .kchat-theme-preview{width:55px;height:48px;flex:0 0 55px;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;border:1px solid var(--border)}
 .kchat-theme-preview i{display:block;height:7px;border-radius:5px}
 .kchat-theme-preview-dark{background:#101820}.kchat-theme-preview-dark i{background:#263845}.kchat-theme-preview-dark i:nth-child(2){width:72%;background:#00e5ff}.kchat-theme-preview-dark i:nth-child(3){width:85%}
-.kchat-theme-preview-light{background:#f4f6f8}.kchat-theme-preview-light i{background:#d9e1e8}.kchat-theme-preview-light i:nth-child(2){width:72%;background:#168b55}.kchat-theme-preview-light i:nth-child(3){width:85%}
+.kchat-theme-preview-light{background:#f4f6f8}.kchat-theme-preview-light i{background:#d9e1e8}.kchat-theme-preview-light i:nth-child(2){width:72%;background:#00B8D9}.kchat-theme-preview-light i:nth-child(3){width:85%}
 :root[data-kchat-theme="light"] body,:root[data-kchat-theme="light"] #appScreen,:root[data-kchat-theme="light"] .main-area{background-color:var(--bg);color:var(--text)}
-:root[data-kchat-theme="light"] .message-row.mine .message-bubble{background:#d9fdd3;color:#17212b}
+:root[data-kchat-theme="light"] .message-row.mine .message-bubble{background:#CFFAFE;color:#17212b}
 :root[data-kchat-theme="light"] .message-row:not(.mine) .message-bubble{background:#ffffff;color:#17212b;border:1px solid #e1e7ed}
 :root[data-kchat-theme="light"] .status-screen,:root[data-kchat-theme="light"] .updates-header{background:#f0f2f5;color:#17212b}
 :root[data-kchat-theme="light"] .my-status-card,:root[data-kchat-theme="light"] .status-story-card{color:#17212b}
@@ -1644,12 +1644,12 @@ hr {
 .call-history-screen{min-height:100%;padding:18px 14px 96px;overflow:auto;background:var(--bg)}
 .call-history-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 2px 22px}
 .call-history-heading h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.3px}
-.call-history-new,.call-history-start{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:22px;padding:10px 15px;background:#00a884;color:#fff;font-weight:700;cursor:pointer}
+.call-history-new,.call-history-start{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:22px;padding:10px 15px;background:#00D9FF;color:#fff;font-weight:700;cursor:pointer}
 .call-history-new span{font-size:20px;line-height:14px}
 .call-history-section-title{font-size:15px;font-weight:700;margin:8px 3px 12px}
 .call-history-filters{display:flex;gap:8px;margin:0 2px 12px}
 .call-history-filters button{border:1px solid var(--border);border-radius:18px;padding:7px 17px;background:var(--panel);color:var(--text);font-size:13px;font-weight:600}
-.call-history-filters button.active{background:#d9fdd3;color:#075e54;border-color:#d9fdd3}
+.call-history-filters button.active{background:#CFFAFE;color:#063B46;border-color:#CFFAFE}
 .call-history-list{display:flex;flex-direction:column}
 .call-history-row{display:flex;align-items:center;gap:10px;min-height:76px;padding:8px 2px;border-bottom:1px solid var(--border)}
 .call-history-person{display:flex;align-items:center;gap:12px;flex:1;min-width:0;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
@@ -1663,11 +1663,11 @@ hr {
 .call-direction-icon svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .call-history-time{display:flex;flex-direction:column;gap:4px;align-items:flex-end;white-space:nowrap;color:var(--muted);font-size:11px}
 .call-history-time small{font-size:11px}
-.call-history-action{width:40px;height:40px;flex:0 0 40px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:#00a884;cursor:pointer}
-.call-history-action:active{background:#00a88420}
+.call-history-action{width:40px;height:40px;flex:0 0 40px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:#00D9FF;cursor:pointer}
+.call-history-action:active{background:#00D9FF20}
 .call-history-action svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .call-history-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:55px 20px;color:var(--muted)}
-.call-history-empty-icon{width:64px;height:64px;display:grid;place-items:center;margin-bottom:14px;border-radius:50%;background:var(--panel2);color:#00a884;font-size:29px}
+.call-history-empty-icon{width:64px;height:64px;display:grid;place-items:center;margin-bottom:14px;border-radius:50%;background:var(--panel2);color:#00D9FF;font-size:29px}
 .call-history-empty strong{color:var(--text);font-size:16px}
 .call-history-empty p{max-width:260px;font-size:13px;line-height:1.5}
 .call-history-loading{padding:20px 4px}
@@ -2150,7 +2150,7 @@ hr {
   </div>
   <div class="status-editor-preview-wrap"><div id="statusEditorPreview" class="status-editor-preview"></div>
    <div id="statusDrawPalette" class="status-draw-palette hidden" aria-label="Drawing colours">
-    <button type="button" data-draw-color="#ffffff" class="selected" style="--draw-colour:#ffffff" aria-label="Pen colour 1"></button><button type="button" data-draw-color="#ff3b30" class="" style="--draw-colour:#ff3b30" aria-label="Pen colour 2"></button><button type="button" data-draw-color="#ffcc00" class="" style="--draw-colour:#ffcc00" aria-label="Pen colour 3"></button><button type="button" data-draw-color="#34c759" class="" style="--draw-colour:#34c759" aria-label="Pen colour 4"></button><button type="button" data-draw-color="#0a84ff" class="" style="--draw-colour:#0a84ff" aria-label="Pen colour 5"></button><button type="button" data-draw-color="#bf5af2" class="" style="--draw-colour:#bf5af2" aria-label="Pen colour 6"></button><button type="button" data-draw-color="#ff2d55" class="" style="--draw-colour:#ff2d55" aria-label="Pen colour 7"></button><button type="button" data-draw-color="#111111" class="" style="--draw-colour:#111111" aria-label="Pen colour 8"></button>
+    <button type="button" data-draw-color="#ffffff" class="selected" style="--draw-colour:#ffffff" aria-label="Pen colour 1"></button><button type="button" data-draw-color="#ff3b30" class="" style="--draw-colour:#ff3b30" aria-label="Pen colour 2"></button><button type="button" data-draw-color="#ffcc00" class="" style="--draw-colour:#ffcc00" aria-label="Pen colour 3"></button><button type="button" data-draw-color="#00D9FF" class="" style="--draw-colour:#00D9FF" aria-label="Pen colour 4"></button><button type="button" data-draw-color="#0a84ff" class="" style="--draw-colour:#0a84ff" aria-label="Pen colour 5"></button><button type="button" data-draw-color="#bf5af2" class="" style="--draw-colour:#bf5af2" aria-label="Pen colour 6"></button><button type="button" data-draw-color="#ff2d55" class="" style="--draw-colour:#ff2d55" aria-label="Pen colour 7"></button><button type="button" data-draw-color="#111111" class="" style="--draw-colour:#111111" aria-label="Pen colour 8"></button>
    </div>
    <div id="statusCropControls" class="status-crop-controls hidden"><button type="button" id="statusCropBack" aria-label="Back to editor">←</button><span>Crop and rotate</span><button type="button" id="statusRotateButton" aria-label="Rotate image">↻</button><button type="button" id="statusCropApply" aria-label="Done cropping">✓</button></div>
    <div id="statusEmojiTray" class="status-emoji-tray hidden" aria-label="Emoji and stickers"><button type="button" data-status-emoji="❤️">❤️</button><button type="button" data-status-emoji="😂">😂</button><button type="button" data-status-emoji="😍">😍</button><button type="button" data-status-emoji="🔥">🔥</button><button type="button" data-status-emoji="✨">✨</button><button type="button" data-status-emoji="🥰">🥰</button><button type="button" data-status-emoji="👍">👍</button><button type="button" data-status-emoji="🎉">🎉</button><button type="button" data-status-emoji="😭">😭</button><button type="button" data-status-emoji="😘">😘</button><button type="button" data-status-emoji="🤣">🤣</button><button type="button" data-status-emoji="😊">😊</button><button type="button" data-status-emoji="🙏">🙏</button><button type="button" data-status-emoji="👏">👏</button><button type="button" data-status-emoji="💯">💯</button><button type="button" data-status-emoji="💖">💖</button><button type="button" data-status-emoji="💕">💕</button><button type="button" data-status-emoji="💔">💔</button><button type="button" data-status-emoji="😎">😎</button><button type="button" data-status-emoji="🤔">🤔</button><button type="button" data-status-emoji="😢">😢</button><button type="button" data-status-emoji="😁">😁</button><button type="button" data-status-emoji="😅">😅</button><button type="button" data-status-emoji="🤩">🤩</button><button type="button" data-status-emoji="🥳">🥳</button><button type="button" data-status-emoji="😴">😴</button><button type="button" data-status-emoji="🤗">🤗</button><button type="button" data-status-emoji="😇">😇</button><button type="button" data-status-emoji="🙌">🙌</button><button type="button" data-status-emoji="💪">💪</button><button type="button" data-status-emoji="🌹">🌹</button><button type="button" data-status-emoji="🌸">🌸</button><button type="button" data-status-emoji="🌈">🌈</button><button type="button" data-status-emoji="☀️">☀️</button><button type="button" data-status-emoji="⭐">⭐</button><button type="button" data-status-emoji="⚡">⚡</button><button type="button" data-status-emoji="🎂">🎂</button><button type="button" data-status-emoji="🎁">🎁</button><button type="button" data-status-emoji="🍀">🍀</button><button type="button" data-status-emoji="🦋">🦋</button><button type="button" data-status-emoji="🐶">🐶</button><button type="button" data-status-emoji="🐱">🐱</button><button type="button" data-status-emoji="☕">☕</button><button type="button" data-status-emoji="🎵">🎵</button><button type="button" data-status-emoji="🚀">🚀</button><button type="button" data-status-emoji="💐">💐</button><button type="button" data-status-emoji="👑">👑</button><button type="button" data-status-emoji="💃">💃</button><button type="button" data-status-emoji="🕺">🕺</button><button type="button" data-status-emoji="🤍">🤍</button><button type="button" data-status-emoji="🖤">🖤</button><button type="button" data-status-emoji="💛">💛</button><button type="button" data-status-emoji="💚">💚</button><button type="button" data-status-emoji="💙">💙</button><button type="button" data-status-emoji="💜">💜</button><button type="button" data-status-emoji="🧡">🧡</button><button type="button" data-status-emoji="🤎">🤎</button><button type="button" data-status-emoji="✅">✅</button><button type="button" data-status-emoji="❣️">❣️</button><button type="button" data-status-emoji="😜">😜</button><button type="button" data-status-emoji="😋">😋</button></div>
@@ -2158,7 +2158,7 @@ hr {
     <button type="button" data-filter-value="none"><span class="filter-swatch filter-none"></span>None</button><button type="button" data-filter-value="saturate(1.65) contrast(1.08)"><span class="filter-swatch filter-pop"></span>Pop</button><button type="button" data-filter-value="grayscale(1)"><span class="filter-swatch filter-bw"></span>B&amp;W</button><button type="button" data-filter-value="saturate(1.12) hue-rotate(12deg)"><span class="filter-swatch filter-cool"></span>Cool</button><button type="button" data-filter-value="contrast(1.28) saturate(.78)"><span class="filter-swatch filter-chrome"></span>Chrome</button><button type="button" data-filter-value="sepia(.22) contrast(1.12) saturate(.82)"><span class="filter-swatch filter-film"></span>Film</button>
    </div></div>
   </div>
-  <div class="status-editor-adjustments"><label>Pen colour <select id="statusDrawColor"><option value="#ffffff">White</option><option value="#ff3b30">Red</option><option value="#ffcc00">Yellow</option><option value="#34c759">Green</option><option value="#0a84ff">Blue</option><option value="#ff2d55">Pink</option><option value="#bf5af2">Purple</option><option value="#111111">Black</option></select></label><label>Pen size <select id="statusPenSize"><option value="3">Small</option><option value="7" selected>Medium</option><option value="13">Large</option></select></label><input id="anotherStatusFile" type="file" accept="image/*,video/*" multiple class="hidden"></div>
+  <div class="status-editor-adjustments"><label>Pen colour <select id="statusDrawColor"><option value="#ffffff">White</option><option value="#ff3b30">Red</option><option value="#ffcc00">Yellow</option><option value="#00D9FF">Cyan</option><option value="#0a84ff">Blue</option><option value="#ff2d55">Pink</option><option value="#bf5af2">Purple</option><option value="#111111">Black</option></select></label><label>Pen size <select id="statusPenSize"><option value="3">Small</option><option value="7" selected>Medium</option><option value="13">Large</option></select></label><input id="anotherStatusFile" type="file" accept="image/*,video/*" multiple class="hidden"></div>
   <div class="status-mention-composer status-editor-caption"><textarea id="mediaStatusCaption" rows="2" maxlength="700" placeholder="Add a caption…"></textarea><button type="button" class="status-at-button" id="mediaStatusAtButton" aria-label="Mention a person or group">@</button></div>
   <div class="status-editor-bottom"><div class="status-editor-bottom-left"><button type="button" id="statusFileShortcut" aria-label="Add file" title="Add another photo or video"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div><button type="button" id="saveMediaStatus" aria-label="Share status" title="Share"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>
   <div id="statusMentionList" class="status-mention-list hidden"></div><div id="statusUploadProgress" class="status-upload-label"></div>
@@ -2937,7 +2937,7 @@ document.addEventListener("click", event => {
 function showMessage(element, message, error = false) {
     if (!element) return;
     element.textContent = message;
-    element.style.color = error ? "#FF5364" : "#00D084";
+    element.style.color = error ? "#FF5364" : "#00D9FF";
 }
 
 async function apiRequest(path, options = {}) {
@@ -2968,8 +2968,8 @@ async function apiRequest(path, options = {}) {
 function setAuthMessage(message, error = true) {
     $("authMessage").textContent = message;
     $("authMessageRegister").textContent = message;
-    $("authMessage").style.color = error ? "#FF5364" : "#00D084";
-    $("authMessageRegister").style.color = error ? "#FF5364" : "#00D084";
+    $("authMessage").style.color = error ? "#FF5364" : "#00D9FF";
+    $("authMessageRegister").style.color = error ? "#FF5364" : "#00D9FF";
 }
 
 function showLogin() {
@@ -4039,7 +4039,7 @@ $("updatesMenuButton").addEventListener("click",showUpdatesMenu);
 document.addEventListener("click",event=>{
     if(!event.target.closest("#updatesMenu")&&!event.target.closest("#updatesMenuButton")) hide($("updatesMenu"));
 });
-const textStatusBackgrounds=["#546E7A","#075E54","#6A1B9A","#AD1457","#1565C0","#8D6E63","#263238","#B26A00","#37474F","#5D4037"];
+const textStatusBackgrounds=["#546E7A","#063B46","#6A1B9A","#AD1457","#1565C0","#8D6E63","#263238","#B26A00","#37474F","#5D4037"];
 let textStatusBackgroundIndex=0;
 function setTextStatusBackground(index){
     textStatusBackgroundIndex=(index+textStatusBackgrounds.length)%textStatusBackgrounds.length;
@@ -4493,7 +4493,7 @@ $("saveMediaStatus").onclick=async()=>{const caption=$("mediaStatusCaption").val
 const previewBox=$("statusEditorPreview"),previewRect=previewBox.getBoundingClientRect();
 previewBox.querySelectorAll(".status-media-text-overlay,.status-sticker-overlay").forEach(sticker=>{
  const r=sticker.getBoundingClientRect(),x=(r.left+r.width/2-previewRect.left)*canvas.width/previewRect.width,y=(r.top+r.height/2-previewRect.top)*canvas.height/previewRect.height;
- context.save();context.filter="none";const scaleX=canvas.width/previewRect.width,scaleY=canvas.height/previewRect.height,padX=sticker.classList.contains("status-sticker-overlay")?12*scaleX:14*scaleX,padY=sticker.classList.contains("status-sticker-overlay")?8*scaleY:9*scaleY,bg=context.createLinearGradient(x-r.width*scaleX/2,y-r.height*scaleY/2,x+r.width*scaleX/2,y+r.height*scaleY/2);bg.addColorStop(0,"#075e54");bg.addColorStop(1,"#128c7e");const left=x-r.width*scaleX/2,top=y-r.height*scaleY/2,w=r.width*scaleX,h=r.height*scaleY,rad=(sticker.classList.contains("status-sticker-overlay")?16:10)*scaleX;context.beginPath();context.roundRect(left,top,w,h,rad);context.fillStyle=bg;context.fill();context.textAlign="center";context.textBaseline="middle";const fontSize=parseFloat(getComputedStyle(sticker).fontSize)||28;context.font=(sticker.classList.contains("status-media-text-overlay")?"bold ":"")+(fontSize*scaleY)+"px Arial";context.fillStyle="#ffffff";const content=Array.from(sticker.childNodes).filter(node=>node.nodeType===Node.TEXT_NODE).map(node=>node.textContent).join("").trim()||sticker.textContent.trim();context.fillText(content,x,y);context.restore();
+ context.save();context.filter="none";const scaleX=canvas.width/previewRect.width,scaleY=canvas.height/previewRect.height,padX=sticker.classList.contains("status-sticker-overlay")?12*scaleX:14*scaleX,padY=sticker.classList.contains("status-sticker-overlay")?8*scaleY:9*scaleY,bg=context.createLinearGradient(x-r.width*scaleX/2,y-r.height*scaleY/2,x+r.width*scaleX/2,y+r.height*scaleY/2);bg.addColorStop(0,"#063B46");bg.addColorStop(1,"#00B8D9");const left=x-r.width*scaleX/2,top=y-r.height*scaleY/2,w=r.width*scaleX,h=r.height*scaleY,rad=(sticker.classList.contains("status-sticker-overlay")?16:10)*scaleX;context.beginPath();context.roundRect(left,top,w,h,rad);context.fillStyle=bg;context.fill();context.textAlign="center";context.textBaseline="middle";const fontSize=parseFloat(getComputedStyle(sticker).fontSize)||28;context.font=(sticker.classList.contains("status-media-text-overlay")?"bold ":"")+(fontSize*scaleY)+"px Arial";context.fillStyle="#ffffff";const content=Array.from(sticker.childNodes).filter(node=>node.nodeType===Node.TEXT_NODE).map(node=>node.textContent).join("").trim()||sticker.textContent.trim();context.fillText(content,x,y);context.restore();
 });
 data=canvas.toDataURL("image/jpeg",.92);URL.revokeObjectURL(objectUrl);}else{data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error("Could not read "+f.name));r.readAsDataURL(f);});}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:i===0?caption:"",media_data:data,media_type:f.type.startsWith("video/")?"video":"image"})});}}$("myStatusCard").classList.remove("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","100%");hide($("mediaStatusEditor"));statusEditorFiles=[];statusEditorEditingId=null;await loadStatuses();const mine=(window.kchatStatuses||[]).filter(x=>x.is_mine);renderStatusStories();openStatusViewer(mine,0);}catch(error){$("myStatusCard").classList.remove("is-uploading");alert(error.message||"Could not share status.");$("statusUploadProgress").textContent="Upload failed — "+(error.message||"Try again.");}};
 $("editMyStatusButton").onclick=()=>{const item=statusViewerItems[statusViewerIndex];if(!item?.is_mine)return;closeStatusViewer();openMediaStatusEditor([],item);};
