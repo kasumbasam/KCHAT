@@ -3736,6 +3736,9 @@ function renderContacts() {
     }
     document.querySelector(".filter-row")?.classList.remove("hidden");
     const search = $("chatSearch").value.toLowerCase();
+    const showAiChat = activeTab === "chat"
+        && activeFilter === "all"
+        && (!search || "kchat ai".includes(search) || "assistant".includes(search));
 
     let filtered = contacts.filter(contact => {
         const name = contactName(contact).toLowerCase();
@@ -3749,12 +3752,23 @@ function renderContacts() {
         return !contact.hidden || activeFilter === "all";
     });
 
-    if (!filtered.length) {
+    if (!filtered.length && !showAiChat) {
         list.innerHTML = `<p class="muted" style="padding:25px;text-align:center;">No contacts yet. Add someone using their KCHAT username or registered phone number.</p>`;
         return;
     }
 
-    list.innerHTML = filtered.map(contact => {
+    const aiChatRow = showAiChat ? `
+        <button type="button" class="chat-item kchat-ai-chat-item" aria-label="Open KCHAT AI conversation">
+            <span class="avatar"><img src="/kchat-ai-logo.svg" alt="KCHAT AI"></span>
+            <span class="chat-item-info">
+                <span class="chat-item-name"><span>KCHAT AI</span></span>
+                <span class="chat-item-preview"><span>✦</span><span>Your personal AI assistant</span></span>
+            </span>
+            <span class="chat-item-time"></span>
+        </button>
+    ` : "";
+
+    list.innerHTML = aiChatRow + filtered.map(contact => {
         const name = contactName(contact);
         const pic = contact.profile_picture;
         const avatarContent = pic
@@ -3795,7 +3809,7 @@ function renderContacts() {
         `;
     }).join("");
 
-    list.querySelectorAll(".chat-item").forEach(item => {
+    list.querySelectorAll(".chat-item[data-username]").forEach(item => {
         item.addEventListener("click", () => {
             const selected = contacts.find(contact => contactName(contact) === item.dataset.username);
             if (selected && (selected.type === "group" || selected.is_group === true)) {
@@ -3805,6 +3819,14 @@ function renderContacts() {
             }
         });
     });
+    const aiRow = list.querySelector(".kchat-ai-chat-item");
+    if (aiRow) {
+        aiRow.addEventListener("click", event => {
+            event.preventDefault();
+            if (typeof window.openKchatAI === "function") window.openKchatAI();
+            else document.getElementById("kchatAiFab")?.click();
+        });
+    }
 }
 
 // Reliable delegated chat-row tap handling (works after every list refresh).
@@ -5884,7 +5906,7 @@ if (document.readyState === "loading") {
   }
   if(typeof prompt==="string"&&prompt.trim())input.value=prompt.trim();
   input.focus();
-  if(!historyLoaded&&authToken){historyLoaded=true;await loadConversationList(false);}
+  if(!historyLoaded&&authToken){historyLoaded=true;await loadConversationList(true);}
 }
  window.openKchatAI=openScreen;
  // Capture the launcher tap before any app-level handler can cancel or swallow it.
