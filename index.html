@@ -2020,7 +2020,9 @@ hr {
             <option value="my_contacts_except">My contacts except…</option>
             <option value="only_share_with">Only share with…</option>
         </select>
-        <p class="small muted">Contact-by-contact exclusions and allow-lists will be added separately.</p>
+        <p id="statusAudienceHelp" class="small muted">Your stories are visible to your saved KCHAT contacts.</p>
+        <input id="statusAudienceSearch" type="search" placeholder="Search contacts" style="width:100%;margin:8px 0">
+        <div id="statusAudienceContacts" style="max-height:230px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;padding:4px"></div>
         <div class="modal-actions"><button class="secondary-btn" id="closeStatusPrivacy">Cancel</button><button class="primary-btn" id="saveStatusPrivacy">Save</button></div>
     </div>
 </div>
@@ -4592,15 +4594,56 @@ $("saveCreateChannel").addEventListener("click",async()=>{
     }catch(error){showMessage($("createChannelMessage"),error.message||"Could not create channel.",true);}
     finally{button.disabled=false;button.textContent="Create channel";}
 });
+let statusPrivacySettings={status_audience:"all_contacts",status_excluded:[],status_allowed:[]};
+function statusContactEntries(){
+    const list=Array.isArray(contacts)?contacts:[];
+    const seen=new Set();
+    return list.map(item=>typeof item==="string"?{username:item}:item).filter(item=>{
+        if(!item||item.type==="group"||item.is_group)return false;
+        const username=String(item.username||item.contact_username||item.name||"").trim();
+        const key=username.toLowerCase();if(!username||seen.has(key))return false;seen.add(key);item._storyUsername=username;return true;
+    }).sort((a,b)=>a._storyUsername.localeCompare(b._storyUsername));
+}
+function renderStatusAudienceContacts(){
+    const mode=$("statusAudienceSelect").value,box=$("statusAudienceContacts");
+    const help=$("statusAudienceHelp");
+    const relevant=mode!=="all_contacts";
+    box.style.display=relevant?"block":"none";
+    $("statusAudienceSearch").style.display=relevant?"block":"none";
+    help.textContent=mode==="all_contacts"?"Your stories are visible to your saved KCHAT contacts.":mode==="my_contacts_except"?"Select contacts who should NOT see your stories.":"Select only the contacts allowed to see your stories.";
+    if(!relevant)return;
+    const query=$("statusAudienceSearch").value.trim().toLowerCase();
+    const selected=new Set(mode==="my_contacts_except"?statusPrivacySettings.status_excluded:statusPrivacySettings.status_allowed);
+    const people=statusContactEntries().filter(p=>p._storyUsername.toLowerCase().includes(query));
+    box.innerHTML=people.length?people.map(p=>{
+        const name=p._storyUsername,checked=selected.has(name);
+        const avatar=p.profile_picture?'<img src="'+escapeHTML(p.profile_picture)+'" style="width:34px;height:34px;border-radius:50%;object-fit:cover">':'<span style="width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#263238;color:white">'+escapeHTML(name.charAt(0).toUpperCase())+'</span>';
+        return '<label style="display:flex;align-items:center;gap:10px;padding:9px 7px;border-bottom:1px solid var(--border);cursor:pointer">'+avatar+'<span style="flex:1">'+escapeHTML(name)+'</span><input type="checkbox" data-story-audience-person="'+escapeHTML(name)+'" '+(checked?'checked':'')+'></label>';
+    }).join(""):'<p class="small muted" style="padding:10px">No matching saved contacts.</p>';
+}
+$("statusAudienceSelect").addEventListener("change",renderStatusAudienceContacts);
+$("statusAudienceSearch").addEventListener("input",renderStatusAudienceContacts);
 $("statusPrivacyMenu").addEventListener("click",async()=>{
     hide($("updatesMenu"));show($("statusPrivacyModal"));
-    try{const result=await apiRequest("/api/privacy");$("statusAudienceSelect").value=result.settings?.status_audience||"all_contacts";}catch(error){alert(error.message||"Could not load status privacy.");}
+    try{
+        const result=await apiRequest("/api/privacy");
+        statusPrivacySettings={status_audience:result.settings?.status_audience||"all_contacts",status_excluded:result.settings?.status_excluded||[],status_allowed:result.settings?.status_allowed||[]};
+        $("statusAudienceSelect").value=statusPrivacySettings.status_audience;
+        $("statusAudienceSearch").value="";
+        renderStatusAudienceContacts();
+    }catch(error){alert(error.message||"Could not load story privacy.");}
 });
 $("closeStatusPrivacy").addEventListener("click",()=>hide($("statusPrivacyModal")));
 $("saveStatusPrivacy").addEventListener("click",async()=>{
     const button=$("saveStatusPrivacy");button.disabled=true;
-    try{await apiRequest("/api/privacy",{method:"PUT",body:JSON.stringify({status_audience:$("statusAudienceSelect").value})});hide($("statusPrivacyModal"));alert("Status privacy saved.");}
-    catch(error){alert(error.message||"Could not save status privacy.");}
+    try{
+        const mode=$("statusAudienceSelect").value;
+        const chosen=Array.from($("statusAudienceContacts").querySelectorAll('input[data-story-audience-person]:checked')).map(input=>input.dataset.storyAudiencePerson);
+        const payload={status_audience:mode,status_excluded:mode==="my_contacts_except"?chosen:statusPrivacySettings.status_excluded,status_allowed:mode==="only_share_with"?chosen:statusPrivacySettings.status_allowed};
+        await apiRequest("/api/privacy",{method:"PUT",body:JSON.stringify(payload)});
+        statusPrivacySettings={...statusPrivacySettings,...payload};
+        hide($("statusPrivacyModal"));alert("Story privacy saved.");
+    }catch(error){alert(error.message||"Could not save story privacy.");}
     finally{button.disabled=false;}
 });
 $("starredUpdatesMenu").addEventListener("click",()=>{hide($("updatesMenu"));alert("Starred status updates will appear here after status sharing is enabled.");});
