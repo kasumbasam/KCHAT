@@ -3580,6 +3580,7 @@ async function loadContacts() {
             const name = contactName(entry);
             if (name) byName.set(name.toLowerCase(), {
                 username: name,
+                is_saved_contact: true,
                 last_message: "",
                 last_message_sender: "",
                 last_message_status: "",
@@ -5611,34 +5612,50 @@ function inviteDeviceContact(contact) {
 function renderContactPicker() {
     const search = $("contactPickerSearch").value.trim().toLowerCase();
     const registeredByName = new Map();
+
     matchedDeviceContacts.filter(item => item.account).forEach(item => {
         const username = String(item.account.username || "");
         if (username) registeredByName.set(username.toLowerCase(), {
             username, name: item.name || username, phone: item.phone || "",
-            picture: item.account.profile_picture || ""
+            picture: item.account.profile_picture || "", last_message: "", last_message_time: null
         });
     });
+
+    // Recent inbox conversations are included even when the person is not saved.
     contacts.filter(item => !item.type && !item.is_group).forEach(item => {
         const username = contactName(item);
-        if (username && !registeredByName.has(username.toLowerCase())) {
-            registeredByName.set(username.toLowerCase(), { username, name: username, phone: "", picture: item.profile_picture || "" });
-        }
+        if (!username) return;
+        const key = username.toLowerCase();
+        const existing = registeredByName.get(key) || {};
+        registeredByName.set(key, {
+            ...existing, username, name: existing.name || username,
+            phone: existing.phone || "", picture: item.profile_picture || existing.picture || "",
+            last_message: item.last_message || "",
+            last_message_time: item.last_message_time || null
+        });
     });
-    const registered = Array.from(registeredByName.values()).filter(item =>
-        item.name.toLowerCase().includes(search) || item.username.toLowerCase().includes(search) || item.phone.toLowerCase().includes(search));
+
+    const matches = item => item.name.toLowerCase().includes(search) ||
+        item.username.toLowerCase().includes(search) || item.phone.toLowerCase().includes(search);
+    const all = Array.from(registeredByName.values()).filter(matches);
+    const frequent = all.filter(item => item.last_message_time || item.last_message)
+        .sort((a,b) => new Date(b.last_message_time || 0).getTime() - new Date(a.last_message_time || 0).getTime());
+    const frequentKeys = new Set(frequent.map(item => item.username.toLowerCase()));
+    const other = all.filter(item => !frequentKeys.has(item.username.toLowerCase()));
     const notRegistered = matchedDeviceContacts.filter(item => !item.account &&
         (item.name.toLowerCase().includes(search) || item.phone.toLowerCase().includes(search)));
+
+    const rows = items => items.map(item => {
+        const avatar = item.picture ? '<img src="' + escapeHTML(item.picture) + '" alt="">' : escapeHTML(item.name.charAt(0).toUpperCase());
+        return '<div class="device-contact-row kchat-contact-row">' +
+            '<button type="button" class="kchat-contact-main" data-open-user="' + escapeHTML(item.username) + '">' +
+            '<div class="avatar">' + avatar + '</div><div class="device-contact-copy"><div class="device-contact-name">' + escapeHTML(item.name) + '</div>' +
+            '<div class="device-contact-phone">' + escapeHTML(item.phone || item.last_message || "Available on KCHAT") + '</div></div></button></div>';
+    }).join("");
+
     let output = "";
-    if (registered.length) {
-        output += registered.map(item => {
-            const avatar = item.picture ? '<img src="' + escapeHTML(item.picture) + '" alt="">' : escapeHTML(item.name.charAt(0).toUpperCase());
-            return '<div class="device-contact-row kchat-contact-row">' +
-                '<button type="button" class="kchat-contact-main" data-open-user="' + escapeHTML(item.username) + '">' +
-                '<div class="avatar">' + avatar + '</div><div class="device-contact-copy"><div class="device-contact-name">' + escapeHTML(item.name) + '</div>' +
-                '<div class="device-contact-phone">' + escapeHTML(item.phone || "Available on KCHAT") + '</div></div></button>' +
-                '</div>';
-        }).join("");
-    }
+    if (frequent.length) output += '<div class="kchat-new-chat-section">FREQUENT CHATS</div>' + rows(frequent);
+    if (other.length) output += '<div class="kchat-new-chat-section">CONTACTS ON KCHAT</div>' + rows(other);
     if (notRegistered.length) {
         output += '<div class="contact-picker-section">INVITE TO KCHAT</div>';
         output += notRegistered.map((item, index) =>
@@ -5650,7 +5667,7 @@ function renderContactPicker() {
     if (!output) output = '<p class="muted kchat-contact-empty">' +
         (search ? "No contacts match your search." : "No KCHAT contacts yet. Use the three-dot menu to load your phone contacts.") + '</p>';
     $("contactPickerList").innerHTML = output;
-    $("contactPickerStatus").textContent = registered.length + " KCHAT contact" + (registered.length === 1 ? "" : "s");
+    $("contactPickerStatus").textContent = frequent.length + " frequent · " + all.length + " KCHAT contacts";
     $("contactPickerList").querySelectorAll("[data-open-user]").forEach(button => {
         button.addEventListener("click", async () => {
             hide($("contactPickerModal"));
