@@ -1760,7 +1760,6 @@ hr {
             <!-- WHATSAPP CLASSIC TOP TABS (CHATS, CALLS, STATUS) -->
             <div class="whatsapp-tabs">
                 <button class="whatsapp-tab-btn active" data-tab="chat">CHATS</button>
-                <button class="whatsapp-tab-btn" data-tab="contacts">CONTACTS</button>
                 <button class="whatsapp-tab-btn" data-tab="call">CALLS</button>
                 <button class="whatsapp-tab-btn" data-tab="status">STATUS</button>
             </div>
@@ -5145,7 +5144,18 @@ async function openDeviceContactPicker() {
     await loadContacts();
     renderContactPicker();
 }
-$("newChatButton").addEventListener("click", openDeviceContactPicker);
+$("newChatButton").addEventListener("click", () => {
+    activeTab = "contacts";
+    document.querySelectorAll(".whatsapp-tab-btn").forEach(item => item.classList.remove("active"));
+    document.querySelector('.whatsapp-tab-btn[data-tab="chat"]')?.classList.add("active");
+    $("appScreen").classList.remove("mobile-chat-open");
+    hide($("chatScreen"));
+    show($("welcomeScreen"));
+    $("chatSearch").value = "";
+    $("chatSearch").placeholder = "Search KCHAT contacts";
+    closeKchatUpdatesScreen("contacts");
+    renderContacts();
+});
 $("sidebarSelectContactBtn").addEventListener("click", openDeviceContactPicker);
 
 $("menuSettings").addEventListener("click", () => {
