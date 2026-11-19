@@ -1487,6 +1487,14 @@ hr {
 .kchat-new-chat-list .kchat-contact-empty{padding:26px 20px;text-align:center;font:14px/1.5 Arial,sans-serif;color:#9da5a8}
 .kchat-new-chat-list .contact-picker-section{padding:15px 20px 8px;color:#25d366;font:12px Arial,sans-serif;letter-spacing:.08em}
 
+
+.kchat-new-chat-list .kchat-contact-row{display:flex;align-items:center;gap:8px;padding:9px 14px 9px 18px;border-bottom:1px solid #171717}
+.kchat-contact-main{display:flex;align-items:center;gap:14px;flex:1;min-width:0;text-align:left;border:0;background:transparent;color:inherit;padding:0}
+.kchat-contact-main .device-contact-copy{flex:1;min-width:0}
+.kchat-contact-actions{display:flex;align-items:center;gap:3px}
+.kchat-contact-action{width:38px;height:38px;border:0;border-radius:50%;background:transparent;color:#25d366;font:22px Arial,sans-serif;display:grid;place-items:center}
+.kchat-contact-action:active{background:#18372b}
+
 </style>
 
 <style id="kchatAiStyles">
@@ -5574,9 +5582,15 @@ function renderContactPicker() {
     if (registered.length) {
         output += registered.map(item => {
             const avatar = item.picture ? '<img src="' + escapeHTML(item.picture) + '" alt="">' : escapeHTML(item.name.charAt(0).toUpperCase());
-            return '<button type="button" class="device-contact-row kchat-contact-row" data-open-user="' + escapeHTML(item.username) + '">' +
+            return '<div class="device-contact-row kchat-contact-row">' +
+                '<button type="button" class="kchat-contact-main" data-open-user="' + escapeHTML(item.username) + '">' +
                 '<div class="avatar">' + avatar + '</div><div class="device-contact-copy"><div class="device-contact-name">' + escapeHTML(item.name) + '</div>' +
-                '<div class="device-contact-phone">' + escapeHTML(item.phone || "Available on KCHAT") + '</div></div></button>';
+                '<div class="device-contact-phone">' + escapeHTML(item.phone || "Available on KCHAT") + '</div></div></button>' +
+                '<div class="kchat-contact-actions">' +
+                '<button type="button" class="kchat-contact-action" data-message-user="' + escapeHTML(item.username) + '" aria-label="Message" title="Message">◉</button>' +
+                '<button type="button" class="kchat-contact-action" data-voice-user="' + escapeHTML(item.username) + '" aria-label="Voice call" title="Voice call">☎</button>' +
+                '<button type="button" class="kchat-contact-action" data-video-user="' + escapeHTML(item.username) + '" aria-label="Video call" title="Video call">▣</button>' +
+                '</div></div>';
         }).join("");
     }
     if (notRegistered.length) {
@@ -5595,6 +5609,24 @@ function renderContactPicker() {
         button.addEventListener("click", async () => {
             hide($("contactPickerModal"));
             await openChat(button.dataset.openUser);
+        });
+    });
+    $("contactPickerList").querySelectorAll("[data-message-user]").forEach(button => {
+        button.addEventListener("click", async () => {
+            hide($("contactPickerModal"));
+            await openChat(button.dataset.messageUser);
+        });
+    });
+    $("contactPickerList").querySelectorAll("[data-voice-user]").forEach(button => {
+        button.addEventListener("click", async () => {
+            hide($("contactPickerModal"));
+            await startKchatCall("audio", button.dataset.voiceUser);
+        });
+    });
+    $("contactPickerList").querySelectorAll("[data-video-user]").forEach(button => {
+        button.addEventListener("click", async () => {
+            hide($("contactPickerModal"));
+            await startKchatCall("video", button.dataset.videoUser);
         });
     });
     $("contactPickerList").querySelectorAll("[data-invite-index]").forEach(button => {
