@@ -5950,7 +5950,7 @@ if (document.readyState === "loading") {
   const value=input.value.trim();
   if(!value||sending)return;
   if(value.length>100000){setStatus("Please keep each message under 100,000 characters.",true);return;}
-  if(!authToken){setStatus("Please log in to use KCHAT AI.",true);return;}
+  if(!authToken&&!currentUser){setStatus("Please log in to use KCHAT AI.",true);return;}
   if(welcome)welcome.classList.add("hidden");
   addBubble("user",value);
   history.push({role:"user",content:value});
@@ -5969,7 +5969,7 @@ if (document.readyState === "loading") {
   const thinking=addBubble("assistant","");
   let received="";
   try{
-   const response=await fetch("/api/ai/chat",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{Authorization:"Bearer "+authToken,"Content-Type":"application/json"},body:JSON.stringify({messages:history,conversation_id:currentConversationId||null})});
+   const response=await fetch("/api/ai/chat",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{...(authToken?{Authorization:"Bearer "+authToken}:{}),"Content-Type":"application/json"},body:JSON.stringify({messages:history,conversation_id:currentConversationId||null})});
    if(!response.ok){let data={};try{data=await response.json();}catch{}throw new Error(data.error||data.detail||"KCHAT AI request failed ("+response.status+").");}
    if(!response.body)throw new Error("Your browser does not support live AI responses. Please update your browser.");
    const reader=response.body.getReader(),decoder=new TextDecoder();
@@ -6001,8 +6001,14 @@ if (document.readyState === "loading") {
  const sendButton=document.getElementById("kchatAiSendButton");
  // Use one submission path only. A submit button already fires the form's
  // submit event; a second click listener can cause duplicate/racing sends.
+ // Support both normal form submission and direct mobile button taps.
+ // The sending guard prevents the click and submit events from sending twice.
  form.addEventListener("submit",sendKchatAIMessage);
- if(sendButton)sendButton.disabled=false;
+ if(sendButton){
+  sendButton.type="button";
+  sendButton.disabled=false;
+  sendButton.addEventListener("click",sendKchatAIMessage);
+ }
  input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(typeof form.requestSubmit==="function")form.requestSubmit(sendButton||undefined);else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));}});
 })();
 </script>
