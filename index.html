@@ -1881,6 +1881,7 @@ hr {
                 <button class="filter-btn" data-filter="favorites">Favorites</button>
                 <button class="filter-btn" data-filter="groups">Groups</button>
                 <button class="filter-btn" data-filter="archived">Archived</button>
+                <button class="filter-btn" data-filter="hidden">Hidden</button>
             </div>
 
             <div id="chatList" class="chat-list">
@@ -3642,7 +3643,7 @@ async function loadContacts() {
         // The inbox is the source of truth for last messages and delivery reports.
         const [contactData, inboxData] = await Promise.all([
             apiRequest("/api/contacts"),
-            apiRequest("/api/inbox")
+            apiRequest("/api/inbox?include_hidden=true")
         ]);
 
         const savedContacts = Array.isArray(contactData.contacts) ? contactData.contacts : [];
@@ -3909,11 +3910,13 @@ function renderContacts() {
         if (contactsOnly) return !(contact.type === "group" || contact.is_group === true);
         if (activeTab === "call" && !(contact.is_call === true)) return false;
         if (activeTab === "status" && !(contact.has_status === true)) return false;
+        if (activeFilter === "hidden") return contact.hidden === true;
+        if (contact.hidden) return false;
         if (activeFilter === "groups") return contact.type === "group" || contact.is_group === true;
         if (activeFilter === "favorites") return contact.favorite === true || contact.is_favorite === true;
         if (activeFilter === "unread") return Number(contact.unread_count || 0) > 0;
         if (activeFilter === "archived") return contact.archived === true;
-        return !contact.hidden || activeFilter === "all";
+        return true;
     });
 
     if (contactsOnly) {
