@@ -1899,7 +1899,7 @@ hr {
 
             <div id="chatScreen" class="chat-screen hidden">
                 <header class="chat-header">
-                    <button type="button" class="icon-btn" id="backToChats" aria-label="Back to conversations">‹</button>
+                    <button type="button" class="icon-btn" id="backToChats" aria-label="Back to conversations" onclick="(function(){var app=document.getElementById('appScreen');var chat=document.getElementById('chatScreen');var welcome=document.getElementById('welcomeScreen');if(app)app.classList.remove('mobile-chat-open','status-open');if(chat)chat.classList.add('hidden');if(welcome)welcome.classList.remove('hidden');var status=document.getElementById('statusScreen');if(status)status.classList.add('hidden');})()">‹</button>
 
                     <div class="avatar" id="activeChatAvatar">K</div>
 
@@ -6409,7 +6409,9 @@ if (document.readyState === "loading") {
     }
   }
 
-  // Pointer-up catches taps on mobile even when a surrounding touch handler\n  // interferes with the synthesized click. Click remains as keyboard/mouse fallback.\n  document.addEventListener("pointerup",closeKchatNavigation,true);\n  document.addEventListener("click",closeKchatNavigation,true);
+  // Register real, separate handlers for touch/pointer and click input.
+  document.addEventListener("pointerup", closeKchatNavigation, true);
+  document.addEventListener("click", closeKchatNavigation, true);
 })();
 </script>
 </script>
