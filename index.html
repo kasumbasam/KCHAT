@@ -1809,7 +1809,7 @@ hr {
             <div class="whatsapp-tabs">
                 <button class="whatsapp-tab-btn active" data-tab="chat">CHATS</button>
                 <button class="whatsapp-tab-btn" data-tab="call">CALLS</button>
-                <button class="whatsapp-tab-btn" data-tab="status">STATUS</button>
+                <button class="whatsapp-tab-btn" data-tab="status">STORIES</button>
             </div>
 
             <div class="filter-row">
@@ -1914,24 +1914,24 @@ hr {
 
                 <section id="statusScreen" class="status-screen hidden">
                 <header class="updates-header">
-                    <h1>Updates</h1>
+                    <h1>Stories</h1>
                     <div class="updates-header-actions">
-                        <button class="icon-btn" id="updatesSearchButton" aria-label="Search updates" title="Search"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></button>
-                        <button class="icon-btn" id="updatesMenuButton" aria-label="Updates menu" title="More">⋮</button>
+                        <button class="icon-btn" id="updatesSearchButton" aria-label="Search stories" title="Search"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></button>
+                        <button class="icon-btn" id="updatesMenuButton" aria-label="Stories menu" title="More">⋮</button>
                     </div>
                 </header>
                 <div class="status-page-scroll">
-                    <div class="status-section-title">Status</div>
+                    <div class="status-section-title">Stories</div>
                     <div class="status-stories" id="statusStories">
                         <button type="button" class="my-status-card" id="myStatusCard">
                             <span class="my-status-photo" id="myStatusPhoto"><span id="myStatusInitial">S</span></span>
                             <span class="my-status-add">+</span>
-                            <span class="my-status-copy"><strong id="myStatusTitle">My status</strong><small id="myStatusSubtitle">Tap to add status</small><span id="myStatusPreview" class="my-status-preview hidden"></span></span>
+                            <span class="my-status-copy"><strong id="myStatusTitle">My story</strong><small id="myStatusSubtitle">Tap to add story</small><span id="myStatusPreview" class="my-status-preview hidden"></span></span>
                         </button>
                     </div>
-                    <div class="status-section-title">Recent updates</div>
+                    <div class="status-section-title">Recent stories</div>
                     <div id="otherStatusStories" class="other-status-stories">
-                        <div class="status-empty-card">No recent updates</div>
+                        <div class="status-empty-card">No recent stories</div>
                     </div>
                     <div class="channels-heading">
                         <h2>Channels</h2>
@@ -1941,12 +1941,12 @@ hr {
                         <div class="channels-empty"><span>◉</span><strong>Discover channels</strong><small>Follow channels to see news, creators and updates here.</small><button id="channelsExploreEmpty">Explore channels</button></div>
                     </div>
                 </div>
-<div class="chat-status-actions" aria-label="Status shortcuts">
-                <div class="status-fab-stack" aria-label="Create status">
+<div class="chat-status-actions" aria-label="Story shortcuts">
+                <div class="status-fab-stack" aria-label="Create story">
                     <button type="button" class="status-fab status-camera-fab" id="quickStatusCameraButton" aria-label="Open camera" title="Camera">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h3l1.5-2h7l1.5 2h3A1.5 1.5 0 0 1 21.5 9v9A1.5 1.5 0 0 1 20 19.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z"/><circle cx="12" cy="13.5" r="4"/></svg>
                     </button>
-                    <button type="button" class="status-fab status-pen-fab" id="statusCreateMenuButton" aria-label="Write a text status" title="Write a text status">
+                    <button type="button" class="status-fab status-pen-fab" id="statusCreateMenuButton" aria-label="Write a text story" title="Write a text story">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16.5-.9 4.4 4.4-.9L19.8 7.7a2.5 2.5 0 0 0-3.5-3.5L4 16.5Z"/><path d="m14.8 5.7 3.5 3.5"/></svg>
                     </button>
                 </div>
@@ -2013,8 +2013,8 @@ hr {
 <!-- STATUS PRIVACY -->
 <div id="statusPrivacyModal" class="modal-backdrop hidden">
     <div class="modal-card">
-        <h2>Status privacy</h2>
-        <p class="muted small">Choose who can see your status updates.</p>
+        <h2>Story privacy</h2>
+        <p class="muted small">Choose who can see your stories.</p>
         <select id="statusAudienceSelect">
             <option value="all_contacts">My contacts</option>
             <option value="my_contacts_except">My contacts except…</option>
@@ -2040,9 +2040,9 @@ hr {
 
 <!-- TEXT STATUS EDITOR -->
 <div id="textStatusModal" class="modal-backdrop hidden text-status-backdrop">
-    <section class="text-status-card" aria-label="Create a text status">
+    <section class="text-status-card" aria-label="Create a text story">
         <header class="text-status-header">
-            <button type="button" id="cancelTextStatus" aria-label="Close text status">×</button>
+            <button type="button" id="cancelTextStatus" aria-label="Close text story">×</button>
             <div class="text-status-top-tools">
                 <button type="button" id="changeTextStatusBackground" aria-label="Change background" title="Change background">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18h1.2a2 2 0 0 0 1.4-3.4 1.7 1.7 0 0 1 1.2-2.9H18a3 3 0 0 0 3-3c0-4.8-4-8.7-9-8.7Z"/><circle cx="7.5" cy="10" r="1"/><circle cx="11" cy="6.8" r="1"/><circle cx="16" cy="8" r="1"/></svg>
@@ -2050,7 +2050,7 @@ hr {
             </div>
         </header>
         <div class="text-status-writing-area" id="textStatusWritingArea">
-            <textarea id="textStatusInput" maxlength="700" placeholder="Type status" aria-label="Write your status"></textarea>
+            <textarea id="textStatusInput" maxlength="700" placeholder="Write a story" aria-label="Write your story"></textarea>
             <button type="button" class="text-status-at-button" id="textStatusAtButton" aria-label="Mention a person or group">@</button>
             <div id="textStatusMentionList" class="status-mention-list hidden"></div>
         </div>
@@ -2064,9 +2064,9 @@ hr {
                 </button>
                 <button type="button" id="textStatusStyleButton" aria-label="Change text style" title="Change text style">Aa</button>
                 <button type="button" id="textStatusEmojiButton" aria-label="Add emoji" title="Add emoji">☺</button>
-                <button type="button" id="textStatusVoiceButton" aria-label="Record voice status" title="Record voice status">🎙</button>
+                <button type="button" id="textStatusVoiceButton" aria-label="Record voice story" title="Record voice story">🎙</button>
             </div>
-            <button type="button" id="publishTextStatus" aria-label="Share status" title="Share status">
+            <button type="button" id="publishTextStatus" aria-label="Share story" title="Share story">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 18-8-8 18-2.5-7.5L3 11Z"/><path d="M10.5 13.5 21 3"/></svg>
             </button>
         </footer>
@@ -2077,9 +2077,9 @@ hr {
 <!-- VOICE STATUS RECORDER -->
 <div id="voiceStatusModal" class="modal-backdrop hidden voice-status-backdrop">
  <section class="voice-status-card">
-  <header><button type="button" id="closeVoiceStatus">×</button><strong>Voice status</strong></header>
+  <header><button type="button" id="closeVoiceStatus">×</button><strong>Voice story</strong></header>
   <div class="voice-status-recorder"><div id="voiceStatusTimer">00:00</div><div id="voiceStatusHint">Tap the microphone to start recording</div><button type="button" id="voiceStatusRecord">🎙</button><audio id="voiceStatusPreview" controls class="hidden"></audio></div>
-  <footer><button type="button" id="discardVoiceStatus">Discard</button><button type="button" id="shareVoiceStatus" disabled>Share voice status</button></footer>
+  <footer><button type="button" id="discardVoiceStatus">Discard</button><button type="button" id="shareVoiceStatus" disabled>Share voice story</button></footer>
  </section>
 </div>
 <!-- LIVE STATUS CAMERA -->
@@ -4110,7 +4110,7 @@ function renderStatusViewer() {
         content.appendChild(audio);duration=0;
     }else if(item.media_data){
         const image=document.createElement("img");
-        image.src=item.media_data;image.alt="Status photo";
+        image.src=item.media_data;image.alt="Story photo";
         content.appendChild(image);
     }else{
         const text=document.createElement("div");
@@ -4119,7 +4119,7 @@ function renderStatusViewer() {
         text.style.background=item.background||"#546E7A";
         content.appendChild(text);
     }
-    $("statusViewerName").textContent=item.is_mine?"My status":(item.username||"Status");
+    $("statusViewerName").textContent=item.is_mine?"My story":(item.username||"Status");
     $("statusViewerTime").textContent=item.created_at?new Date(item.created_at).toLocaleString():"";
     $("statusViewerAvatar").textContent=(item.username||currentUser||"S").charAt(0).toUpperCase();
     const viewerFooter=$("statusViewerFooter");
@@ -4169,12 +4169,12 @@ $("shareMyStatusButton").addEventListener("click",async event=>{
     const item=statusViewerItems[statusViewerIndex];
     if(!item)return;
     const shareUrl=location.origin+"/";
-    const shareData={title:"KCHAT status",text:item.text||"Check out this KCHAT status",url:shareUrl};
+    const shareData={title:"KCHAT story",text:item.text||"Check out this KCHAT story",url:shareUrl};
     try{
         if(navigator.share) await navigator.share(shareData);
-        else if(navigator.clipboard){await navigator.clipboard.writeText((item.text?item.text+" ":"")+shareUrl);alert("Status link copied.");}
+        else if(navigator.clipboard){await navigator.clipboard.writeText((item.text?item.text+" ":"")+shareUrl);alert("Story link copied.");}
         else alert("Sharing is not supported on this browser.");
-    }catch(error){if(error.name!=="AbortError")alert("Could not share this status.");}
+    }catch(error){if(error.name!=="AbortError")alert("Could not share this story.");}
 });
 $("viewedByButton").addEventListener("click",event=>{
     event.stopPropagation();
@@ -4259,8 +4259,8 @@ async function loadStatuses(){
         return window.kchatStatuses;
     }catch(error){
         console.error("Status loading failed:",error);
-        $("otherStatusStories").innerHTML='<div class="status-empty-card">Could not load updates</div>';
-        alert(error.message||"Could not load status updates. Please try again.");
+        $("otherStatusStories").innerHTML='<div class="status-empty-card">Could not load stories</div>';
+        alert(error.message||"Could not load stories. Please try again.");
         return null;
     }
 }
