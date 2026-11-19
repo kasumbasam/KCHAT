@@ -4003,7 +4003,7 @@ function renderContacts() {
             <div class="chat-swipe-shell" data-swipe-chat="${escapeHTML(name)}">
                 <div class="chat-swipe-actions quick-actions" aria-label="Message or call">
                     <button type="button" class="swipe-message" data-chat-swipe-action="message" data-peer="${escapeHTML(name)}">Message</button>
-                    \${(contact.type === "group" || contact.is_group === true) ? "" : '<button type="button" class="swipe-call" data-chat-swipe-action="call" data-peer="' + escapeHTML(name) + '">Call</button>'}
+                    ${(contact.type === "group" || contact.is_group === true) ? "" : '<button type="button" class="swipe-call" data-chat-swipe-action="call" data-peer="' + escapeHTML(name) + '">Call</button>'}
                 </div>
                 <div class="chat-swipe-actions delete-actions" aria-label="Delete chat">
                     <button type="button" class="swipe-delete" data-chat-swipe-action="delete" data-peer="${escapeHTML(name)}">Delete</button>
