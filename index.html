@@ -4579,9 +4579,10 @@ async function loadMessages(username) {
         messages = Array.isArray(data.messages) ? data.messages : [];
         renderMessages();
     } catch (error) {
-        messages = [];
-        renderMessages();
-        alert(error.message || "Could not load this conversation. Please try again.");
+        // Do not erase the messages already on screen because of a temporary
+        // network/session error. The server remains the source of saved history.
+        console.error("KCHAT message history could not be refreshed:", error);
+        alert(error.message || "Could not load this conversation. Your saved messages have not been deleted.");
     }
 }
 
@@ -5801,18 +5802,24 @@ async function restoreSession() {
     if (sessionRestoreStarted) return;
     sessionRestoreStarted = true;
 
-    // Restore through the secure HttpOnly cookie even if browser storage was cleared.
+    // Validate the persistent HttpOnly session cookie on every app launch.
+    // This also recovers when Android/browser storage has been cleared or contains
+    // an older bearer token.
     try {
-        if (!currentUser || !authToken) {
-            const session = await apiRequest("/api/session");
-            if (!session || !session.username) {
-                const error = new Error("Your saved session could not be verified.");
-                error.status = 401;
-                throw error;
-            }
-            currentUser = session.username;
-            if (authToken) saveKchatSession(authToken, currentUser);
+        const sessionResponse = await fetch("/api/session", {
+            method: "GET",
+            credentials: "same-origin",
+            cache: "no-store"
+        });
+        let session = {};
+        try { session = await sessionResponse.json(); } catch {}
+        if (!sessionResponse.ok || !session.username) {
+            const error = new Error(session.error || "Your saved session could not be verified.");
+            error.status = sessionResponse.status || 401;
+            throw error;
         }
+        currentUser = session.username;
+        saveKchatSession(authToken, currentUser);
         await startKChat();
     } catch (error) {
         console.error("KCHAT session restore error:", error);
