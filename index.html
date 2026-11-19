@@ -4030,6 +4030,7 @@ function renderContacts() {
         let start = null;
         shell.addEventListener("pointerdown", event => {
             if (event.pointerType === "mouse") return;
+            try { shell.setPointerCapture(event.pointerId); } catch {}
             start = { x: event.clientX, y: event.clientY };
         }, { passive: true });
         shell.addEventListener("pointerup", event => {
@@ -5166,8 +5167,11 @@ function encodeReplyText(reply, text) {
 function decodeReplyText(value) {
     const match = String(value || "").match(/^\[\[KCHAT_REPLY:([^\]]+)\]\]\n([\s\S]*)$/);
     if (!match) return null;
-    try { return { reply: JSON.parse(decodeURIComponent(match[1])), text: match[2] }; }
-    catch { return null; }
+    try {
+        const reply = JSON.parse(decodeURIComponent(match[1]));
+        if (!reply || typeof reply !== "object") return null;
+        return { reply, text: match[2] };
+    } catch { return null; }
 }
 
 function renderMessages() {
@@ -5224,6 +5228,7 @@ function renderMessages() {
         });
         bubble.addEventListener("pointerdown", event => {
             if (event.pointerType === "mouse") return;
+            try { bubble.setPointerCapture(event.pointerId); } catch {}
             swipeStart = { x: event.clientX, y: event.clientY };
             longPressTriggered = false;
             clearTimeout(longPressTimer);
@@ -5391,6 +5396,10 @@ async function sendMessage() {
     }
     if (!text || !currentChat) return;
     const outgoingText = encodeReplyText(replyingToMessage, text);
+    if (outgoingText.length > 10000) {
+        alert("This reply is too long. Shorten your message and try again.");
+        return;
+    }
     stopLocalTyping();
     try {
         const result = await apiRequest("/api/messages", {
