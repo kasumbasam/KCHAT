@@ -6009,6 +6009,16 @@ if (document.readyState === "loading") {
   sendButton.disabled=false;
   sendButton.addEventListener("click",sendKchatAIMessage);
  }
+ // Android browsers can occasionally miss the synthesized click on a fixed
+ // full-screen composer. Handle the physical pointer release as a fallback.
+ // The sending lock prevents this and the normal click from sending twice.
+ document.addEventListener("pointerup",event=>{
+  const target=event.target instanceof Element?event.target.closest("#kchatAiSendButton"):null;
+  if(!target)return;
+  event.preventDefault();
+  event.stopPropagation();
+  sendKchatAIMessage(event);
+ },true);
  input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(typeof form.requestSubmit==="function")form.requestSubmit(sendButton||undefined);else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));}});
 })();
 </script>
