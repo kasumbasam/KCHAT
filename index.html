@@ -6007,18 +6007,31 @@ if (document.readyState === "loading") {
  if(sendButton){
   sendButton.type="button";
   sendButton.disabled=false;
-  sendButton.addEventListener("click",sendKchatAIMessage);
+  sendButton.style.setProperty("position","relative","important");
+  sendButton.style.setProperty("z-index","2147483002","important");
+  sendButton.style.setProperty("pointer-events","auto","important");
+  sendButton.style.setProperty("touch-action","manipulation","important");
+  // Start on pointer/touch press instead of waiting for Android to synthesize
+  // a click after release. The empty composer + sending guard prevent repeats.
+  sendButton.addEventListener("pointerdown",event=>{
+   event.preventDefault();
+   event.stopPropagation();
+   sendKchatAIMessage(event);
+  },{capture:true});
+  sendButton.addEventListener("touchstart",event=>{
+   event.preventDefault();
+   event.stopPropagation();
+   sendKchatAIMessage(event);
+  },{capture:true,passive:false});
+  sendButton.addEventListener("click",event=>{
+   event.preventDefault();
+   event.stopPropagation();
+   sendKchatAIMessage(event);
+  },true);
  }
- // Android browsers can occasionally miss the synthesized click on a fixed
- // full-screen composer. Handle the physical pointer release as a fallback.
- // The sending lock prevents this and the normal click from sending twice.
- document.addEventListener("pointerup",event=>{
-  const target=event.target instanceof Element?event.target.closest("#kchatAiSendButton"):null;
-  if(!target)return;
-  event.preventDefault();
-  event.stopPropagation();
-  sendKchatAIMessage(event);
- },true);
+ form.style.setProperty("position","relative","important");
+ form.style.setProperty("z-index","2147483001","important");
+ form.style.setProperty("pointer-events","auto","important");
  input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(typeof form.requestSubmit==="function")form.requestSubmit(sendButton||undefined);else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));}});
 })();
 </script>
