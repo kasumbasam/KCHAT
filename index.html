@@ -6032,7 +6032,7 @@ if (document.readyState === "loading") {
  form.style.setProperty("position","relative","important");
  form.style.setProperty("z-index","2147483001","important");
  form.style.setProperty("pointer-events","auto","important");
- input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(typeof form.requestSubmit==="function")form.requestSubmit(sendButton||undefined);else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));}});
+ input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();event.stopPropagation();sendKchatAIMessage(event);}});
 })();
 </script>
 
