@@ -1454,6 +1454,33 @@ hr {
 .directory-empty{padding:38px 24px;text-align:center;color:var(--muted)}
 .directory-empty strong{display:block;color:var(--text);font:600 16px Arial,sans-serif}
 .directory-empty p{font:13px/1.5 Arial,sans-serif}
+
+/* WhatsApp-style full-screen New Chat contacts view */
+.kchat-new-chat-screen{position:fixed;inset:0;z-index:10050;background:#000;color:#fff;display:flex;flex-direction:column;overflow:hidden}
+.kchat-new-chat-screen.hidden{display:none!important}
+.kchat-new-chat-header{height:76px;min-height:76px;display:flex;align-items:center;gap:14px;padding:10px 16px;background:#111;position:relative;border-bottom:1px solid #292929}
+.kchat-new-chat-back,.kchat-new-chat-icon{width:42px;height:42px;flex:0 0 42px;border:0;border-radius:50%;background:transparent;color:#fff;font:26px Arial,sans-serif;display:grid;place-items:center}
+.kchat-new-chat-heading{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.kchat-new-chat-heading strong{font:600 21px Arial,sans-serif}
+.kchat-new-chat-heading small{font:13px Arial,sans-serif;color:#9da5a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kchat-new-chat-search{display:flex;align-items:center;gap:10px;margin:13px 16px;padding:0 14px;height:48px;border-radius:26px;background:#1b1b1b;border:1px solid #303030}
+.kchat-new-chat-search span{font:25px Arial,sans-serif;color:#aeb7b9}
+.kchat-new-chat-search input{margin:0!important;padding:8px 0!important;border:0!important;background:transparent!important;outline:0;width:100%;font:16px Arial,sans-serif!important;color:#fff}
+.kchat-new-chat-action{display:flex;align-items:center;gap:14px;width:100%;padding:13px 19px;border:0;background:transparent;color:#fff;text-align:left}
+.kchat-new-chat-action-icon{width:49px;height:49px;border-radius:50%;display:grid;place-items:center;background:#173e32;font:22px Arial,sans-serif}
+.kchat-new-chat-action strong,.kchat-new-chat-action small{display:block;font-family:Arial,sans-serif}
+.kchat-new-chat-action strong{font-size:16px}.kchat-new-chat-action small{font-size:13px;color:#9da5a8;margin-top:4px}
+.kchat-new-chat-section{padding:15px 20px 8px;color:#25d366;font:12px Arial,sans-serif;letter-spacing:.08em}
+.kchat-new-chat-list{flex:1;overflow-y:auto;padding-bottom:24px}
+.kchat-new-chat-list .device-contact-row{min-height:72px;padding:10px 18px;border:0;gap:14px}
+.kchat-new-chat-list .avatar{width:49px;height:49px;background:#29332f;color:#d8f7e8;font:20px Arial,sans-serif}
+.kchat-new-chat-list .device-contact-name{font:16px Arial,sans-serif;color:#f5f5f5}
+.kchat-new-chat-list .device-contact-phone{font:13px Arial,sans-serif;color:#9da5a8;margin-top:4px}
+.kchat-new-chat-list .device-contact-action{border-radius:18px;padding:7px 13px;font:13px Arial,sans-serif}
+.kchat-new-chat-menu{position:absolute;right:12px;top:62px;z-index:5;width:205px;padding:6px;background:#242424;border:1px solid #3a3a3a;border-radius:9px;box-shadow:0 8px 24px #000b}
+.kchat-new-chat-menu button{display:block;width:100%;padding:12px 13px;border:0;border-radius:5px;background:transparent;color:#fff;text-align:left;font:15px Arial,sans-serif}
+.kchat-new-chat-menu button:active,.kchat-new-chat-menu button:hover{background:#353535}
+
 </style>
 
 <style id="kchatAiStyles">
@@ -2466,24 +2493,23 @@ hr {
     </div>
 </div>
 
-<!-- CONTACT PICKER -->
-<div id="contactPickerModal" class="modal-backdrop hidden">
-    <div class="modal-card" style="max-width:560px;">
-        <h2>New conversation</h2>
-        <p class="small muted">Choose contacts saved on this phone. KCHAT matches their phone numbers with registered accounts.</p>
-        <div class="contact-picker-tools">
-            <button type="button" class="secondary-btn" id="deviceContactsButton">Load phone contacts</button>
-            <button type="button" class="secondary-btn" id="importContactsButton">Import contacts file</button>
-        </div>
-        <input id="contactsFileInput" type="file" accept=".vcf,text/vcard,text/x-vcard" hidden>
-        <input id="contactPickerSearch" placeholder="Search name or phone number">
-        <div id="contactPickerStatus" class="contact-picker-note">Load your phone contacts or import a .vcf contacts file to begin.</div>
-        <div id="contactPickerList"></div>
-        <div class="modal-actions">
-            <button class="secondary-btn" id="closeContactPicker">Close</button>
-            <button class="primary-btn" id="addNewContactButton">Add KCHAT contact</button>
-        </div>
-    </div>
+<!-- WHATSAPP-STYLE NEW CHAT CONTACTS -->
+<div id="contactPickerModal" class="kchat-new-chat-screen hidden" role="dialog" aria-modal="true" aria-label="New chat">
+<header class="kchat-new-chat-header">
+<button type="button" class="kchat-new-chat-back" id="closeContactPicker" aria-label="Back">←</button>
+<div class="kchat-new-chat-heading"><strong>New chat</strong><small id="contactPickerStatus">Choose a KCHAT contact to start messaging</small></div>
+<button type="button" class="kchat-new-chat-icon" id="newChatMoreButton" aria-label="More options">⋮</button>
+<div id="newChatMoreMenu" class="kchat-new-chat-menu hidden">
+<button type="button" id="refreshNewChatContacts">Refresh</button>
+<button type="button" id="deviceContactsButton">Load phone contacts</button>
+<button type="button" id="importContactsButton">Import contacts file</button>
+</div>
+</header>
+<div class="kchat-new-chat-search"><span>⌕</span><input id="contactPickerSearch" placeholder="Search name or phone number" autocomplete="off"></div>
+<input id="contactsFileInput" type="file" accept=".vcf,text/vcard,text/x-vcard" hidden>
+<button type="button" class="kchat-new-chat-action" id="newChatCreateGroup"><span class="kchat-new-chat-action-icon">👥</span><span><strong>New group</strong><small>Create a group with KCHAT contacts</small></span></button>
+<div class="kchat-new-chat-section">CONTACTS ON KCHAT</div>
+<div id="contactPickerList" class="kchat-new-chat-list"></div>
 </div>
 
 <!-- ADD CONTACT -->
@@ -5362,11 +5388,27 @@ $("contactProfileMessage").addEventListener("click", () => {
 
 $("closeContactPicker").addEventListener("click", () => {
     hide($("contactPickerModal"));
+    $("newChatMoreMenu").classList.add("hidden");
 });
-
-$("addNewContactButton").addEventListener("click", () => {
+$("newChatMoreButton").addEventListener("click", event => {
+    event.stopPropagation();
+    $("newChatMoreMenu").classList.toggle("hidden");
+});
+$("refreshNewChatContacts").addEventListener("click", async () => {
+    $("newChatMoreMenu").classList.add("hidden");
+    $("contactPickerStatus").textContent = "Refreshing contacts…";
+    await loadContacts();
+    if (deviceContacts.length) await matchDeviceContacts();
+    else {
+        $("contactPickerStatus").textContent = "KCHAT contacts refreshed";
+        renderContactPicker();
+    }
+});
+$("newChatCreateGroup").addEventListener("click", () => {
     hide($("contactPickerModal"));
-    show($("addContactModal"));
+    $("newGroupName").value = "";
+    renderGroupPicker();
+    show($("newGroupModal"));
 });
 
 $("cancelAddContact").addEventListener("click", () => {
