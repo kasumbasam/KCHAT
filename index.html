@@ -673,11 +673,12 @@ hr {
 .status-section-title{font-size:19px;font-weight:600;color:#aeb8bd;margin:17px 18px 8px}
 .status-stories{display:flex;flex-direction:column;gap:0;min-height:0}
 .my-status-card,.status-story-card{position:relative;width:100%;min-height:78px;display:flex;align-items:center;gap:14px;padding:10px 18px;border:0;border-radius:0;background:transparent;color:#f5f7f8;text-align:left;overflow:hidden}
+.my-status-avatar-wrap{position:relative;width:60px;height:60px;flex:0 0 60px;display:block}
 .my-status-photo,.status-story-avatar{position:relative;left:auto;top:auto;transform:none;width:54px;height:54px;flex:0 0 54px;border:3px solid #25d366;border-radius:50%;display:grid;place-items:center;background:#263238;font:600 21px Arial,sans-serif;overflow:hidden}
 .my-status-photo img,.status-story-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .my-status-photo{border-color:#59656b}
 .my-status-photo.has-status{border-color:#25d366}
-.my-status-add{position:absolute;left:57px;top:48px;width:21px;height:21px;border:2px solid #080d10;border-radius:50%;display:grid;place-items:center;background:#25d366;color:#07130b;font:700 17px Arial,sans-serif}
+.my-status-add{position:absolute;left:39px;top:39px;width:21px;height:21px;border:2px solid #080d10;border-radius:50%;display:grid;place-items:center;background:#25d366;color:#07130b;font:700 17px Arial,sans-serif}
 .my-status-copy,.status-story-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
 .my-status-copy strong,.status-story-name{font:600 17px Arial,sans-serif;color:#f5f7f8}
 .my-status-copy small,.status-story-time{font:14px Arial,sans-serif;color:#879197}
@@ -1961,8 +1962,10 @@ hr {
                     <div class="status-section-title">Stories</div>
                     <div class="status-stories" id="statusStories">
                         <button type="button" class="my-status-card" id="myStatusCard" aria-label="My story. Tap to add or view your story">
-                            <span class="my-status-photo" id="myStatusPhoto"><span id="myStatusInitial">S</span></span>
-                            <span class="my-status-add" aria-hidden="true">+</span>
+                            <span class="my-status-avatar-wrap">
+                                <span class="my-status-photo" id="myStatusPhoto"><span id="myStatusInitial">S</span></span>
+                                <span class="my-status-add" aria-hidden="true">+</span>
+                            </span>
                             <span class="my-status-copy">
                                 <strong id="myStatusTitle">My story</strong>
                                 <small id="myStatusSubtitle">Tap to add story</small>
