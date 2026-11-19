@@ -6372,9 +6372,6 @@ if (document.readyState === "loading") {
     // Run in the capture phase so parent handlers or mobile touch wrappers
     // cannot swallow the navigation tap.
     event.preventDefault();
-    event.stopPropagation();
-    if(typeof event.stopImmediatePropagation==="function") event.stopImmediatePropagation();
-
     if(button.id==="backToChats"){
       const app=document.getElementById("appScreen");
       const status=document.getElementById("statusScreen");
@@ -6398,7 +6395,8 @@ if (document.readyState === "loading") {
       if(screen) screen.classList.add("hidden");
       if(fab) fab.classList.remove("hidden");
       if(searchFab) searchFab.classList.remove("hidden");
-      if(chatFab && window.currentChat) chatFab.classList.remove("hidden");
+      // The original AI handler also runs and restores the chat shortcut
+      // using the app's live currentChat state.
       return;
     }
 
