@@ -4003,7 +4003,7 @@ function renderContacts() {
             <div class="chat-swipe-shell" data-swipe-chat="${escapeHTML(name)}">
                 <div class="chat-swipe-actions quick-actions" aria-label="Message or call">
                     <button type="button" class="swipe-message" data-chat-swipe-action="message" data-peer="${escapeHTML(name)}">Message</button>
-                    <button type="button" class="swipe-call" data-chat-swipe-action="call" data-peer="${escapeHTML(name)}">Call</button>
+                    \${(contact.type === "group" || contact.is_group === true) ? "" : '<button type="button" class="swipe-call" data-chat-swipe-action="call" data-peer="' + escapeHTML(name) + '">Call</button>'}
                 </div>
                 <div class="chat-swipe-actions delete-actions" aria-label="Delete chat">
                     <button type="button" class="swipe-delete" data-chat-swipe-action="delete" data-peer="${escapeHTML(name)}">Delete</button>
@@ -4038,7 +4038,10 @@ function renderContacts() {
             event.preventDefault();
             event.stopPropagation();
             const row = shell.querySelector(".chat-item");
-            if (row) row.dataset.swipeIgnoreClick = "1";
+            if (row) {
+                row.dataset.swipeIgnoreClick = "1";
+                setTimeout(() => { if (row.isConnected) row.dataset.swipeIgnoreClick = "0"; }, 500);
+            }
             shell.classList.remove("reveal-delete", "reveal-quick");
             shell.classList.add(dx < 0 ? "reveal-delete" : "reveal-quick");
         });
@@ -5154,11 +5157,11 @@ $("cancelReplyButton").addEventListener("click", clearReplyToMessage);
 function encodeReplyText(reply, text) {
     if (!reply) return text;
     const metadata = encodeURIComponent(JSON.stringify(reply));
-    return "[[KCHAT_REPLY:" + metadata + "]]\\n" + text;
+    return "[[KCHAT_REPLY:" + metadata + "]]\n" + text;
 }
 
 function decodeReplyText(value) {
-    const match = String(value || "").match(/^\\[\\[KCHAT_REPLY:([^\\]]+)\\]\\]\\n([\\s\\S]*)$/);
+    const match = String(value || "").match(/^\[\[KCHAT_REPLY:([^\]]+)\]\]\n([\s\S]*)$/);
     if (!match) return null;
     try { return { reply: JSON.parse(decodeURIComponent(match[1])), text: match[2] }; }
     catch { return null; }
