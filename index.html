@@ -1899,7 +1899,7 @@ hr {
 
             <div id="chatScreen" class="chat-screen hidden">
                 <header class="chat-header">
-                    <button type="button" class="icon-btn" id="backToChats" aria-label="Back to conversations" onclick="(function(){var app=document.getElementById('appScreen');var chat=document.getElementById('chatScreen');var welcome=document.getElementById('welcomeScreen');if(app)app.classList.remove('mobile-chat-open','status-open');if(chat)chat.classList.add('hidden');if(welcome)welcome.classList.remove('hidden');var status=document.getElementById('statusScreen');if(status)status.classList.add('hidden');})()">‹</button>
+                    <button type="button" class="icon-btn" id="backToChats" aria-label="Back to conversations">‹</button>
 
                     <div class="avatar" id="activeChatAvatar">K</div>
 
@@ -4790,13 +4790,27 @@ async function openChat(username) {
     }
 }
 
-$("backToChats").addEventListener("click", () => {
-    $("appScreen").classList.remove("mobile-chat-open", "status-open");
-    $("statusScreen").style.removeProperty("display");
-    $("statusScreen").style.removeProperty("visibility");
-    $("statusScreen").style.removeProperty("z-index");
-    hide($("statusScreen"));
-});
+function returnToConversations() {
+    const app = $("appScreen");
+    const chat = $("chatScreen");
+    const welcome = $("welcomeScreen");
+    const status = $("statusScreen");
+
+    // Close only the visible conversation. Keep currentChat and saved
+    // messages intact so reopening the conversation restores its history.
+    if (chat) hide(chat);
+    if (welcome) show(welcome);
+
+    if (app) app.classList.remove("mobile-chat-open", "status-open");
+    if (status) {
+        hide(status);
+        status.style.removeProperty("display");
+        status.style.removeProperty("visibility");
+        status.style.removeProperty("z-index");
+    }
+}
+
+$("backToChats").addEventListener("click", returnToConversations);
 
 async function loadMessages(username) {
     try {
@@ -6369,25 +6383,12 @@ if (document.readyState === "loading") {
 /* KCHAT BACK ARROW RELIABILITY FIX */
 (function(){
   function closeKchatNavigation(event){
-    const button=event.target instanceof Element ? event.target.closest("#backToChats, #kchatAiBack, #closeContactProfile") : null;
+    const button=event.target instanceof Element ? event.target.closest("#kchatAiBack, #closeContactProfile") : null;
     if(!button) return;
 
     // Run in the capture phase so parent handlers or mobile touch wrappers
     // cannot swallow the navigation tap.
     event.preventDefault();
-    if(button.id==="backToChats"){
-      const app=document.getElementById("appScreen");
-      const status=document.getElementById("statusScreen");
-      if(app) app.classList.remove("mobile-chat-open","status-open");
-      if(status){
-        status.classList.add("hidden");
-        status.style.removeProperty("display");
-        status.style.removeProperty("visibility");
-        status.style.removeProperty("z-index");
-      }
-      return;
-    }
-
     if(button.id==="kchatAiBack"){
       const app=document.getElementById("appScreen");
       const screen=document.getElementById("kchatAiScreen");
@@ -6413,7 +6414,6 @@ if (document.readyState === "loading") {
   document.addEventListener("pointerup", closeKchatNavigation, true);
   document.addEventListener("click", closeKchatNavigation, true);
 })();
-</script>
 </script>
 
 </body>
