@@ -1495,6 +1495,12 @@ hr {
 .kchat-contact-action{width:38px;height:38px;border:0;border-radius:50%;background:transparent;color:#25d366;font:22px Arial,sans-serif;display:grid;place-items:center}
 .kchat-contact-action:active{background:#18372b}
 
+
+.kchat-new-chat-header #openQrReaderButton{font-size:23px}
+.kchat-qr-reader-card{width:min(92vw,440px);background:#111;color:#fff}
+.kchat-qr-reader-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#kchatQrVideo{display:block;width:100%;max-height:55vh;min-height:220px;object-fit:cover;background:#000;border-radius:12px;margin:14px 0}
+
 </style>
 
 <style id="kchatAiStyles">
@@ -2512,6 +2518,7 @@ hr {
 <header class="kchat-new-chat-header">
 <button type="button" class="kchat-new-chat-back" id="closeContactPicker" aria-label="Back">←</button>
 <div class="kchat-new-chat-heading"><strong>New chat</strong><small id="contactPickerStatus">Choose a KCHAT contact to start messaging</small></div>
+<button type="button" class="kchat-new-chat-icon" id="openQrReaderButton" aria-label="Scan QR code" title="Scan QR code">▦</button>
 <button type="button" class="kchat-new-chat-icon" id="newChatMoreButton" aria-label="More options">⋮</button>
 <div id="newChatMoreMenu" class="kchat-new-chat-menu hidden">
 <button type="button" id="refreshNewChatContacts">Refresh</button>
@@ -2526,6 +2533,15 @@ hr {
 <div id="contactPickerList" class="kchat-new-chat-list"></div>
 </div>
 
+<!-- KCHAT QR CODE READER -->
+<div id="kchatQrReaderModal" class="modal-backdrop hidden">
+  <div class="modal-card kchat-qr-reader-card">
+    <div class="kchat-qr-reader-head"><h2>Scan QR code</h2><button type="button" id="closeQrReaderButton" class="secondary-btn" aria-label="Close">✕</button></div>
+    <p class="small muted" id="qrReaderStatus">Point your camera at a KCHAT QR code.</p>
+    <video id="kchatQrVideo" autoplay muted playsinline></video>
+    <button type="button" class="secondary-btn" id="startQrReaderButton">Start camera</button>
+  </div>
+</div>
 <!-- ADD CONTACT -->
 <div id="addContactModal" class="modal-backdrop hidden">
     <div class="modal-card">
@@ -5176,6 +5192,40 @@ document.addEventListener("click", (e) => {
         $("chatMenu").classList.add("hidden");
     }
 });
+
+
+let kchatQrStream=null,kchatQrTimer=null;
+function stopKchatQrReader(){
+ if(kchatQrTimer){clearInterval(kchatQrTimer);kchatQrTimer=null;}
+ if(kchatQrStream){kchatQrStream.getTracks().forEach(track=>track.stop());kchatQrStream=null;}
+ const video=$("kchatQrVideo");if(video)video.srcObject=null;
+}
+async function startKchatQrReader(){
+ const status=$("qrReaderStatus"),video=$("kchatQrVideo");
+ if(!("BarcodeDetector" in window)){status.textContent="QR scanning is not supported by this browser. Try the latest Chrome on Android.";return;}
+ try{
+  const detector=new BarcodeDetector({formats:["qr_code"]});
+  kchatQrStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});
+  video.srcObject=kchatQrStream;await video.play();status.textContent="Camera is ready. Point it at a KCHAT QR code.";
+  kchatQrTimer=setInterval(async()=>{
+   if(!kchatQrStream||video.readyState<2)return;
+   try{
+    const codes=await detector.detect(video);
+    if(!codes.length)return;
+    const raw=(codes[0].rawValue||"").trim();if(!raw)return;
+    stopKchatQrReader();hide($("kchatQrReaderModal"));hide($("contactPickerModal"));
+    let username=raw;
+    if(raw.startsWith("kchat://chat/"))username=decodeURIComponent(raw.slice("kchat://chat/".length)).split(/[/?#]/)[0];
+    else if(/^https?:\/\//i.test(raw)){const url=new URL(raw);username=url.searchParams.get("user")||url.searchParams.get("username")||"";}
+    if(username){await openChat(username);}
+    else alert("This QR code does not contain a KCHAT contact.");
+   }catch(error){status.textContent="Unable to read this QR code. Try again.";}
+  },450);
+ }catch(error){status.textContent=error.message||"Camera permission is required to scan QR codes.";}
+}
+$("openQrReaderButton").addEventListener("click",()=>{show($("kchatQrReaderModal"));startKchatQrReader();});
+$("startQrReaderButton").addEventListener("click",startKchatQrReader);
+$("closeQrReaderButton").addEventListener("click",()=>{stopKchatQrReader();hide($("kchatQrReaderModal"));});
 
 // Open the phone-contact conversation selector from either New Chat button.
 async function openDeviceContactPicker() {
