@@ -1738,6 +1738,7 @@ hr {
             <!-- WHATSAPP CLASSIC TOP TABS (CHATS, CALLS, STATUS) -->
             <div class="whatsapp-tabs">
                 <button class="whatsapp-tab-btn active" data-tab="chat">CHATS</button>
+                <button class="whatsapp-tab-btn" data-tab="contacts">CONTACTS</button>
                 <button class="whatsapp-tab-btn" data-tab="call">CALLS</button>
                 <button class="whatsapp-tab-btn" data-tab="status">STATUS</button>
             </div>
@@ -2078,7 +2079,10 @@ hr {
 
 <!-- MAIN MENU: WhatsApp-style quick actions -->
 <div id="mainMenu" class="menu-popup hidden whatsapp-main-menu">
+    <button id="menuRefreshContacts"><span class="wa-menu-icon">↻</span>Refresh contacts</button>
+    <button id="menuAddContact"><span class="wa-menu-icon">＋</span>Add contact</button>
     <button id="menuNewGroup"><span class="wa-menu-icon">♧</span>New group</button>
+    <button id="menuInviteFriends"><span class="wa-menu-icon">↗</span>Invite friends</button>
     <button id="menuNewBroadcast"><span class="wa-menu-icon">◉</span>New broadcast</button>
     <button id="menuLinkedDevices"><span class="wa-menu-icon">▣</span>Linked devices</button>
     <button id="menuStarredMessages"><span class="wa-menu-icon">☆</span>Starred messages</button>
@@ -3535,6 +3539,7 @@ async function loadContacts() {
             return bTime - aTime;
         });
         renderContacts();
+        return true;
     } catch (error) {
         console.error("KCHAT inbox could not be loaded:", error);
         // Keep the contact list usable if the inbox endpoint is temporarily unavailable.
@@ -3545,6 +3550,7 @@ async function loadContacts() {
             contacts = [];
         }
         renderContacts();
+        return false;
     }
 }
 
@@ -3734,15 +3740,17 @@ function renderContacts() {
         renderCallHistory();
         return;
     }
-    document.querySelector(".filter-row")?.classList.remove("hidden");
+    const contactsOnly = activeTab === "contacts";
+    document.querySelector(".filter-row")?.classList.toggle("hidden", contactsOnly);
     const search = $("chatSearch").value.toLowerCase();
-    const showAiChat = activeTab === "chat"
+    const showAiChat = !contactsOnly && activeTab === "chat"
         && activeFilter === "all"
         && (!search || "kchat ai".includes(search) || "assistant".includes(search));
 
     let filtered = contacts.filter(contact => {
         const name = contactName(contact).toLowerCase();
         if (search && !name.includes(search)) return false;
+        if (contactsOnly) return !(contact.type === "group" || contact.is_group === true);
         if (activeTab === "call" && !(contact.is_call === true)) return false;
         if (activeTab === "status" && !(contact.has_status === true)) return false;
         if (activeFilter === "groups") return contact.type === "group" || contact.is_group === true;
@@ -3753,7 +3761,9 @@ function renderContacts() {
     });
 
     if (!filtered.length && !showAiChat) {
-        list.innerHTML = `<p class="muted" style="padding:25px;text-align:center;">No contacts yet. Add someone using their KCHAT username or registered phone number.</p>`;
+        list.innerHTML = contactsOnly
+            ? `<div style="padding:25px;text-align:center;color:var(--muted);">No KCHAT contacts yet. Use the three-dot menu to add a contact or invite friends.</div>`
+            : `<p class="muted" style="padding:25px;text-align:center;">No contacts yet. Add someone using their KCHAT username or registered phone number.</p>`;
         return;
     }
 
@@ -3780,7 +3790,7 @@ function renderContacts() {
             ? "typing…"
             : contact.last_message
                 ? (String(contact.last_message).startsWith("data:image/") ? "📷 Photo" : contact.last_message)
-                : "Start a conversation";
+                : (contactsOnly ? "KCHAT contact" : "Start a conversation");
         const isMine = String(contact.last_message_sender || "").toLowerCase() === String(currentUser || "").toLowerCase();
         const deliveryStatus = String(contact.last_message_status || "sent").toLowerCase();
         const report = isMine && contact.last_message
@@ -4500,9 +4510,17 @@ document.querySelectorAll(".whatsapp-tab-btn").forEach(button => {
             return;
         }
         closeKchatUpdatesScreen(activeTab);
-        if (activeTab === "chat" || activeTab === "call") {
-            if (currentChat) show($("chatScreen"));
-            else show($("welcomeScreen"));
+        if (activeTab === "contacts") {
+            $("appScreen").classList.remove("mobile-chat-open");
+            hide($("chatScreen"));
+            show($("welcomeScreen"));
+            $("chatSearch").placeholder = "Search contacts";
+        } else {
+            $("chatSearch").placeholder = "Search conversations";
+            if (activeTab === "chat" || activeTab === "call") {
+                if (currentChat) show($("chatScreen"));
+                else show($("welcomeScreen"));
+            }
         }
         renderContacts();
     });
@@ -5094,6 +5112,44 @@ $("menuContacts").addEventListener("click", () => {
 
 $("menuLogout").addEventListener("click", logout);
 $("settingsLogoutButton").addEventListener("click", logout);
+
+$("menuRefreshContacts").addEventListener("click", async () => {
+    const button = $("menuRefreshContacts");
+    hide($("mainMenu"));
+    button.disabled = true;
+    button.innerHTML = '<span class="wa-menu-icon">↻</span>Refreshing…';
+    try {
+        const refreshed = await loadContacts();
+        alert(refreshed ? "KCHAT contacts refreshed." : "Could not refresh contacts. Check your connection and try again.");
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<span class="wa-menu-icon">↻</span>Refresh contacts';
+    }
+});
+
+$("menuAddContact").addEventListener("click", () => {
+    hide($("mainMenu"));
+    $("newContactUsername").value = "";
+    $("addContactMessage").textContent = "";
+    show($("addContactModal"));
+    $("newContactUsername").focus();
+});
+
+$("menuInviteFriends").addEventListener("click", async () => {
+    hide($("mainMenu"));
+    const invite = { title: "Join me on KCHAT", text: "Let's chat on KCHAT.", url: window.location.origin };
+    try {
+        if (navigator.share) await navigator.share(invite);
+        else if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(invite.text + " " + invite.url);
+            alert("KCHAT invite link copied. Share it with your friends.");
+        } else {
+            window.prompt("Copy this KCHAT invite link:", invite.url);
+        }
+    } catch (error) {
+        if (error.name !== "AbortError") alert("Could not open the sharing options. Please try again.");
+    }
+});
 
 $("menuNewGroup").addEventListener("click", () => {
     hide($("mainMenu"));
