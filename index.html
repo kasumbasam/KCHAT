@@ -5999,40 +5999,14 @@ if (document.readyState === "loading") {
   }finally{clearInterval(workTimer);lock(false);input.focus();}
  }
  const sendButton=document.getElementById("kchatAiSendButton");
- // Use one submission path only. A submit button already fires the form's
- // submit event; a second click listener can cause duplicate/racing sends.
- // Support both normal form submission and direct mobile button taps.
- // The sending guard prevents the click and submit events from sending twice.
- form.addEventListener("submit",sendKchatAIMessage);
+ // Match the working normal Chats send button: one direct click listener.
+ // Keep AI sending separate from the normal Chats API and preserve its own
+ // conversation/history handling.
  if(sendButton){
   sendButton.type="button";
-  sendButton.disabled=false;
-  sendButton.style.setProperty("position","relative","important");
-  sendButton.style.setProperty("z-index","2147483002","important");
-  sendButton.style.setProperty("pointer-events","auto","important");
-  sendButton.style.setProperty("touch-action","manipulation","important");
-  // Start on pointer/touch press instead of waiting for Android to synthesize
-  // a click after release. The empty composer + sending guard prevent repeats.
-  sendButton.addEventListener("pointerdown",event=>{
-   event.preventDefault();
-   event.stopPropagation();
-   sendKchatAIMessage(event);
-  },{capture:true});
-  sendButton.addEventListener("touchstart",event=>{
-   event.preventDefault();
-   event.stopPropagation();
-   sendKchatAIMessage(event);
-  },{capture:true,passive:false});
-  sendButton.addEventListener("click",event=>{
-   event.preventDefault();
-   event.stopPropagation();
-   sendKchatAIMessage(event);
-  },true);
+  sendButton.addEventListener("click",sendKchatAIMessage);
  }
- form.style.setProperty("position","relative","important");
- form.style.setProperty("z-index","2147483001","important");
- form.style.setProperty("pointer-events","auto","important");
- input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();event.stopPropagation();sendKchatAIMessage(event);}});
+ input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();sendKchatAIMessage(event);}});
 })();
 </script>
 
