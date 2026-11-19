@@ -317,6 +317,22 @@ hr {
     background:var(--panel2);
 }
 
+/* Touch swipe actions for conversations */
+.chat-swipe-shell{position:relative;overflow:hidden;border-bottom:1px solid #ffffff08;touch-action:pan-y}
+.chat-swipe-actions{position:absolute;inset:0;display:flex;align-items:center;gap:8px;padding:0 12px;z-index:1}
+.chat-swipe-actions.delete-actions{justify-content:flex-end;background:#3a171d}
+.chat-swipe-actions.quick-actions{justify-content:flex-start;background:#102d35}
+.chat-swipe-actions button{min-width:58px;height:42px;padding:0 11px;border:0;border-radius:9px;font-size:15px;font-weight:700}
+.chat-swipe-actions .swipe-delete{background:var(--danger);color:#fff}
+.chat-swipe-actions .swipe-message,.chat-swipe-actions .swipe-call{background:var(--accent);color:#001419}
+.chat-swipe-shell>.chat-item{position:relative;z-index:2;background:var(--panel);border-bottom:0;transition:transform .18s ease}
+.chat-swipe-shell.reveal-delete>.chat-item{transform:translateX(-142px)}
+.chat-swipe-shell.reveal-quick>.chat-item{transform:translateX(142px)}
+.chat-swipe-shell.reveal-delete .quick-actions,.chat-swipe-shell.reveal-quick .delete-actions{pointer-events:none;opacity:0}
+.chat-swipe-shell .chat-swipe-actions{transition:opacity .15s}
+.chat-swipe-shell:not(.reveal-delete):not(.reveal-quick) .chat-swipe-actions{pointer-events:none;opacity:0}
+@media(min-width:751px){.chat-swipe-shell{overflow:hidden}}
+
 .avatar {
     width:48px;
     height:48px;
@@ -522,6 +538,15 @@ hr {
     display:flex;
     width:100%;
 }
+.message-bubble{touch-action:pan-y}
+.message-reply-quote{display:flex;flex-direction:column;gap:3px;margin:0 0 7px;padding:7px 9px;border-left:3px solid var(--accent);border-radius:6px;background:#0002;max-width:100%}
+.message-reply-quote strong{font-size:13px;color:var(--accent)}
+.message-reply-quote span{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.reply-composer-preview{display:flex;align-items:center;gap:10px;padding:8px 13px;background:var(--panel2);border-top:1px solid var(--border)}
+.reply-composer-copy{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;border-left:3px solid var(--accent);padding-left:9px}
+.reply-composer-copy strong{font-size:14px;color:var(--accent)}
+.reply-composer-copy span{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.reply-composer-preview button{width:32px;height:32px;border:0;border-radius:50%;background:transparent;color:var(--text);font-size:20px}
 
 .message-row.mine {
     justify-content:flex-end;
@@ -1928,6 +1953,10 @@ hr {
                 <div id="messagesArea" class="messages-area"></div>
 
                 <button type="button" id="kchatAiChatFab" class="kchat-ai-ring kchat-ai-chat-ring" aria-label="Open KCHAT AI in this conversation" title="Ask KCHAT AI"><span><img class="kchat-ai-logo-image" src="/kchat-ai-logo.svg" alt="KCHAT AI logo"></span></button>
+                <div id="replyComposerPreview" class="reply-composer-preview hidden">
+                    <div class="reply-composer-copy"><strong id="replyComposerName">Replying</strong><span id="replyComposerText"></span></div>
+                    <button type="button" id="cancelReplyButton" aria-label="Cancel reply">×</button>
+                </div>
                 <div class="message-composer">
                     <div class="composer-input-shell">
                         <button class="composer-inline-btn emoji-composer-btn" id="emojiButton" type="button" title="Emoji" aria-label="Open emoji picker">☺</button>
@@ -3971,22 +4000,90 @@ function renderContacts() {
             : "";
 
         return `
-            <button type="button" class="chat-item${contact.pinned ? " is-pinned" : ""}" data-username="${escapeHTML(name)}" aria-label="Open conversation with ${escapeHTML(name)}">
-                <span class="avatar">${avatarContent}</span>
-                <span class="chat-item-info">
-                    <span class="chat-item-name"><span>${escapeHTML(name)}</span>${contact.pinned ? '<span class="chat-pin-indicator" title="Pinned chat" aria-label="Pinned chat">📌</span>' : ""}</span>
-                    <span class="chat-item-preview${isTyping ? " typing-preview" : ""}"><span>${isTyping ? "" : report}</span><span>${escapeHTML(preview)}</span></span>
-                </span>
-                <span class="chat-item-time">
-                    <span>${escapeHTML(time)}</span>
-                    ${unread ? '<span class="inbox-unread-count">' + unread + '</span>' : ""}
-                </span>
-            </button>
+            <div class="chat-swipe-shell" data-swipe-chat="${escapeHTML(name)}">
+                <div class="chat-swipe-actions quick-actions" aria-label="Message or call">
+                    <button type="button" class="swipe-message" data-chat-swipe-action="message" data-peer="${escapeHTML(name)}">Message</button>
+                    <button type="button" class="swipe-call" data-chat-swipe-action="call" data-peer="${escapeHTML(name)}">Call</button>
+                </div>
+                <div class="chat-swipe-actions delete-actions" aria-label="Delete chat">
+                    <button type="button" class="swipe-delete" data-chat-swipe-action="delete" data-peer="${escapeHTML(name)}">Delete</button>
+                </div>
+                <button type="button" class="chat-item${contact.pinned ? " is-pinned" : ""}" data-username="${escapeHTML(name)}" aria-label="Open conversation with ${escapeHTML(name)}">
+                    <span class="avatar">${avatarContent}</span>
+                    <span class="chat-item-info">
+                        <span class="chat-item-name"><span>${escapeHTML(name)}</span>${contact.pinned ? '<span class="chat-pin-indicator" title="Pinned chat" aria-label="Pinned chat">📌</span>' : ""}</span>
+                        <span class="chat-item-preview${isTyping ? " typing-preview" : ""}"><span>${isTyping ? "" : report}</span><span>${escapeHTML(preview)}</span></span>
+                    </span>
+                    <span class="chat-item-time">
+                        <span>${escapeHTML(time)}</span>
+                        ${unread ? '<span class="inbox-unread-count">' + unread + '</span>' : ""}
+                    </span>
+                </button>
+            </div>
         `;
     }).join("");
 
+    list.querySelectorAll(".chat-swipe-shell[data-swipe-chat]").forEach(shell => {
+        let start = null;
+        shell.addEventListener("pointerdown", event => {
+            if (event.pointerType === "mouse") return;
+            start = { x: event.clientX, y: event.clientY };
+        }, { passive: true });
+        shell.addEventListener("pointerup", event => {
+            if (!start) return;
+            const dx = event.clientX - start.x;
+            const dy = event.clientY - start.y;
+            start = null;
+            if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const row = shell.querySelector(".chat-item");
+            if (row) row.dataset.swipeIgnoreClick = "1";
+            shell.classList.remove("reveal-delete", "reveal-quick");
+            shell.classList.add(dx < 0 ? "reveal-delete" : "reveal-quick");
+        });
+        shell.addEventListener("pointercancel", () => { start = null; });
+        shell.addEventListener("click", event => {
+            if (event.target.closest("[data-chat-swipe-action]")) return;
+            if (shell.classList.contains("reveal-delete") || shell.classList.contains("reveal-quick")) {
+                shell.classList.remove("reveal-delete", "reveal-quick");
+            }
+        });
+    });
+    list.querySelectorAll("[data-chat-swipe-action]").forEach(button => {
+        button.addEventListener("click", async event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const peer = button.dataset.peer;
+            const shell = button.closest(".chat-swipe-shell");
+            const action = button.dataset.chatSwipeAction;
+            if (action === "message") {
+                openChat(peer);
+            } else if (action === "call") {
+                startKchatCall("audio", peer);
+            } else if (action === "delete") {
+                if (!confirm("Delete this chat from your conversation list? Its messages will not be deleted.")) return;
+                button.disabled = true;
+                try {
+                    const result = await apiRequest("/api/chats/" + encodeURIComponent(peer) + "/settings", {
+                        method: "PUT", body: JSON.stringify({ hidden: true })
+                    });
+                    if (!result || result.success !== true) throw new Error(result?.error || "Could not delete this chat.");
+                    shell?.remove();
+                    await loadContacts();
+                } catch (error) {
+                    button.disabled = false;
+                    alert(error.message || "Could not delete this chat.");
+                }
+            }
+        });
+    });
     list.querySelectorAll(".chat-item[data-username]").forEach(item => {
         item.addEventListener("click", () => {
+            if (item.dataset.swipeIgnoreClick === "1") {
+                item.dataset.swipeIgnoreClick = "0";
+                return;
+            }
             const selected = contacts.find(contact => contactName(contact) === item.dataset.username);
             if (selected && (selected.type === "group" || selected.is_group === true)) {
                 openContactProfile(item.dataset.username);
@@ -4024,6 +4121,12 @@ document.addEventListener("click", event => {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;
     const row = target?.closest("#chatList .chat-item[data-username]");
     if (!row) return;
+    if (row.dataset.swipeIgnoreClick === "1") {
+        row.dataset.swipeIgnoreClick = "0";
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+    }
     event.preventDefault();
     event.stopImmediatePropagation();
     openSelectedChatRow(row);
@@ -5019,6 +5122,48 @@ function renderPinnedMessageBanner() {
     };
 }
 
+let replyingToMessage = null;
+
+function messagePreviewText(message) {
+    const value = String(message?.text || "");
+    return value.startsWith("data:image/") ? "Photo" : value.slice(0, 180);
+}
+
+function setReplyToMessage(message) {
+    if (!message || !message.id || message.revoked) return;
+    replyingToMessage = {
+        id: String(message.id),
+        sender: String(message.username || message.sender || "Contact"),
+        text: messagePreviewText(message)
+    };
+    $("replyComposerName").textContent = "Replying to " + replyingToMessage.sender;
+    $("replyComposerText").textContent = replyingToMessage.text || "Message";
+    $("replyComposerPreview").classList.remove("hidden");
+    $("messageInput").focus();
+}
+
+function clearReplyToMessage() {
+    replyingToMessage = null;
+    $("replyComposerPreview").classList.add("hidden");
+    $("replyComposerName").textContent = "Replying";
+    $("replyComposerText").textContent = "";
+}
+
+$("cancelReplyButton").addEventListener("click", clearReplyToMessage);
+
+function encodeReplyText(reply, text) {
+    if (!reply) return text;
+    const metadata = encodeURIComponent(JSON.stringify(reply));
+    return "[[KCHAT_REPLY:" + metadata + "]]\\n" + text;
+}
+
+function decodeReplyText(value) {
+    const match = String(value || "").match(/^\\[\\[KCHAT_REPLY:([^\\]]+)\\]\\]\\n([\\s\\S]*)$/);
+    if (!match) return null;
+    try { return { reply: JSON.parse(decodeURIComponent(match[1])), text: match[2] }; }
+    catch { return null; }
+}
+
 function renderMessages() {
     const area = $("messagesArea");
     closeMessageActionMenu();
@@ -5036,9 +5181,12 @@ function renderMessages() {
 
         const isImage = typeof message.text === "string"
             && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(message.text);
+        const decodedReply = !isImage ? decodeReplyText(message.text || "") : null;
         const messageContent = isImage
             ? `<img class="message-image" src="${escapeHTML(message.text)}" alt="Photo sent in KCHAT" loading="lazy">`
-            : `<div class="message-text">${escapeHTML(message.text || "")}</div>`;
+            : decodedReply
+                ? `<div class="message-reply-quote"><strong>Replying to ${escapeHTML(decodedReply.reply.sender || "Contact")}</strong><span>${escapeHTML(decodedReply.reply.text || "Message")}</span></div><div class="message-text">${escapeHTML(decodedReply.text)}</div>`
+                : `<div class="message-text">${escapeHTML(message.text || "")}</div>`;
         const status = String(message.status || "sent").toLowerCase();
         const receiptMarkup = mine && !message.revoked
             ? status === "read"
@@ -5063,12 +5211,14 @@ function renderMessages() {
 
     area.querySelectorAll("[data-message-id]").forEach(bubble => {
         const id = bubble.dataset.messageId;
+        let swipeStart = null;
         bubble.addEventListener("contextmenu", event => {
             event.preventDefault();
             openMessageActionMenu(id, bubble, event.clientX, event.clientY);
         });
         bubble.addEventListener("pointerdown", event => {
             if (event.pointerType === "mouse") return;
+            swipeStart = { x: event.clientX, y: event.clientY };
             longPressTriggered = false;
             clearTimeout(longPressTimer);
             longPressTimer = setTimeout(() => {
@@ -5076,8 +5226,23 @@ function renderMessages() {
                 openMessageActionMenu(id, bubble, event.clientX || bubble.getBoundingClientRect().left, event.clientY || bubble.getBoundingClientRect().top);
             }, 550);
         });
-        ["pointerup", "pointerleave", "pointercancel"].forEach(name => {
-            bubble.addEventListener(name, () => clearTimeout(longPressTimer));
+        bubble.addEventListener("pointerup", event => {
+            clearTimeout(longPressTimer);
+            if (!swipeStart) return;
+            const dx = event.clientX - swipeStart.x;
+            const dy = event.clientY - swipeStart.y;
+            swipeStart = null;
+            if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+            event.preventDefault();
+            event.stopPropagation();
+            longPressTriggered = true;
+            const message = messages.find(item => String(item.id) === String(id));
+            if (!message) return;
+            if (dx < 0) deleteMessageForMe(id);
+            else setReplyToMessage(message);
+        });
+        ["pointerleave", "pointercancel"].forEach(name => {
+            bubble.addEventListener(name, () => { clearTimeout(longPressTimer); swipeStart = null; });
         });
         bubble.addEventListener("click", event => {
             if (longPressTriggered) {
@@ -5219,16 +5384,18 @@ async function sendMessage() {
         return;
     }
     if (!text || !currentChat) return;
+    const outgoingText = encodeReplyText(replyingToMessage, text);
     stopLocalTyping();
     try {
         const result = await apiRequest("/api/messages", {
             method: "POST",
-            body: JSON.stringify({ recipient: currentChat, text: text, type: "private" })
+            body: JSON.stringify({ recipient: currentChat, text: outgoingText, type: "private" })
         });
         if (!result || !result.success || !result.message) {
             throw new Error((result && result.error) || "KCHAT did not accept the message.");
         }
         input.value = "";
+        clearReplyToMessage();
         const sentMessage = { ...result.message };
         const earlyStatus = pendingDeliveryStatuses.get(sentMessage.id);
         if (earlyStatus) {
