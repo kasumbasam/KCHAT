@@ -198,11 +198,10 @@
     }
   }
 
-  document.addEventListener("click", function (event) {
-    const target = event.target instanceof Element ? event.target : null;
-    if (target && target.closest("#kchatAiSendButton")) sendAiFromLauncher(event);
-  }, true);
-
+  // Sending is handled by the main AI conversation controller in index.html.
+  // Do not intercept the Send button here: that bypassed the saved conversation
+  // history and made the AI chat behave like a temporary pop-up.
+  
   // Cancel native AI form navigation while allowing its app submit handler to run.
   document.addEventListener("submit", function (event) {
     const form = event.target;
