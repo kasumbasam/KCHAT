@@ -1442,6 +1442,7 @@ hr {
 .directory-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:8px 12px 15px;border-bottom:1px solid var(--border)}
 .directory-shortcuts button{min-height:74px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;border:1px solid var(--border);border-radius:12px;background:var(--panel2);color:var(--text);font:13px Arial,sans-serif}
 .directory-shortcuts button span{font:23px Arial,sans-serif;color:var(--accent)}
+.directory-list-heading{padding:16px 16px 8px;color:var(--muted);font:600 12px Arial,sans-serif;letter-spacing:.08em}
 .directory-contact-row{display:flex;align-items:center;gap:12px;width:100%;min-height:72px;padding:10px 16px;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);text-align:left}
 .directory-contact-row:active,.directory-contact-row:hover{background:var(--panel2)}
 .directory-avatar{width:49px;height:49px;flex:0 0 49px;display:grid;place-items:center;overflow:hidden;border-radius:50%;background:var(--panel2);color:var(--accent);font:600 19px Arial,sans-serif}
@@ -3770,7 +3771,8 @@ function renderContacts() {
 
     let filtered = contacts.filter(contact => {
         const name = contactName(contact).toLowerCase();
-        if (search && !name.includes(search)) return false;
+        const phone = String(contact.phone_number || contact.phone || "").toLowerCase();
+        if (search && !name.includes(search) && !phone.includes(search)) return false;
         if (contactsOnly) return !(contact.type === "group" || contact.is_group === true);
         if (activeTab === "call" && !(contact.is_call === true)) return false;
         if (activeTab === "status" && !(contact.has_status === true)) return false;
@@ -3796,14 +3798,14 @@ function renderContacts() {
         }).join("");
         list.innerHTML =
             '<section class="kchat-contact-directory">' +
-              '<div class="directory-heading"><div><strong>KCHAT CONTACTS</strong><small>People saved in your KCHAT account</small></div>' +
-              '<button type="button" class="directory-refresh" id="directoryRefreshButton" aria-label="Refresh contacts" title="Refresh contacts">↻</button></div>' +
+              '<div class="directory-heading"><div><strong>NEW CONVERSATION</strong><small>Choose a KCHAT contact to start chatting</small></div></div>' +
               '<div class="directory-shortcuts">' +
-                '<button type="button" id="directoryPhoneContacts"><span>▤</span>Phone contacts</button>' +
+                '<button type="button" id="directoryRefreshButton"><span>↻</span>Refresh</button>' +
                 '<button type="button" id="directoryAddContact"><span>＋</span>Add contact</button>' +
                 '<button type="button" id="directoryNewGroup"><span>♧</span>New group</button>' +
               '</div>' +
-              (contactRows || '<div class="directory-empty"><strong>No KCHAT contacts yet</strong><p>Add someone by their registered phone number or username, or invite friends to join KCHAT.</p></div>') +
+              '<div class="directory-list-heading">KCHAT CONTACTS</div>' +
+              (contactRows || '<div class="directory-empty"><strong>No KCHAT contacts yet</strong><p>Add someone using their registered phone number or username, or invite friends to join KCHAT.</p></div>') +
             '</section>';
         list.querySelectorAll("[data-directory-user]").forEach(row => row.addEventListener("click", () => openChat(row.dataset.directoryUser)));
         $("directoryRefreshButton")?.addEventListener("click", async event => {
@@ -3815,7 +3817,6 @@ function renderContacts() {
             button.textContent = "↻";
             if (!ok) alert("Could not refresh contacts. Check your connection and try again.");
         });
-        $("directoryPhoneContacts")?.addEventListener("click", openDeviceContactPicker);
         $("directoryAddContact")?.addEventListener("click", () => $("menuAddContact")?.click());
         $("directoryNewGroup")?.addEventListener("click", () => $("menuNewGroup")?.click());
         return;
