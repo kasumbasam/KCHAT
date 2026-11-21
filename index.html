@@ -379,6 +379,22 @@ hr {
     overflow:hidden;
 }
 
+/* Live online marker on contact profile photos in the chat list */
+.chat-item .avatar { position:relative; overflow:visible; }
+.chat-item .avatar img { border-radius:50%; }
+.chat-item .avatar.is-online::after {
+    content:"";
+    position:absolute;
+    width:13px;
+    height:13px;
+    right:0;
+    bottom:0;
+    border-radius:50%;
+    background:#22c55e;
+    border:2px solid var(--panel);
+    box-shadow:0 0 0 1px #22c55e55;
+}
+
 .avatar img {
     width:100%;
     height:100%;
@@ -4098,6 +4114,8 @@ function renderContacts() {
     list.innerHTML = aiChatRow + filtered.map(contact => {
         const name = contactName(contact);
         const pic = contact.profile_picture;
+        const isGroupContact = contact.type === "group" || contact.is_group === true;
+        const isOnline = !isGroupContact && onlineUsers.has(name.toLowerCase());
         const avatarContent = pic
             ? `<img src="${escapeHTML(pic)}" alt="Avatar">`
             : escapeHTML(name.charAt(0).toUpperCase());
@@ -4131,7 +4149,7 @@ function renderContacts() {
                     <button type="button" class="swipe-delete" data-chat-swipe-action="delete" data-peer="${escapeHTML(name)}">Delete</button>
                 </div>
                 <button type="button" class="chat-item${contact.pinned ? " is-pinned" : ""}" data-username="${escapeHTML(name)}" aria-label="Open conversation with ${escapeHTML(name)}">
-                    <span class="avatar">${avatarContent}</span>
+                    <span class="avatar${isOnline ? " is-online" : ""}"${isOnline ? ' title="Online"' : ""}>${avatarContent}</span>
                     <span class="chat-item-info">
                         <span class="chat-item-name"><span>${escapeHTML(name)}</span>${contact.pinned ? '<span class="chat-pin-indicator" title="Pinned chat" aria-label="Pinned chat">📌</span>' : ""}</span>
                         <span class="chat-item-preview${isTyping ? " typing-preview" : ""}"><span>${isTyping ? "" : report}</span><span>${escapeHTML(preview)}</span></span>
@@ -6694,6 +6712,17 @@ function updateContactPresence(username, online, lastSeenAt = null) {
     if (lastSeenAt) contactLastSeen.set(key, lastSeenAt);
     if (nextOnline) onlineUsers.add(key);
     else onlineUsers.delete(key);
+    // Update the matching chat-list avatar immediately without rebuilding
+    // the list or disturbing its scroll position and swipe state.
+    document.querySelectorAll('#chatList .chat-item[data-username]').forEach(row => {
+        if (String(row.dataset.username || "").toLowerCase() !== key) return;
+        const avatar = row.querySelector(".avatar");
+        if (avatar) {
+            avatar.classList.toggle("is-online", nextOnline);
+            if (nextOnline) avatar.title = "Online";
+            else avatar.removeAttribute("title");
+        }
+    });
     if (currentChat && currentChat.toLowerCase() === key) {
         $("activeChatStatus").textContent = nextOnline ? "Online" : formatLastSeen(lastSeenAt || contactLastSeen.get(key));
     }
