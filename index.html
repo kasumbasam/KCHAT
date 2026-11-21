@@ -4560,7 +4560,7 @@ function renderMyStatusPage(items){
         const row=document.createElement("div");row.className="my-status-entry";
         const open=document.createElement("button");open.type="button";open.className="my-status-entry";open.style.cssText="flex:1;min-width:0;border:0;border-bottom:0;padding:0;background:transparent";
         const thumb=document.createElement("span");thumb.className="my-status-entry-thumb";
-        if(item.media_data&&item.media_type==="image"){const img=document.createElement("img");img.src=item.media_data;img.alt="Story thumbnail";thumb.appendChild(img);}
+        if(item.media_type==="image"){const img=document.createElement("img");img.alt="Story thumbnail";if(item.media_data)img.src=item.media_data;else loadStatusMedia(item).then(url=>{img.src=url;}).catch(()=>{});thumb.appendChild(img);}
         else if(item.media_type==="audio"){thumb.textContent="♫";}
         else if(item.media_type==="video"){thumb.textContent="▶";}
         else{thumb.textContent="Aa";thumb.style.background=item.background||"#263238";}
@@ -4846,9 +4846,10 @@ function renderStatusStories(){
     preview.style.background="";
     preview.style.backgroundImage="";
     if(latestMine){
-        if(latestMine.media_data&&latestMine.media_type==="image"){
+        if(latestMine.media_type==="image"){
             preview.className="my-status-preview media-preview";
-            preview.style.backgroundImage="url("+JSON.stringify(latestMine.media_data)+")";
+            if(latestMine.media_data)preview.style.backgroundImage="url("+JSON.stringify(latestMine.media_data)+")";
+            else loadStatusMedia(latestMine).then(url=>{if(window.kchatStatuses?.some(item=>item.id===latestMine.id))preview.style.backgroundImage="url("+JSON.stringify(url)+")";}).catch(()=>{});
             preview.setAttribute("aria-label","Latest photo status");
         }else if(latestMine.media_type==="video"){
             preview.className="my-status-preview media-preview video-preview";
