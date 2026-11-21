@@ -5428,7 +5428,7 @@ function renderMessages() {
         const messageContent = isImage
             ? `<img class="message-image" src="${escapeHTML(message.text)}" alt="Photo sent in KCHAT" loading="lazy">`
             : decodedReply
-                ? `<div class="message-reply-quote"><strong>Replying to ${escapeHTML(decodedReply.reply.sender || "Contact")}</strong><span>${escapeHTML(decodedReply.reply.text || "Message")}</span></div><div class="message-text">${escapeHTML(decodedReply.text)}</div>`
+                ? `<div class="message-reply-quote"><span>${escapeHTML(decodedReply.reply.text || "Message")}</span></div><div class="message-text">${escapeHTML(decodedReply.text)}</div>`
                 : `<div class="message-text">${escapeHTML(message.text || "")}</div>`;
         const status = String(message.status || "sent").toLowerCase();
         const receiptMarkup = mine && !message.revoked
