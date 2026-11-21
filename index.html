@@ -4121,10 +4121,13 @@ function renderContacts() {
             : escapeHTML(name.charAt(0).toUpperCase());
         const unread = Number(contact.unread_count || 0);
         const isTyping = typingUsers.has(name.toLowerCase());
+        const rawLastMessage = String(contact.last_message || "");
+        const decodedLastReply = decodeReplyText(rawLastMessage);
+        const cleanLastMessage = decodedLastReply ? decodedLastReply.text : rawLastMessage;
         const preview = isTyping
             ? "typing…"
-            : contact.last_message
-                ? (String(contact.last_message).startsWith("data:image/") ? "📷 Photo" : contact.last_message)
+            : cleanLastMessage
+                ? (cleanLastMessage.startsWith("data:image/") ? "📷 Photo" : (decodedLastReply ? "↩ " : "") + cleanLastMessage)
                 : (contactsOnly ? "KCHAT contact" : "Start a conversation");
         const isMine = String(contact.last_message_sender || "").toLowerCase() === String(currentUser || "").toLowerCase();
         const deliveryStatus = String(contact.last_message_status || "sent").toLowerCase();
