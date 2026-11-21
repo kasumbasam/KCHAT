@@ -4383,19 +4383,50 @@ $("deleteMyStatusButton").addEventListener("click",async()=>{
 async function handleMyStatusCardTap(){
     const card=$("myStatusCard");
     if(!card)return;
+
+    // Open from the already-rendered story cache immediately; refresh from the
+    // server afterwards so network latency never delays opening a known story.
+    const cached=Array.isArray(window.kchatStatuses)?window.kchatStatuses:[];
+    const cachedMine=cached.filter(item=>item.is_mine)
+        .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+    if(cachedMine.length){
+        openStatusViewer(cachedMine,0);
+        loadStatuses().then(loaded=>{
+            if(!Array.isArray(loaded))return;
+            const freshMine=loaded.filter(item=>item.is_mine)
+                .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+            // Keep the viewer open and sync it silently if the server has newer
+            // items. Do not interrupt the story currently being watched.
+            if($("statusViewer")&&!$("statusViewer").classList.contains("hidden")){
+                const current=statusViewerItems[statusViewerIndex];
+                const currentId=current?.id;
+                statusViewerItems=freshMine;
+                const refreshedIndex=freshMine.findIndex(item=>item.id===currentId);
+                statusViewerIndex=refreshedIndex>=0?refreshedIndex:Math.min(statusViewerIndex,Math.max(0,freshMine.length-1));
+                if(freshMine.length)renderStatusViewer();
+                else closeStatusViewer();
+            }
+        }).catch(error=>console.warn("Background story refresh failed:",error));
+        return;
+    }
+
+    // First visit / empty cache: show the viewer immediately with a lightweight
+    // loading state while the initial request is in flight.
     card.setAttribute("aria-busy","true");
+    openStatusViewer([{id:"status-loading",is_mine:true,text:"Loading your story…"}],0);
     try{
         const loaded=await loadStatuses();
-        if(loaded===null)throw new Error("KCHAT could not retrieve your statuses. Check your connection and try again.");
-        const mine=loaded.filter(item=>item.is_mine).sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
-        if(mine.length){
-            openStatusViewer(mine,0);
-        }else{
+        const mine=(loaded||[]).filter(item=>item.is_mine)
+            .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+        if(mine.length)openStatusViewer(mine,0);
+        else{
             closeStatusViewer();
-            alert("No active status was found on your account. Share a photo, video or written status first.");
+            if(loaded!==null)alert("No active status was found on your account. Share a photo, video or written status first.");
+            else alert("Could not load your story. Check your connection and try again.");
         }
     }catch(error){
         console.error("My status tap failed:",error);
+        closeStatusViewer();
         alert(error.message||"Could not load your status. Please try again.");
     }finally{
         card.removeAttribute("aria-busy");
