@@ -2199,11 +2199,13 @@ async def get_private_messages(username: str, request: Request):
                 ) AS pinned_by_me
             FROM messages m
             WHERE m.type = 'private'
-            AND m.room = %s
             AND (
-                (LOWER(m.username) = %s AND LOWER(m.recipient) = %s)
-                OR
-                (LOWER(m.username) = %s AND LOWER(m.recipient) = %s)
+                m.room = %s
+                OR (
+                    (LOWER(m.username) = %s AND LOWER(m.recipient) = %s)
+                    OR
+                    (LOWER(m.username) = %s AND LOWER(m.recipient) = %s)
+                )
             )
             AND (m.expires_at IS NULL OR m.expires_at > NOW())
             AND NOT EXISTS (
@@ -2218,26 +2220,8 @@ async def get_private_messages(username: str, request: Request):
             account["id"]
         )).fetchall()
 
-        # If legacy rows have stale sender/recipient names, recover only rows
-        # from this exact private room. Keep expiry and per-account hide rules.
-        if not rows:
-            rows = conn.execute("""
-                SELECT m.*,
-                    (m.edited_at IS NOT NULL) AS edited,
-                    EXISTS (
-                        SELECT 1 FROM pinned_messages pm
-                        WHERE pm.message_id = m.id AND pm.owner_id = %s
-                    ) AS pinned_by_me
-                FROM messages m
-                WHERE m.type = 'private'
-                AND m.room = %s
-                AND (m.expires_at IS NULL OR m.expires_at > NOW())
-                AND NOT EXISTS (
-                    SELECT 1 FROM message_hidden mh
-                    WHERE mh.message_id = m.id AND mh.owner_id = %s
-                )
-                ORDER BY m.created_at ASC
-            """, (account["id"], private_room, account["id"])).fetchall()
+        # Match either the canonical room or the exact participant pair so
+        # older messages saved under legacy room formats remain visible.
 
         # Always clear the recipient's unread counter when the conversation
         # is opened. update_sender_status independently respects the user's
