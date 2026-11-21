@@ -3535,6 +3535,28 @@ async def get_statuses(request: Request):
                     continue
             visible_rows.append(row)
 
+        # Fetch all own-story viewers in one query instead of opening two
+        # database connections per story. This keeps the Updates screen fast
+        # when an account has many active stories.
+        own_status_ids = [row["id"] for row in visible_rows
+                          if str(row["owner_id"]) == str(account["id"])]
+        viewers_by_status = {str(status_id): [] for status_id in own_status_ids}
+        if own_status_ids:
+            with get_db() as conn:
+                viewer_rows = conn.execute("""
+                    SELECT v.status_id, a.username, a.profile_picture, v.viewed_at
+                    FROM status_views v
+                    JOIN accounts a ON a.id = v.viewer_id
+                    WHERE v.status_id = ANY(%s)
+                    ORDER BY v.viewed_at DESC
+                """, (own_status_ids,)).fetchall()
+            for viewer in viewer_rows:
+                viewers_by_status.setdefault(str(viewer["status_id"]), []).append({
+                    "username": viewer["username"],
+                    "profile_picture": viewer["profile_picture"],
+                    "viewed_at": viewer["viewed_at"].isoformat()
+                })
+
         return {
             "success": True,
             "statuses": [{
@@ -3547,14 +3569,10 @@ async def get_statuses(request: Request):
                 "created_at": row["created_at"].isoformat(),
                 "expires_at": row["expires_at"].isoformat(),
                 "is_mine": str(row["owner_id"]) == str(account["id"]),
-                "view_count": (
-                    get_status_view_details(row["id"])["count"]
-                    if str(row["owner_id"]) == str(account["id"]) else None
-                ),
-                "viewers": (
-                    get_status_view_details(row["id"])["viewers"]
-                    if str(row["owner_id"]) == str(account["id"]) else []
-                )
+                "view_count": len(viewers_by_status.get(str(row["id"]), []))
+                    if str(row["owner_id"]) == str(account["id") else None,
+                "viewers": viewers_by_status.get(str(row["id"]), [])
+                    if str(row["owner_id"]) == str(account["id") else []
             } for row in visible_rows]
         }
     except Exception as error:
