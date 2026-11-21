@@ -2210,17 +2210,19 @@ async def get_private_messages(username: str, request: Request):
             account["id"]
         )).fetchall()
 
-        unread = []
-        if get_privacy_settings(account["id"]).get("read_receipts", True):
-            unread = conn.execute("""
-                UPDATE messages SET status = 'read'
-                WHERE type = 'private'
-                AND LOWER(username) = %s
-                AND LOWER(recipient) = %s
-                AND status != 'read'
-                AND (expires_at IS NULL OR expires_at > NOW())
-                RETURNING id, username, room
-            """, (peer["username"].lower(), account["username"].lower())).fetchall()
+        # Always clear the recipient's unread counter when the conversation
+        # is opened. update_sender_status independently respects the user's
+        # read-receipt privacy setting, so this does not expose a read receipt
+        # when read receipts are disabled.
+        unread = conn.execute("""
+            UPDATE messages SET status = 'read'
+            WHERE type = 'private'
+            AND LOWER(username) = %s
+            AND LOWER(recipient) = %s
+            AND status != 'read'
+            AND (expires_at IS NULL OR expires_at > NOW())
+            RETURNING id, username, room
+        """, (peer["username"].lower(), account["username"].lower())).fetchall()
 
     for row in unread:
         await update_sender_status(row["room"], {
@@ -2737,10 +2739,12 @@ def users_blocked(user1_id, user2_id):
 
 
 def save_message(item, room):
+    # Read the disappearing-message preference and insert the message using
+    # one database connection instead of opening two sequential connections.
     expires_at = None
 
-    if item["type"] == "private" and item.get("to"):
-        with get_db() as conn:
+    with get_db() as conn:
+        if item["type"] == "private" and item.get("to"):
             setting = conn.execute("""
                 SELECT disappearing_seconds
                 FROM chat_preferences
@@ -2756,11 +2760,9 @@ def save_message(item, room):
             )).fetchone()
 
             seconds = setting["disappearing_seconds"] if setting else 0
-
             if seconds:
                 expires_at = seconds
 
-    with get_db() as conn:
         if expires_at:
             row = conn.execute("""
                 INSERT INTO messages (
