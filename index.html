@@ -5076,7 +5076,7 @@ async function openChat(username) {
     show($("chatScreen"));
     $("activeChatName").textContent = username;
     $("activeChatAvatar").textContent = username.charAt(0).toUpperCase();
-    $("activeChatStatus").textContent = onlineUsers.has(username.toLowerCase()) ? "Online" : "Offline";
+    $("activeChatStatus").textContent = onlineUsers.has(username.toLowerCase()) ? "Online" : formatLastSeen(contactLastSeen.get(username.toLowerCase()));
 
     // Always clear any full-screen layer before showing a conversation.
     const appScreen = $("appScreen");
@@ -5110,9 +5110,9 @@ async function openChat(username) {
     await loadContacts();
     try {
         const presence = await apiRequest("/api/presence/" + encodeURIComponent(username));
-        updateContactPresence(username, presence.online === true);
+        updateContactPresence(username, presence.online === true, presence.last_seen_at || null);
     } catch {
-        updateContactPresence(username, false);
+        updateContactPresence(username, false, contactLastSeen.get(username.toLowerCase()) || null);
     }
 }
 
@@ -5564,7 +5564,7 @@ function setRemoteTyping(username, active) {
             typingUsers.delete(key);
             renderContacts();
             if (currentChat && currentChat.trim().toLowerCase() === key) {
-                $("activeChatStatus").textContent = onlineUsers.has(key) ? "Online" : "Offline";
+                updateContactPresence(username, onlineUsers.has(key), contactLastSeen.get(key) || null);
             }
         }, 5000);
         typingUsers.set(key, timer);
@@ -5578,7 +5578,7 @@ function setRemoteTyping(username, active) {
     if (currentChat && currentChat.trim().toLowerCase() === key) {
         $("activeChatStatus").textContent = active
             ? "typing…"
-            : (onlineUsers.has(key) ? "Online" : "Offline");
+            : (onlineUsers.has(key) ? "Online" : formatLastSeen(contactLastSeen.get(key)));
     }
 }
 
@@ -6495,7 +6495,7 @@ function connectWebSocket() {
             } else if (item.type === "typing") {
                 setRemoteTyping(item.username, item.active === true);
             } else if (item.type === "presence") {
-                updateContactPresence(item.username, item.online === true);
+                updateContactPresence(item.username, item.online === true, item.last_seen_at || null);
             } else if (item.type === "private" && item.to &&
                 item.to.toLowerCase() === currentUser.toLowerCase()) {
                 if (currentChat && item.username &&
@@ -6546,7 +6546,7 @@ function connectWebSocket() {
         };
         socket.onclose = () => {
             onlineUsers.clear();
-            if (currentChat) $("activeChatStatus").textContent = "Offline";
+            if (currentChat) updateContactPresence(currentChat, false, contactLastSeen.get(currentChat.toLowerCase()) || null);
             clearTimeout(reconnectTimer);
             if (dndMode || !authToken) return;
             reconnectAttempts++;
@@ -6612,14 +6612,29 @@ document.querySelectorAll('input[type="password"]').forEach(input => {
 
 const onlineUsers = new Set();
 
-function updateContactPresence(username, online) {
+const contactLastSeen = new Map();
+
+function formatLastSeen(value) {
+    if (!value) return "Last seen unavailable";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Last seen unavailable";
+    const now = new Date();
+    const time = date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    if (date.toDateString() === now.toDateString()) return "last seen today at " + time;
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) return "last seen yesterday at " + time;
+    return "last seen " + date.toLocaleDateString([], { day: "numeric", month: "short", year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined }) + " at " + time;
+}
+
+function updateContactPresence(username, online, lastSeenAt = null) {
     if (!username) return;
     const key = String(username).toLowerCase();
+    if (lastSeenAt) contactLastSeen.set(key, lastSeenAt);
     if (online) onlineUsers.add(key);
     else onlineUsers.delete(key);
-
     if (currentChat && currentChat.toLowerCase() === key) {
-        $("activeChatStatus").textContent = online ? "Online" : "Offline";
+        $("activeChatStatus").textContent = online ? "Online" : formatLastSeen(lastSeenAt || contactLastSeen.get(key));
     }
 }
 
