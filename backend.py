@@ -3589,7 +3589,9 @@ async def get_status_media(status_id: str, request: Request):
                 if (audience == "my_contacts_except" and viewer_name in excluded) or (audience == "only_share_with" and viewer_name not in allowed):
                     return JSONResponse({"error": "You cannot view this story."}, status_code=403)
             media_data = row["media_data"]
-        return {"success": True, "media_data": media_data}
+        header, encoded = media_data.split(",", 1)
+        mime_type = header[5:].split(";", 1)[0] if header.startswith("data:") else "application/octet-stream"
+        return StreamingResponse(iter([base64.b64decode(encoded)]), media_type=mime_type, headers={"Cache-Control": "private, max-age=300"})
     except Exception as error:
         print("Get status media error:", error)
         return JSONResponse({"error": "Could not load story media."}, status_code=500)
