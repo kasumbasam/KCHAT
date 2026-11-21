@@ -5112,11 +5112,28 @@ document.querySelectorAll(".whatsapp-tab-btn").forEach(button => {
                 hide($("chatScreen"));
                 show($("welcomeScreen"));
             } else {
-                if (activeTab === "chat") activeFilter = "all";
+                if (activeTab === "chat") {
+                    // Returning from Groups must always restore the complete inbox.
+                    activeFilter = "all";
+                    document.querySelectorAll(".filter-btn").forEach(item => {
+                        item.classList.toggle("active", item.dataset.filter === "all");
+                    });
+                    $("chatSearch").placeholder = "Search conversations";
+                    $("appScreen").classList.remove("mobile-chat-open");
+                    hide($("chatScreen"));
+                    show($("welcomeScreen"));
+                    // Refresh saved contacts and recent private conversations on entry.
+                    // Render immediately first, then replace with the refreshed inbox.
+                    renderContacts();
+                    loadContacts().catch(error => {
+                        console.warn("KCHAT chat list refresh failed:", error);
+                    });
+                    return;
+                }
                 document.querySelectorAll(".filter-btn").forEach(item => {
                     item.classList.toggle("active", item.dataset.filter === activeFilter);
                 });
-                if (activeTab === "chat" || activeTab === "call") {
+                if (activeTab === "call") {
                     if (currentChat) show($("chatScreen"));
                     else show($("welcomeScreen"));
                 }
