@@ -4213,6 +4213,10 @@ $("textStatusVoiceButton").addEventListener("click",()=>{
 let statusViewerItems = [];
 let statusViewerIndex = 0;
 let statusViewerTimer = null;
+let statusViewerPaused = false;
+let statusViewerRemaining = 0;
+let statusViewerStartedAt = 0;
+let statusViewerSuppressClick = false;
 const STATUS_IMAGE_DURATION = 5000;
 
 function clearStatusViewerTimer() {
@@ -4220,6 +4224,28 @@ function clearStatusViewerTimer() {
         clearTimeout(statusViewerTimer);
         statusViewerTimer = null;
     }
+}
+function pauseStatusViewer() {
+    if (statusViewerPaused || !$("statusViewer") || $("statusViewer").classList.contains("hidden")) return;
+    statusViewerPaused = true;
+    if (statusViewerTimer !== null) {
+        clearTimeout(statusViewerTimer);
+        statusViewerTimer = null;
+        statusViewerRemaining = Math.max(0, statusViewerRemaining - (Date.now() - statusViewerStartedAt));
+    }
+    const fill=$("statusViewerProgress").children[statusViewerIndex]?.querySelector(".status-progress-fill");
+    if(fill)fill.style.animationPlayState="paused";
+    const media=$("statusViewerContent").querySelector("video,audio");
+    if(media && !media.paused)media.pause();
+}
+function resumeStatusViewer() {
+    if (!statusViewerPaused) return;
+    statusViewerPaused = false;
+    const fill=$("statusViewerProgress").children[statusViewerIndex]?.querySelector(".status-progress-fill");
+    if(fill)fill.style.animationPlayState="running";
+    const media=$("statusViewerContent").querySelector("video,audio");
+    if(media && media.paused && media.readyState>=2)media.play().catch(()=>{});
+    if(statusViewerRemaining>0) scheduleStatusAdvance(statusViewerRemaining);
 }
 function closeStatusViewer() {
     clearStatusViewerTimer();
@@ -4231,7 +4257,10 @@ function closeStatusViewer() {
 function scheduleStatusAdvance(duration) {
     clearStatusViewerTimer();
     if (!statusViewerItems[statusViewerIndex] || statusViewerItems[statusViewerIndex].id === "status-loading") return;
-    statusViewerTimer = setTimeout(() => moveStatusViewer(1), Math.max(500, duration));
+    statusViewerRemaining=Math.max(500,Number(duration)||500);
+    if(statusViewerPaused)return;
+    statusViewerStartedAt=Date.now();
+    statusViewerTimer=setTimeout(()=>{statusViewerTimer=null;statusViewerRemaining=0;moveStatusViewer(1);},statusViewerRemaining);
 }
 function renderStatusViewer() {
     clearStatusViewerTimer();
@@ -4343,6 +4372,8 @@ $("viewedByButton").addEventListener("click",event=>{
 });
 function openStatusViewer(items,index=0) {
     clearStatusViewerTimer();
+    statusViewerPaused=false;
+    statusViewerRemaining=0;
     statusViewerItems=items||[];
     statusViewerIndex=Math.max(0,Math.min(index,statusViewerItems.length-1));
     if(!statusViewerItems.length)return;
@@ -4363,9 +4394,32 @@ function moveStatusViewer(direction) {
     renderStatusViewer();
 }
 $("closeStatusViewer").addEventListener("click",closeStatusViewer);
-// A tap anywhere on the status itself skips forward. Statuses also advance automatically.
-$("statusViewerStage").addEventListener("click",()=>{
-    moveStatusViewer(1);
+// Tap the left side to go back and the right side to advance.
+// Holding anywhere on the story pauses its timer, progress and media playback.
+const statusViewerStage=$("statusViewerStage");
+statusViewerStage.addEventListener("pointerdown",event=>{
+    if(event.button!==undefined&&event.button!==0)return;
+    statusViewerSuppressClick=false;
+    pauseStatusViewer();
+});
+statusViewerStage.addEventListener("pointerup",()=>{
+    if(statusViewerPaused){
+        statusViewerSuppressClick=true;
+        resumeStatusViewer();
+        setTimeout(()=>{statusViewerSuppressClick=false;},250);
+    }
+});
+statusViewerStage.addEventListener("pointercancel",()=>{
+    if(statusViewerPaused)resumeStatusViewer();
+});
+statusViewerStage.addEventListener("pointerleave",()=>{
+    if(statusViewerPaused)resumeStatusViewer();
+});
+statusViewerStage.addEventListener("click",event=>{
+    if(statusViewerSuppressClick)return;
+    const rect=statusViewerStage.getBoundingClientRect();
+    const x=event.clientX-rect.left;
+    moveStatusViewer(x<rect.width/2?-1:1);
 });
 $("deleteMyStatusButton").addEventListener("click",async()=>{
     const item=statusViewerItems[statusViewerIndex];
