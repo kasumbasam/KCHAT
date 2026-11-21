@@ -2183,6 +2183,13 @@ async def get_private_messages(username: str, request: Request):
         if users_blocked(account["id"], peer["id"]):
             return JSONResponse({"error": "This conversation is unavailable."}, status_code=403)
 
+        # The private room is the canonical conversation key used when
+        # messages are saved. Use it as a recovery path as well as checking
+        # sender/recipient names, because historical rows can retain older
+        # username values after account/profile changes.
+        private_room = "private:" + ":".join(
+            private_pair(account["username"], peer["username"])
+        )
         rows = conn.execute("""
             SELECT m.*,
                 (m.edited_at IS NOT NULL) AS edited,
@@ -2192,6 +2199,7 @@ async def get_private_messages(username: str, request: Request):
                 ) AS pinned_by_me
             FROM messages m
             WHERE m.type = 'private'
+            AND m.room = %s
             AND (
                 (LOWER(m.username) = %s AND LOWER(m.recipient) = %s)
                 OR
@@ -2204,11 +2212,32 @@ async def get_private_messages(username: str, request: Request):
             )
             ORDER BY m.created_at ASC
         """, (
-            account["id"],
+            account["id"], private_room,
             account["username"].lower(), peer["username"].lower(),
             peer["username"].lower(), account["username"].lower(),
             account["id"]
         )).fetchall()
+
+        # If legacy rows have stale sender/recipient names, recover only rows
+        # from this exact private room. Keep expiry and per-account hide rules.
+        if not rows:
+            rows = conn.execute("""
+                SELECT m.*,
+                    (m.edited_at IS NOT NULL) AS edited,
+                    EXISTS (
+                        SELECT 1 FROM pinned_messages pm
+                        WHERE pm.message_id = m.id AND pm.owner_id = %s
+                    ) AS pinned_by_me
+                FROM messages m
+                WHERE m.type = 'private'
+                AND m.room = %s
+                AND (m.expires_at IS NULL OR m.expires_at > NOW())
+                AND NOT EXISTS (
+                    SELECT 1 FROM message_hidden mh
+                    WHERE mh.message_id = m.id AND mh.owner_id = %s
+                )
+                ORDER BY m.created_at ASC
+            """, (account["id"], private_room, account["id"])).fetchall()
 
         # Always clear the recipient's unread counter when the conversation
         # is opened. update_sender_status independently respects the user's
