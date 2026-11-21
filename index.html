@@ -274,6 +274,7 @@ hr {
     border-bottom:1px solid var(--border);
     padding:0 5px;
 }
+.whatsapp-tab-btn{min-width:0;font-size:15px;letter-spacing:.02em}
 
 .whatsapp-tab-btn {
     flex:1;
@@ -1603,9 +1604,11 @@ hr {
 </style>
 
 <style id="kchatAiStyles">
-.kchat-ai-fab{position:fixed;right:20px;bottom:146px;z-index:10030;width:46px;height:46px;border:0;border-radius:50%;background:transparent;color:#fff;box-shadow:0 3px 12px #0008;cursor:pointer;display:grid;place-items:center}
+.kchat-ai-fab{width:100%;min-height:46px;margin-top:10px;padding:7px 11px;display:flex;align-items:center;gap:10px;border:1px solid #00e5ff55;border-radius:12px;background:#071b20;color:var(--text);box-shadow:none;cursor:pointer;text-align:left}
+.kchat-ai-fab>span:nth-child(2){flex:1;font-size:16px;font-weight:700;color:var(--accent)}
+.kchat-ai-fab-arrow{font-size:25px;color:var(--muted);line-height:1}
 .kchat-ai-logo-image{display:block;object-fit:contain;width:100%;height:100%;border:0!important;border-radius:50%;background:transparent!important;filter:drop-shadow(0 2px 6px #00baff44)}
-.kchat-ai-fab-mark{width:40px;height:40px;overflow:visible}
+.kchat-ai-fab-mark{width:32px;height:32px;flex:0 0 32px;overflow:visible}
 .kchat-ai-brand-mark{width:32px;height:32px;flex:0 0 32px;overflow:visible}
 .kchat-ai-large-mark{width:64px;height:64px;margin:0 auto 16px;overflow:visible}
 .kchat-search-wrap{display:flex;align-items:center;gap:8px}
@@ -1647,7 +1650,7 @@ hr {
 .kchat-ai-composer{display:flex;gap:12px;align-items:flex-end;padding:14px max(18px,calc((100% - 800px)/2));background:#202c33}
 .kchat-ai-image-option{max-width:112px;min-width:0;height:42px;align-self:center;padding:0 7px;border:1px solid #52636b;border-radius:12px;background:#2a3942;color:#e9edef;font-size:12px}.kchat-ai-image-button{width:46px;height:46px;flex:0 0 46px;border:1px solid #52636b;border-radius:50%;background:#2a3942;color:#CFFAFE;font-size:23px;cursor:pointer}.kchat-ai-image-button:disabled,.kchat-ai-composer button:disabled{opacity:.55;cursor:wait}.kchat-ai-generated-image{display:block;max-width:min(100%,560px);height:auto;border-radius:12px;margin:8px 0;border:1px solid #ffffff22}.kchat-ai-image-result{align-self:flex-start;width:100%;margin:8px 0}.kchat-ai-image-download{display:inline-block;margin-top:8px;color:#CFFAFE;font-size:13px;text-decoration:underline}.kchat-ai-image-button:hover{background:#354a53}kchat-ai-composer textarea{flex:1;resize:none;max-height:130px;border:0;outline:0;border-radius:22px;padding:13px 17px;background:#2a3942;color:#e9edef;font:15px Arial,sans-serif}
 .kchat-ai-composer button{width:46px;height:46px;border:0;border-radius:50%;background:#00D9FF;color:#062e26;font-size:21px;cursor:pointer}
-@media(max-width:700px){.kchat-ai-fab{right:20px;bottom:146px}.kchat-ai-content{padding:24px 16px 14px}.kchat-ai-welcome h1{font-size:22px}.kchat-ai-composer{gap:6px;padding:10px}.kchat-ai-image-option{max-width:88px;font-size:11px}.kchat-ai-image-button,.kchat-ai-composer button{width:40px;height:40px;flex-basis:40px}}
+@media(max-width:700px){.kchat-ai-fab{margin-top:9px}.kchat-ai-content{padding:24px 16px 14px}.kchat-ai-welcome h1{font-size:22px}.kchat-ai-composer{gap:6px;padding:10px}.kchat-ai-image-option{max-width:88px;font-size:11px}.kchat-ai-image-button,.kchat-ai-composer button{width:40px;height:40px;flex-basis:40px}}
 </style>
 
 <style>
@@ -1949,13 +1952,20 @@ hr {
                     <input id="chatSearch" type="search"
                         placeholder="Search conversations">
                 </div>
+
+                <button type="button" id="kchatAiFab" class="kchat-ai-fab" aria-label="Open KCHAT AI Assistant" title="KCHAT AI Assistant">
+                    <span class="kchat-ai-fab-mark"><img class="kchat-ai-logo-image" src="/kchat-ai-logo.svg" alt=""></span>
+                    <span>KCHAT AI Assistant</span>
+                    <span class="kchat-ai-fab-arrow" aria-hidden="true">›</span>
+                </button>
             </div>
 
-            <!-- WHATSAPP CLASSIC TOP TABS (CHATS, CALLS, STATUS) -->
+            <!-- KCHAT PRIMARY NAVIGATION -->
             <div class="whatsapp-tabs">
-                <button class="whatsapp-tab-btn active" data-tab="chat">CHATS</button>
-                <button class="whatsapp-tab-btn" data-tab="call">CALLS</button>
-                <button class="whatsapp-tab-btn" data-tab="status">STORIES</button>
+                <button class="whatsapp-tab-btn active" data-tab="chat">CHAT</button>
+                <button class="whatsapp-tab-btn" data-tab="group">GROUP</button>
+                <button class="whatsapp-tab-btn" data-tab="call">CALL</button>
+                <button class="whatsapp-tab-btn" data-tab="status">STATUS</button>
             </div>
 
             <div class="filter-row">
@@ -1972,11 +1982,6 @@ hr {
                     Your conversations will appear here.
                 </div>
             </div>
-
-            <!-- KCHAT AI launcher sits directly above the new-conversation button -->
-            <button type="button" id="kchatAiFab" class="kchat-ai-fab" aria-label="Open KCHAT AI" title="KCHAT AI" onclick="(function(){var screen=document.getElementById('kchatAiScreen');if(!screen)return;if(screen.parentElement!==document.body)document.body.appendChild(screen);screen.classList.remove('hidden');screen.style.setProperty('display','flex','important');screen.style.setProperty('visibility','visible','important');screen.style.setProperty('pointer-events','auto','important');screen.style.setProperty('position','fixed','important');screen.style.setProperty('inset','0','important');screen.style.setProperty('z-index','2147483000','important');var app=document.getElementById('appScreen');if(app)app.classList.add('mobile-ai-open');if(typeof window.openKchatAI==='function')window.openKchatAI();this.classList.add('hidden');}).call(this)">
-                <span class="kchat-ai-fab-mark"><img class="kchat-ai-logo-image" src="/kchat-ai-logo.svg" alt="KCHAT AI logo"></span>
-            </button>
 
             <!-- FLOATING CIRCULAR SELECT CONTACT / USER BUTTON AT BOTTOM RIGHT -->
             <button class="floating-user-btn" id="sidebarSelectContactBtn" title="Select Contact / User">💬</button>
@@ -2391,7 +2396,7 @@ hr {
         </div>
 
         <div class="settings-row settings-option" id="subOpenPrivacy">
-            <span class="settings-option-icon" aria-hidden="true">◉</span>
+            <span class="settings-option-icon" aria-hidden="true">⛨</span>
             <div class="settings-option-copy">
                 <div class="settings-option-title">Privacy</div>
                 <small>Blocked users and disappearing messages</small>
@@ -2436,7 +2441,7 @@ hr {
         </div>
 
         <div class="settings-row settings-option" style="display:flex;align-items:center;">
-            <span class="settings-option-icon" aria-hidden="true">◌</span>
+            <span class="settings-option-icon" aria-hidden="true">Ⅱ</span>
             <div class="settings-option-copy">
                 <div class="settings-option-title">KCHAT Do Not Disturb</div>
                 <small class="muted">Pause live chat connection and stop new live messages without switching off your phone's internet.</small>
@@ -5098,9 +5103,23 @@ document.querySelectorAll(".whatsapp-tab-btn").forEach(button => {
             $("chatSearch").placeholder = "Search contacts";
         } else {
             $("chatSearch").placeholder = "Search conversations";
-            if (activeTab === "chat" || activeTab === "call") {
-                if (currentChat) show($("chatScreen"));
-                else show($("welcomeScreen"));
+            if (activeTab === "group") {
+                activeFilter = "groups";
+                document.querySelectorAll(".filter-btn").forEach(item => {
+                    item.classList.toggle("active", item.dataset.filter === "groups");
+                });
+                $("appScreen").classList.remove("mobile-chat-open");
+                hide($("chatScreen"));
+                show($("welcomeScreen"));
+            } else {
+                if (activeTab === "chat") activeFilter = "all";
+                document.querySelectorAll(".filter-btn").forEach(item => {
+                    item.classList.toggle("active", item.dataset.filter === activeFilter);
+                });
+                if (activeTab === "chat" || activeTab === "call") {
+                    if (currentChat) show($("chatScreen"));
+                    else show($("welcomeScreen"));
+                }
             }
         }
         renderContacts();
