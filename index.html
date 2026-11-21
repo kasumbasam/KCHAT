@@ -6,7 +6,7 @@
 <title>KCHAT - WhatsApp Layout</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Kalam:wght@300;400;700&family=Patrick+Hand&family=Lora:wght@400;500;700&family=Playfair+Display:wght@400;500;700&family=Pacifico&display=swap" rel="stylesheet">
 
 <style>
 :root {
@@ -20,11 +20,12 @@
     --danger:#FF5364;
     --border:#2c2c2c;
     --bubble:#1a1a1a;
+    --kchat-font-family:'Caveat','Comic Sans MS',cursive,sans-serif;
 }
 
 * {
     box-sizing:border-box;
-    font-family: 'Caveat', 'Comic Sans MS', cursive, sans-serif;
+    font-family:var(--kchat-font-family);
     font-size: 20px;
 }
 
@@ -1675,6 +1676,16 @@ hr {
 .kchat-theme-choice-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
 .kchat-theme-choice-copy strong{font-size:19px}
 .kchat-theme-choice-copy small{font-size:14px;color:var(--muted)}
+.kchat-font-section{margin-top:26px;padding-top:18px;border-top:1px solid var(--border)}
+.kchat-font-section h3{margin:0 0 6px;color:var(--text);font-size:19px}
+.kchat-font-section>p{margin:0 0 13px;color:var(--muted);font-size:14px}
+.kchat-font-choice{width:100%;display:flex;align-items:center;gap:12px;padding:13px 14px;margin:8px 0;border:1px solid var(--border);border-radius:12px;background:var(--panel);color:var(--text);text-align:left}
+.kchat-font-choice.selected{border:2px solid var(--accent);padding:12px 13px;background:var(--panel2)}
+.kchat-font-sample{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.kchat-font-sample strong{font-size:17px}
+.kchat-font-sample small{font-size:13px;color:var(--muted)}
+.kchat-font-check{width:22px;height:22px;border:1px solid var(--border);border-radius:50%;display:grid;place-items:center;color:transparent;font:14px Arial,sans-serif}
+.kchat-font-choice.selected .kchat-font-check{background:var(--accent);border-color:var(--accent);color:#001419}
 .kchat-theme-check{width:24px;height:24px;border:1px solid var(--border);border-radius:50%;display:grid;place-items:center;color:transparent;font-size:15px}
 .kchat-theme-choice.selected .kchat-theme-check{background:var(--accent);border-color:var(--accent);color:#fff}
 .kchat-theme-preview{width:55px;height:48px;flex:0 0 55px;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;border:1px solid var(--border)}
@@ -2619,6 +2630,17 @@ hr {
             <span class="kchat-theme-check" id="kchatLightThemeCheck" aria-hidden="true">✓</span>
         </div>
         <p class="small muted" id="kchatThemeStatus" style="margin-top:12px;">Dark mode is selected.</p>
+        <section class="kchat-font-section" aria-label="Font style">
+            <h3>Font style</h3>
+            <p>Choose the writing style used throughout KCHAT. Your choice is saved on this device.</p>
+            <button type="button" class="kchat-font-choice" data-kchat-font="caveat"><span class="kchat-font-sample" style="font-family:'Caveat',cursive"><strong>Handwriting (Default)</strong><small>My messages look like this</small></span><span class="kchat-font-check">✓</span></button>
+            <button type="button" class="kchat-font-choice" data-kchat-font="kalam"><span class="kchat-font-sample" style="font-family:'Kalam',cursive"><strong>Kalam</strong><small>My messages look like this</small></span><span class="kchat-font-check">✓</span></button>
+            <button type="button" class="kchat-font-choice" data-kchat-font="patrick"><span class="kchat-font-sample" style="font-family:'Patrick Hand',cursive"><strong>Patrick Hand</strong><small>My messages look like this</small></span><span class="kchat-font-check">✓</span></button>
+            <button type="button" class="kchat-font-choice" data-kchat-font="lora"><span class="kchat-font-sample" style="font-family:'Lora',serif"><strong>Lora</strong><small>My messages look like this</small></span><span class="kchat-font-check">✓</span></button>
+            <button type="button" class="kchat-font-choice" data-kchat-font="playfair"><span class="kchat-font-sample" style="font-family:'Playfair Display',serif"><strong>Playfair Display</strong><small>My messages look like this</small></span><span class="kchat-font-check">✓</span></button>
+            <button type="button" class="kchat-font-choice" data-kchat-font="pacifico"><span class="kchat-font-sample" style="font-family:'Pacifico',cursive"><strong>Pacifico</strong><small>My messages look like this</small></span><span class="kchat-font-check">✓</span></button>
+            <p class="small muted" id="kchatFontStatus" aria-live="polite">Handwriting (Default) is selected.</p>
+        </section>
     </div>
 </div>
 
@@ -3478,6 +3500,30 @@ $("closeAppearanceButton").addEventListener("click", () => {
 });
 $("kchatDarkThemeChoice").addEventListener("click", () => applyKchatTheme("dark", true));
 $("kchatLightThemeChoice").addEventListener("click", () => applyKchatTheme("light", true));
+
+const KCHAT_FONT_STYLES={
+    caveat:{name:"Handwriting (Default)",stack:"'Caveat','Comic Sans MS',cursive,sans-serif"},
+    kalam:{name:"Kalam",stack:"'Kalam','Comic Sans MS',cursive,sans-serif"},
+    patrick:{name:"Patrick Hand",stack:"'Patrick Hand','Comic Sans MS',cursive,sans-serif"},
+    lora:{name:"Lora",stack:"'Lora',Georgia,serif"},
+    playfair:{name:"Playfair Display",stack:"'Playfair Display',Georgia,serif"},
+    pacifico:{name:"Pacifico",stack:"'Pacifico','Comic Sans MS',cursive,sans-serif"}
+};
+function getKchatFont(){const saved=localStorage.getItem("kchat_font");return KCHAT_FONT_STYLES[saved]?saved:"caveat";}
+function applyKchatFont(font,save=false){
+    const selected=KCHAT_FONT_STYLES[font]?font:"caveat";
+    document.documentElement.style.setProperty("--kchat-font-family",KCHAT_FONT_STYLES[selected].stack);
+    if(save)localStorage.setItem("kchat_font",selected);
+    document.querySelectorAll("[data-kchat-font]").forEach(button=>{
+        const active=button.dataset.kchatFont===selected;
+        button.classList.toggle("selected",active);
+        button.setAttribute("aria-pressed",String(active));
+    });
+    const status=$("kchatFontStatus");
+    if(status)status.textContent=KCHAT_FONT_STYLES[selected].name+" is selected.";
+}
+document.querySelectorAll("[data-kchat-font]").forEach(button=>button.addEventListener("click",()=>applyKchatFont(button.dataset.kchatFont,true)));
+applyKchatFont(getKchatFont(),false);
 
 // Wallpaper from Gallery Functionality
 $("subOpenWallpaper").addEventListener("click", () => {
