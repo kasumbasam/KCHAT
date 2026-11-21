@@ -5139,15 +5139,32 @@ function returnToConversations() {
 $("backToChats").addEventListener("click", returnToConversations);
 
 async function loadMessages(username) {
+    const requestedChat = String(username || "");
+    const area = $("messagesArea");
+    if (area) area.innerHTML = '<p class="muted" style="text-align:center;">Loading conversation…</p>';
+
     try {
-        const data = await apiRequest("/api/messages/" + encodeURIComponent(username));
-        messages = Array.isArray(data.messages) ? data.messages : [];
+        const data = await apiRequest("/api/messages/" + encodeURIComponent(requestedChat));
+
+        // Ignore late responses from a chat the user has already left.
+        if (String(currentChat || "").toLowerCase() !== requestedChat.toLowerCase()) {
+            return;
+        }
+
+        if (!data || !Array.isArray(data.messages)) {
+            throw new Error("The server returned an invalid conversation history.");
+        }
+
+        messages = data.messages;
         renderMessages();
     } catch (error) {
-        // Do not erase the messages already on screen because of a temporary
-        // network/session error. The server remains the source of saved history.
-        console.error("KCHAT message history could not be refreshed:", error);
-        alert(error.message || "Could not load this conversation. Your saved messages have not been deleted.");
+        // A failed history request must be visible, not silently leave a blank chat.
+        if (String(currentChat || "").toLowerCase() === requestedChat.toLowerCase()) {
+            console.error("KCHAT message history could not be refreshed:", error);
+            if (area) {
+                area.innerHTML = '<p class="muted" style="text-align:center;">Could not load messages. Check your connection and reopen this chat.</p>';
+            }
+        }
     }
 }
 
