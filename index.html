@@ -5105,6 +5105,9 @@ async function openChat(username) {
     try { updateChatMenuPinLabel(); } catch (error) { console.warn("Could not update chat menu:", error); }
 
     await loadMessages(username);
+    // Refresh the inbox after the server marks this conversation as read.
+    // This keeps the unread badge in sync with the open conversation.
+    await loadContacts();
     try {
         const presence = await apiRequest("/api/presence/" + encodeURIComponent(username));
         updateContactPresence(username, presence.online === true);
@@ -6437,13 +6440,19 @@ function connectWebSocket() {
             } else if (item.type === "private" && item.to &&
                 item.to.toLowerCase() === currentUser.toLowerCase()) {
                 if (currentChat && item.username &&
-                    item.username.toLowerCase() === currentChat.toLowerCase()) {
-                    if (!messages.some(message => message.id === item.id)) {
+                    item.username.toLowerCase() === currentChat.toLowerCase() &&
+                    $("chatScreen") && !$("chatScreen").classList.contains("hidden")) {
+                    if (!messages.some(message => String(message.id) === String(item.id))) {
                         messages.push(item);
                         renderMessages();
                     }
+                    // The message arrived while its conversation is visible.
+                    // Re-fetching marks it read on the server, then refreshes
+                    // the inbox badge only after that read update has completed.
+                    loadMessages(currentChat).then(() => loadContacts());
+                } else {
+                    loadContacts();
                 }
-                loadContacts();
             } else if (item.type === "message_revoked") {
                 const message = messages.find(entry => entry.id === item.id);
                 if (message) {
