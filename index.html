@@ -760,9 +760,11 @@ hr {
 .voice-status-card footer #shareVoiceStatus:disabled{opacity:.4}
 .status-bottom-nav{height:82px;flex:0 0 82px;display:flex;justify-content:space-around;align-items:center;background:#080d10;border-top:1px solid #ffffff0d;padding-bottom:env(safe-area-inset-bottom)}
 .status-bottom-nav button{flex:1;height:100%;border:0;background:transparent;color:#e4e9eb;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:16px}
-.status-bottom-nav button span{font:28px Arial}
+.status-bottom-nav button .bottom-nav-icon{width:58px;height:38px;display:grid;place-items:center;border-radius:24px;transition:background .18s ease}
+.status-bottom-nav button .bottom-nav-icon svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .status-bottom-nav button.active{color:#00e5ff}
-.status-bottom-nav button.active span{background:#123c2a;border-radius:30px;padding:5px 25px}
+.status-bottom-nav button.active .bottom-nav-icon{background:#003640}
+.status-bottom-nav button:focus-visible .bottom-nav-icon{outline:2px solid #00e5ff;outline-offset:2px}
 .text-status-backdrop{position:fixed;inset:0;z-index:10030;padding:0!important;background:#000!important}
 .text-status-card{width:100%;height:100dvh;max-width:100%!important;max-height:100dvh!important;border:0!important;border-radius:0!important;padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom)!important;background:#546E7A;display:flex;flex-direction:column;overflow:hidden;transition:background .18s ease}
 .text-status-header{height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:space-between}
@@ -2064,10 +2066,18 @@ hr {
                 </div>
 
                 <nav class="status-bottom-nav" aria-label="Main navigation">
-                    <button data-main-nav="chat"><span>▤</span>Chats</button>
-                    <button class="active" data-main-nav="status"><span>◉</span>Updates</button>
-                    
-                    <button data-main-nav="call"><span>♧</span>Calls</button>
+                    <button data-main-nav="chat" aria-label="Chats">
+                        <span class="bottom-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6.2A7.5 7.5 0 1 1 20 11.5Z"/><path d="M7.5 10h9M7.5 13.5h6"/></svg></span>
+                        Chats
+                    </button>
+                    <button class="active" data-main-nav="status" aria-label="Updates">
+                        <span class="bottom-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/></svg></span>
+                        Updates
+                    </button>
+                    <button data-main-nav="call" aria-label="Calls">
+                        <span class="bottom-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h3l1.5 4-2 1.7a15 15 0 0 0 5.3 5.3l1.7-2 4 1.5v3c0 1.1-.9 2-2 2A15.5 15.5 0 0 1 5 5.5c0-1.1.9-2 2-2Z"/></svg></span>
+                        Calls
+                    </button>
                 </nav>
                 <input id="statusFileInput" type="file" accept="image/*,video/*" multiple class="hidden">
             </section>
