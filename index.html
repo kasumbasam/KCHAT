@@ -52,6 +52,36 @@ button:disabled {
 .hidden {
     display:none !important;
 }
+
+/* KCHAT contact online/offline pop-up */
+#presenceToast {
+    position:fixed;
+    top:18px;
+    left:50%;
+    transform:translateX(-50%) translateY(-18px);
+    z-index:10050;
+    width:min( calc(100% - 28px), 380px );
+    padding:13px 17px;
+    border:1px solid var(--accent);
+    border-left:4px solid var(--accent);
+    border-radius:13px;
+    background:#111111;
+    color:#ffffff;
+    box-shadow:0 12px 34px #000b;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .22s ease, transform .22s ease;
+    text-align:left;
+    font-size:19px;
+}
+#presenceToast.show {
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+}
+#presenceToast .presence-toast-state {
+    color:var(--accent);
+    font-weight:700;
+}
 .muted {
     color:var(--muted);
 }
@@ -6627,14 +6657,45 @@ function formatLastSeen(value) {
     return "last seen " + date.toLocaleDateString([], { day: "numeric", month: "short", year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined }) + " at " + time;
 }
 
+const knownContactPresence = new Map();
+let presenceToastTimer = null;
+
+function showPresenceToast(username, online) {
+    let toast = document.getElementById("presenceToast");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "presenceToast";
+        toast.setAttribute("role", "status");
+        toast.setAttribute("aria-live", "polite");
+        document.body.appendChild(toast);
+    }
+    const label = String(username || "Contact").trim();
+    toast.innerHTML = "";
+    const name = document.createElement("strong");
+    name.textContent = label;
+    const state = document.createElement("span");
+    state.className = "presence-toast-state";
+    state.textContent = online ? " is online" : " is offline";
+    toast.append(name, state);
+    toast.classList.add("show");
+    clearTimeout(presenceToastTimer);
+    presenceToastTimer = setTimeout(() => toast.classList.remove("show"), 3500);
+}
+
 function updateContactPresence(username, online, lastSeenAt = null) {
     if (!username) return;
     const key = String(username).toLowerCase();
+    const nextOnline = online === true;
+    if (knownContactPresence.has(key)) {
+        const previousOnline = knownContactPresence.get(key);
+        if (previousOnline !== nextOnline) showPresenceToast(username, nextOnline);
+    }
+    knownContactPresence.set(key, nextOnline);
     if (lastSeenAt) contactLastSeen.set(key, lastSeenAt);
-    if (online) onlineUsers.add(key);
+    if (nextOnline) onlineUsers.add(key);
     else onlineUsers.delete(key);
     if (currentChat && currentChat.toLowerCase() === key) {
-        $("activeChatStatus").textContent = online ? "Online" : formatLastSeen(lastSeenAt || contactLastSeen.get(key));
+        $("activeChatStatus").textContent = nextOnline ? "Online" : formatLastSeen(lastSeenAt || contactLastSeen.get(key));
     }
 }
 
