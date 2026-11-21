@@ -1527,6 +1527,30 @@ hr {
 .kchat-qr-reader-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 #kchatQrVideo{display:block;width:100%;max-height:55vh;min-height:220px;object-fit:cover;background:#000;border-radius:12px;margin:14px 0}
 
+/* My status page — WhatsApp-inspired list, using KCHAT cyan */
+.my-status-screen{position:fixed;inset:0;z-index:40;background:#080d10;color:#f5f7f8;display:flex;flex-direction:column;overflow:hidden}
+.my-status-screen.hidden{display:none!important}
+.my-status-page-header{height:76px;flex:0 0 76px;display:flex;align-items:center;gap:20px;padding:0 22px;border-bottom:1px solid #ffffff12}
+.my-status-page-header button{width:42px;height:42px;border:0;background:transparent;color:#f5f7f8;font:36px Arial,sans-serif}
+.my-status-page-header h1{font-size:31px;font-weight:500;margin:0}
+.my-status-page-list{flex:1;overflow-y:auto;padding:8px 18px 22px}
+.my-status-entry{position:relative;width:100%;min-height:108px;display:flex;align-items:center;gap:18px;padding:14px 4px;border:0;border-bottom:1px solid #ffffff12;background:transparent;color:#f5f7f8;text-align:left}
+.my-status-entry-thumb{width:100px;height:100px;flex:0 0 100px;border-radius:50%;overflow:hidden;background:#17232a;display:grid;place-items:center;color:#00e5ff;font:24px Arial,sans-serif}
+.my-status-entry-thumb img{width:100%;height:100%;object-fit:cover}
+.my-status-entry-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:6px}
+.my-status-entry-time{font-size:25px;color:#f5f7f8;line-height:1.15}
+.my-status-entry-audience{font-size:20px;color:#879197}
+.my-status-entry-menu{width:40px;height:48px;border:0;background:transparent;color:#879197;font:30px Arial,sans-serif}
+.my-status-encryption{flex:0 0 auto;padding:18px 20px 24px;text-align:center;border-top:1px solid #ffffff12;color:#879197;font-size:17px}
+.my-status-encryption strong{color:#00e5ff;font-weight:600}
+.other-status-stories{display:flex;flex-direction:row;gap:10px;overflow-x:auto;padding:8px 4px 14px;scrollbar-width:none}
+.other-status-stories::-webkit-scrollbar{display:none}
+.status-story-card{flex:0 0 112px;width:112px;height:164px;min-height:164px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:8px;padding:10px;border:1px solid #ffffff18;border-radius:15px;background:linear-gradient(180deg,#1a303a,#10191e);position:relative}
+.status-story-avatar{position:absolute;left:10px;top:10px;width:43px;height:43px;border-width:2px}
+.status-story-copy{flex:0 0 auto;width:100%;gap:3px}
+.status-story-name{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.status-story-time{font-size:12px}
+@media(max-width:750px){.my-status-screen{inset:0}.my-status-entry-thumb{width:86px;height:86px;flex-basis:86px}.my-status-entry-time{font-size:22px}.my-status-page-list{padding-left:16px;padding-right:16px}}
 </style>
 
 <style id="kchatAiStyles">
@@ -2035,6 +2059,14 @@ hr {
                     <button data-main-nav="call"><span>♧</span>Calls</button>
                 </nav>
                 <input id="statusFileInput" type="file" accept="image/*,video/*" multiple class="hidden">
+            </section>
+            <section id="myStatusScreen" class="my-status-screen hidden" aria-label="My status">
+                <header class="my-status-page-header">
+                    <button type="button" id="closeMyStatusScreen" aria-label="Back to updates">‹</button>
+                    <h1>My status</h1>
+                </header>
+                <div class="my-status-page-list" id="myStatusPageList"></div>
+                <footer class="my-status-encryption">▣ Your statuses are <strong>end-to-end encrypted.</strong> They will disappear after 24 hours.</footer>
             </section>
         
 
@@ -4247,12 +4279,17 @@ function resumeStatusViewer() {
     if(media && media.paused && media.readyState>=2)media.play().catch(()=>{});
     if(statusViewerRemaining>0) scheduleStatusAdvance(statusViewerRemaining);
 }
+let returnToMyStatusListAfterViewer = false;
 function closeStatusViewer() {
     clearStatusViewerTimer();
     const viewer=$("statusViewer");
     const video=viewer.querySelector("video");
     if(video) video.pause();
     hide(viewer);
+    if(returnToMyStatusListAfterViewer){
+        returnToMyStatusListAfterViewer=false;
+        show($("myStatusScreen"));
+    }
 }
 function scheduleStatusAdvance(duration) {
     clearStatusViewerTimer();
@@ -4434,57 +4471,38 @@ $("deleteMyStatusButton").addEventListener("click",async()=>{
         renderStatusViewer();
     }catch(error){alert(error.message||"Could not delete this status.");}
 });
+function renderMyStatusPage(items){
+    const list=$("myStatusPageList");
+    if(!list)return;
+    const mine=(items||[]).filter(item=>item.is_mine).sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+    if(!mine.length){list.innerHTML='<div class="status-empty-card">No active status updates. Share a photo, video or written story first.</div>';return;}
+    list.replaceChildren();
+    mine.forEach(item=>{
+        const row=document.createElement("div");row.className="my-status-entry";
+        const open=document.createElement("button");open.type="button";open.className="my-status-entry";open.style.cssText="flex:1;min-width:0;border:0;border-bottom:0;padding:0;background:transparent";
+        const thumb=document.createElement("span");thumb.className="my-status-entry-thumb";
+        if(item.media_data&&item.media_type==="image"){const img=document.createElement("img");img.src=item.media_data;img.alt="Story thumbnail";thumb.appendChild(img);}
+        else if(item.media_type==="audio"){thumb.textContent="♫";}
+        else if(item.media_type==="video"){thumb.textContent="▶";}
+        else{thumb.textContent="Aa";thumb.style.background=item.background||"#263238";}
+        const copy=document.createElement("span");copy.className="my-status-entry-copy";
+        const when=document.createElement("strong");when.className="my-status-entry-time";
+        const date=new Date(item.created_at||Date.now()),today=new Date(),yesterday=new Date();yesterday.setDate(today.getDate()-1);
+        const sameDay=(a,b)=>a.toDateString()===b.toDateString();
+        when.textContent=sameDay(date,today)?"Today, "+date.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):sameDay(date,yesterday)?"Yesterday, "+date.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):date.toLocaleString([],{weekday:"long",hour:"numeric",minute:"2-digit"});
+        const audience=document.createElement("span");audience.className="my-status-entry-audience";audience.textContent=item.audience_label||"My contacts";
+        copy.append(when,audience);open.append(thumb,copy);
+        open.addEventListener("click",()=>{returnToMyStatusListAfterViewer=true;hide($("myStatusScreen"));openStatusViewer(mine,mine.findIndex(entry=>entry.id===item.id));});
+        const menu=document.createElement("button");menu.type="button";menu.className="my-status-entry-menu";menu.textContent="⋮";menu.setAttribute("aria-label","Story options");
+        menu.addEventListener("click",event=>{event.stopPropagation();const choice=prompt("Story options:\n1. View story\n2. Delete story");if(choice==="1"){returnToMyStatusListAfterViewer=true;hide($("myStatusScreen"));openStatusViewer(mine,mine.findIndex(entry=>entry.id===item.id));}else if(choice==="2"){if(confirm("Delete this story update?"))apiRequest("/api/statuses/"+encodeURIComponent(item.id),{method:"DELETE"}).then(()=>loadStatuses()).then(loaded=>{if(Array.isArray(loaded))renderMyStatusPage(loaded);}).catch(error=>alert(error.message||"Could not delete this story."));}});
+        row.append(open,menu);list.appendChild(row);
+    });
+}
+$("closeMyStatusScreen").addEventListener("click",()=>hide($("myStatusScreen")));
 async function handleMyStatusCardTap(){
-    const card=$("myStatusCard");
-    if(!card)return;
-
-    // Open from the already-rendered story cache immediately; refresh from the
-    // server afterwards so network latency never delays opening a known story.
-    const cached=Array.isArray(window.kchatStatuses)?window.kchatStatuses:[];
-    const cachedMine=cached.filter(item=>item.is_mine)
-        .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
-    if(cachedMine.length){
-        openStatusViewer(cachedMine,0);
-        loadStatuses().then(loaded=>{
-            if(!Array.isArray(loaded))return;
-            const freshMine=loaded.filter(item=>item.is_mine)
-                .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
-            // Keep the viewer open and sync it silently if the server has newer
-            // items. Do not interrupt the story currently being watched.
-            if($("statusViewer")&&!$("statusViewer").classList.contains("hidden")){
-                const current=statusViewerItems[statusViewerIndex];
-                const currentId=current?.id;
-                statusViewerItems=freshMine;
-                const refreshedIndex=freshMine.findIndex(item=>item.id===currentId);
-                statusViewerIndex=refreshedIndex>=0?refreshedIndex:Math.min(statusViewerIndex,Math.max(0,freshMine.length-1));
-                if(freshMine.length)renderStatusViewer();
-                else closeStatusViewer();
-            }
-        }).catch(error=>console.warn("Background story refresh failed:",error));
-        return;
-    }
-
-    // First visit / empty cache: show the viewer immediately with a lightweight
-    // loading state while the initial request is in flight.
-    card.setAttribute("aria-busy","true");
-    openStatusViewer([{id:"status-loading",is_mine:true,text:"Loading your story…"}],0);
-    try{
-        const loaded=await loadStatuses();
-        const mine=(loaded||[]).filter(item=>item.is_mine)
-            .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
-        if(mine.length)openStatusViewer(mine,0);
-        else{
-            closeStatusViewer();
-            if(loaded!==null)alert("No active status was found on your account. Share a photo, video or written status first.");
-            else alert("Could not load your story. Check your connection and try again.");
-        }
-    }catch(error){
-        console.error("My status tap failed:",error);
-        closeStatusViewer();
-        alert(error.message||"Could not load your status. Please try again.");
-    }finally{
-        card.removeAttribute("aria-busy");
-    }
+    show($("myStatusScreen"));
+    renderMyStatusPage(Array.isArray(window.kchatStatuses)?window.kchatStatuses:[]);
+    loadStatuses().then(loaded=>{if(Array.isArray(loaded)&&!$("myStatusScreen").classList.contains("hidden"))renderMyStatusPage(loaded);}).catch(error=>console.warn("My status list refresh failed:",error));
 }
 // Bind directly to the My status row. This keeps the action reliable even
 // when the Updates screen is shown/hidden or other navigation listeners exist.
