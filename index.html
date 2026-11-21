@@ -4511,6 +4511,18 @@ $("myStatusCard").addEventListener("click",event=>{
     event.stopPropagation();
     handleMyStatusCardTap();
 });
+
+// Tapping the profile photo or its cyan + opens the device file picker
+// immediately, while tapping the rest of the My story row opens the list.
+function openMyStatusFilePicker(event){
+    event.preventDefault();
+    event.stopPropagation();
+    const picker=$("statusFileInput");
+    if(picker)picker.click();
+}
+$("myStatusPhoto").addEventListener("click",openMyStatusFilePicker);
+const myStatusAddButton=$("myStatusCard").querySelector(".my-status-add");
+if(myStatusAddButton)myStatusAddButton.addEventListener("click",openMyStatusFilePicker);
 async function loadStatuses(){
     try{
         const result=await apiRequest("/api/statuses");
