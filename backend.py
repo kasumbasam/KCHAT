@@ -3491,7 +3491,7 @@ async def get_statuses(request: Request):
         with get_db() as conn:
             own_rows = conn.execute("""
                 SELECT s.id, s.owner_id, a.username, a.profile_picture, s.text,
-                       s.media_data, s.media_type, s.background, s.created_at, s.expires_at
+                       s.media_type, s.background, s.created_at, s.expires_at
                 FROM status_updates s
                 JOIN accounts a ON a.id = s.owner_id
                 WHERE s.owner_id = %s AND s.expires_at > NOW()
@@ -3503,7 +3503,7 @@ async def get_statuses(request: Request):
             with get_db() as conn:
                 contact_rows = conn.execute("""
                     SELECT s.id, s.owner_id, a.username, a.profile_picture, s.text,
-                           s.media_data, s.media_type, s.background, s.created_at, s.expires_at
+                           s.media_type, s.background, s.created_at, s.expires_at
                     FROM status_updates s
                     JOIN accounts a ON a.id = s.owner_id
                     JOIN contacts c ON c.contact_id = s.owner_id
@@ -3542,7 +3542,6 @@ async def get_statuses(request: Request):
                 "username": row["username"],
                 "profile_picture": row["profile_picture"],
                 "text": row["text"],
-                "media_data": row["media_data"],
                 "media_type": row["media_type"],
                 "background": row["background"] or "#546E7A",
                 "created_at": row["created_at"].isoformat(),
@@ -3561,6 +3560,41 @@ async def get_statuses(request: Request):
     except Exception as error:
         print("Get statuses error:", error)
         return JSONResponse({"error": "Could not load status updates."}, status_code=500)
+
+
+@app.get("/api/statuses/{status_id}/media")
+async def get_status_media(status_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    try:
+        ensure_status_table()
+        with get_db() as conn:
+            row = conn.execute("""
+                SELECT s.owner_id, s.media_data FROM status_updates s
+                WHERE s.id = %s AND s.expires_at > NOW()
+            """, (status_id,)).fetchone()
+            if not row or not row["media_data"]:
+                return JSONResponse({"error": "Story media not found or expired."}, status_code=404)
+            is_owner = str(row["owner_id"]) == str(account["id"])
+            if not is_owner:
+                contact = conn.execute("SELECT 1 FROM contacts WHERE owner_id = %s AND contact_id = %s", (account["id"], row["owner_id"])).fetchone()
+                if not contact:
+                    return JSONResponse({"error": "You cannot view this story."}, status_code=403)
+                privacy = get_privacy_settings(row["owner_id"])
+                audience = privacy.get("status_audience", "all_contacts")
+                excluded = {str(name).lower() for name in privacy.get("status_excluded", [])}
+                allowed = {str(name).lower() for name in privacy.get("status_allowed", [])}
+                viewer_name = str(account["username"]).lower()
+                if (audience == "my_contacts_except" and viewer_name in excluded) or (audience == "only_share_with" and viewer_name not in allowed):
+                    return JSONResponse({"error": "You cannot view this story."}, status_code=403)
+            media_data = row["media_data"]
+        header, encoded = media_data.split(",", 1)
+        mime_type = header[5:].split(";", 1)[0] if header.startswith("data:") else "application/octet-stream"
+        return StreamingResponse(iter([base64.b64decode(encoded)]), media_type=mime_type, headers={"Cache-Control": "private, max-age=300"})
+    except Exception as error:
+        print("Get status media error:", error)
+        return JSONResponse({"error": "Could not load story media."}, status_code=500)
 
 
 @app.post("/api/statuses/{status_id}/view")
@@ -3602,6 +3636,13 @@ async def create_status(request: Request):
         media_data = data.get("media_data")
         media_type = data.get("media_type")
         background = str(data.get("background") or "#546E7A")
+        expires_in_hours = data.get("expires_in_hours", 24)
+        try:
+            expires_in_hours = int(expires_in_hours)
+        except (TypeError, ValueError):
+            expires_in_hours = 24
+        if expires_in_hours not in (12, 24, 48):
+            return JSONResponse({"error": "Choose a story duration of 12, 24, or 48 hours."}, status_code=400)
         if not re.fullmatch(r"#[0-9A-Fa-f]{6}", background):
             background = "#546E7A"
 
@@ -3622,10 +3663,10 @@ async def create_status(request: Request):
         with get_db() as conn:
             row = conn.execute("""
                 INSERT INTO status_updates
-                    (id, owner_id, text, media_data, media_type, background)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                    (id, owner_id, text, media_data, media_type, background, expires_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW() + (%s * INTERVAL '1 hour'))
                 RETURNING created_at, expires_at
-            """, (status_id, account["id"], text_value, media_data, media_type, background)).fetchone()
+            """, (status_id, account["id"], text_value, media_data, media_type, background, expires_in_hours)).fetchone()
 
         return {
             "success": True,
