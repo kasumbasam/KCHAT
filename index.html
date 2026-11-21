@@ -540,14 +540,14 @@ hr {
     width:100%;
 }
 .message-bubble{touch-action:pan-y}
-.message-reply-quote{display:flex;flex-direction:column;gap:3px;margin:0 0 7px;padding:7px 9px;border-left:3px solid var(--accent);border-radius:6px;background:#0002;max-width:100%}
-.message-reply-quote strong{font-size:13px;color:var(--accent)}
-.message-reply-quote span{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.message-reply-quote{display:flex;flex-direction:column;gap:3px;margin:0 0 7px;padding:7px 10px;border-left:4px solid var(--accent);border-radius:5px;background:rgba(0,0,0,.16);max-width:100%;text-align:left}
+.message-reply-quote strong{font-size:13px;font-weight:700;color:var(--accent)}
+.message-reply-quote span{font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .reply-composer-preview{display:flex;align-items:center;gap:10px;padding:8px 13px;background:var(--panel2);border-top:1px solid var(--border)}
-.reply-composer-copy{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;border-left:3px solid var(--accent);padding-left:9px}
-.reply-composer-copy strong{font-size:14px;color:var(--accent)}
-.reply-composer-copy span{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.reply-composer-preview button{width:32px;height:32px;border:0;border-radius:50%;background:transparent;color:var(--text);font-size:20px}
+.reply-composer-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;border-left:4px solid var(--accent);padding:2px 0 2px 10px}
+.reply-composer-copy strong{font-size:14px;color:var(--accent);font-weight:700}
+.reply-composer-copy span{font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.reply-composer-preview button{width:32px;height:32px;flex:0 0 32px;border:0;border-radius:50%;background:transparent;color:var(--muted);font-size:24px;display:flex;align-items:center;justify-content:center}
 
 .message-row.mine {
     justify-content:flex-end;
@@ -5371,12 +5371,13 @@ function messagePreviewText(message) {
 
 function setReplyToMessage(message) {
     if (!message || !message.id || message.revoked) return;
+    const originalSender = String(message.username || message.sender || "Contact");
     replyingToMessage = {
         id: String(message.id),
-        sender: String(message.username || message.sender || "Contact"),
+        sender: originalSender.toLowerCase() === String(currentUser || "").toLowerCase() ? "You" : originalSender,
         text: messagePreviewText(message)
     };
-    $("replyComposerName").textContent = "Replying to " + replyingToMessage.sender;
+    $("replyComposerName").textContent = replyingToMessage.sender;
     $("replyComposerText").textContent = replyingToMessage.text || "Message";
     $("replyComposerPreview").classList.remove("hidden");
     $("messageInput").focus();
@@ -5428,7 +5429,7 @@ function renderMessages() {
         const messageContent = isImage
             ? `<img class="message-image" src="${escapeHTML(message.text)}" alt="Photo sent in KCHAT" loading="lazy">`
             : decodedReply
-                ? `<div class="message-reply-quote"><span>${escapeHTML(decodedReply.reply.text || "Message")}</span></div><div class="message-text">${escapeHTML(decodedReply.text)}</div>`
+                ? `<div class="message-reply-quote"><strong>${escapeHTML(decodedReply.reply.sender || "Contact")}</strong><span>${escapeHTML(decodedReply.reply.text || "Message")}</span></div><div class="message-text">${escapeHTML(decodedReply.text)}</div>`
                 : `<div class="message-text">${escapeHTML(message.text || "")}</div>`;
         const status = String(message.status || "sent").toLowerCase();
         const receiptMarkup = mine && !message.revoked
