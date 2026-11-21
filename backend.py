@@ -72,6 +72,11 @@ def init_db():
         """)
 
         conn.execute("""
+            ALTER TABLE accounts
+            ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ
+        """)
+
+        conn.execute("""
             CREATE UNIQUE INDEX IF NOT EXISTS accounts_phone_key_idx
             ON accounts(phone_key)
             WHERE phone_key IS NOT NULL
@@ -2149,7 +2154,7 @@ async def get_contact_presence(username: str, request: Request):
     peer_name = username.strip()[:30]
     with get_db() as conn:
         peer = conn.execute("""
-            SELECT id, username FROM accounts
+            SELECT id, username, last_seen_at FROM accounts
             WHERE username_key = %s
         """, (peer_name.lower(),)).fetchone()
 
@@ -2157,10 +2162,13 @@ async def get_contact_presence(username: str, request: Request):
         return JSONResponse({"error": "User not found."}, status_code=404)
 
     allowed = can_view_presence(peer["id"], account["id"])
+    online = bool(allowed and is_user_online(peer["username"]))
+    last_seen = peer["last_seen_at"] if allowed else None
     return {
         "success": True,
         "username": peer["username"],
-        "online": bool(allowed and is_user_online(peer["username"]))
+        "online": online,
+        "last_seen_at": last_seen.isoformat() if last_seen else None
     }
 
 
@@ -2905,7 +2913,7 @@ async def notify_contact_presence(username, online):
 
     with get_db() as conn:
         owner = conn.execute(
-            "SELECT id FROM accounts WHERE username_key = %s",
+            "SELECT id, last_seen_at FROM accounts WHERE username_key = %s",
             (username.lower(),)
         ).fetchone()
 
@@ -2916,7 +2924,11 @@ async def notify_contact_presence(username, online):
         event = {
             "type": "presence",
             "username": username,
-            "online": visible_online
+            "online": visible_online,
+            "last_seen_at": (
+                owner["last_seen_at"].isoformat()
+                if owner and owner["last_seen_at"] else None
+            )
         }
         for websocket in connected_sockets_for(row["username"]):
             try:
@@ -2929,7 +2941,7 @@ async def send_contact_presence(account, websocket):
     """Send the signed-in user the current presence of their saved contacts."""
     with get_db() as conn:
         rows = conn.execute("""
-            SELECT contact.id, contact.username
+            SELECT contact.id, contact.username, contact.last_seen_at
             FROM contacts
             JOIN accounts AS contact ON contact.id = contacts.contact_id
             WHERE contacts.owner_id = %s
@@ -2945,7 +2957,11 @@ async def send_contact_presence(account, websocket):
             await websocket.send_json({
                 "type": "presence",
                 "username": username,
-                "online": visible_online
+                "online": visible_online,
+                "last_seen_at": (
+                    row["last_seen_at"].isoformat()
+                    if row["last_seen_at"] else None
+                )
             })
         except Exception as error:
             print("Initial presence error:", error)
@@ -3430,6 +3446,11 @@ async def chat(websocket: WebSocket, room: str):
 
         # Mark offline only after the user's last active socket has closed.
         if not is_user_online(username):
+            with get_db() as conn:
+                conn.execute("""
+                    UPDATE accounts SET last_seen_at = NOW()
+                    WHERE username_key = %s
+                """, (username.lower(),))
             await notify_contact_presence(username, False)
 
         if not find_users(room, username):
