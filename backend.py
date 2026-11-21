@@ -3570,9 +3570,9 @@ async def get_statuses(request: Request):
                 "expires_at": row["expires_at"].isoformat(),
                 "is_mine": str(row["owner_id"]) == str(account["id"]),
                 "view_count": len(viewers_by_status.get(str(row["id"]), []))
-                    if str(row["owner_id"]) == str(account["id") else None,
+                    if str(row["owner_id"]) == str(account["id"]) else None,
                 "viewers": viewers_by_status.get(str(row["id"]), [])
-                    if str(row["owner_id"]) == str(account["id") else []
+                    if str(row["owner_id"]) == str(account["id"]) else []
             } for row in visible_rows]
         }
     except Exception as error:
