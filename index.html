@@ -2272,6 +2272,7 @@ hr {
 <div id="updatesMenu" class="menu-popup hidden">
     <button id="createChannelMenu">Create channel</button>
     <button id="statusPrivacyMenu">Story privacy</button>
+    <button id="storyDurationMenu">Story duration</button>
     <button id="starredUpdatesMenu">Starred</button>
     <button id="updatesSettingsMenu">Settings</button>
 </div>
@@ -4234,6 +4235,17 @@ function showUpdatesMenu() {
     menu.classList.toggle("hidden");
 }
 $("updatesMenuButton").addEventListener("click",showUpdatesMenu);
+function getStatusExpiryHours(){const value=Number(localStorage.getItem("kchat_story_expiry_hours")||24);return [12,24,48].includes(value)?value:24;}
+$("storyDurationMenu").addEventListener("click",()=>{
+    hide($("updatesMenu"));
+    const current=getStatusExpiryHours();
+    const answer=prompt("Choose when your new stories disappear:\n\n12 — 12 hours\n24 — 24 hours\n48 — 48 hours",String(current));
+    if(answer===null)return;
+    const hours=Number(String(answer).trim());
+    if(![12,24,48].includes(hours)){alert("Choose 12, 24 or 48 hours.");return;}
+    localStorage.setItem("kchat_story_expiry_hours",String(hours));
+    alert("New stories will disappear after "+hours+" hours.");
+});
 document.addEventListener("click",event=>{
     if(!event.target.closest("#updatesMenu")&&!event.target.closest("#updatesMenuButton")) hide($("updatesMenu"));
 });
@@ -4388,9 +4400,20 @@ function renderStatusViewer() {
         audio.src=item.media_data;audio.controls=true;audio.autoplay=true;audio.className="status-audio-playback";
         content.appendChild(audio);duration=0;
     }else if(item.media_data){
-        const image=document.createElement("img");
-        image.src=item.media_data;image.alt="Story photo";
-        content.appendChild(image);
+        if(item.media_type==="video"){
+            const video=document.createElement("video");video.src=item.media_data;video.autoplay=true;video.playsInline=true;video.controls=false;
+            video.onended=()=>moveStatusViewer(1);
+            video.onloadedmetadata=()=>{if(statusViewerItems[statusViewerIndex]===item&&Number.isFinite(video.duration)&&video.duration>0){duration=video.duration*1000;updateCurrentStatusProgress(duration);scheduleStatusAdvance(duration);}};
+            content.appendChild(video);const attempt=video.play();if(attempt&&attempt.catch)attempt.catch(()=>{});
+        }else if(item.media_type==="audio"){
+            const audio=document.createElement("audio");audio.src=item.media_data;audio.controls=true;audio.autoplay=true;audio.className="status-audio-playback";content.appendChild(audio);duration=0;
+        }else{
+            const image=document.createElement("img");image.src=item.media_data;image.alt="Story photo";image.decoding="async";content.appendChild(image);
+        }
+    }else if(item.media_type==="image"||item.media_type==="video"||item.media_type==="audio"){
+        const loading=document.createElement("div");loading.className="status-viewer-text";loading.textContent="Loading story…";loading.style.background="#101a20";content.appendChild(loading);
+        loadStatusMedia(item).then(()=>{if(statusViewerItems[statusViewerIndex]===item)renderStatusViewer();}).catch(error=>{if(statusViewerItems[statusViewerIndex]===item){content.replaceChildren();const failed=document.createElement("div");failed.className="status-viewer-text";failed.textContent="Could not load this story. Tap to try again.";failed.style.background="#101a20";content.appendChild(failed);console.warn("Story media loading failed:",error);}});
+        duration=0;
     }else{
         const text=document.createElement("div");
         text.className="status-viewer-text";
@@ -4579,10 +4602,25 @@ function openMyStatusFilePicker(event){
 $("myStatusPhoto").addEventListener("click",openMyStatusFilePicker);
 const myStatusAddButton=$("myStatusCard").querySelector(".my-status-add");
 if(myStatusAddButton)myStatusAddButton.addEventListener("click",openMyStatusFilePicker);
+const statusMediaCache=new Map();
+async function loadStatusMedia(item){
+    if(item.media_data)return item.media_data;
+    if(statusMediaCache.has(item.id)){item.media_data=statusMediaCache.get(item.id);return item.media_data;}
+    const result=await apiRequest("/api/statuses/"+encodeURIComponent(item.id)+"/media");
+    if(!result.media_data)throw new Error("Story media is unavailable.");
+    statusMediaCache.set(item.id,result.media_data);
+    item.media_data=result.media_data;
+    return item.media_data;
+}
 async function loadStatuses(){
     try{
         const result=await apiRequest("/api/statuses");
-        window.kchatStatuses=Array.isArray(result.statuses)?result.statuses:[];
+        const previous=new Map((window.kchatStatuses||[]).filter(item=>item.media_data).map(item=>[item.id,item.media_data]));
+        window.kchatStatuses=Array.isArray(result.statuses)?result.statuses.map(item=>{
+            const cached=previous.get(item.id)||statusMediaCache.get(item.id);
+            if(cached)item.media_data=cached;
+            return item;
+        }):[];
         renderStatusStories();
         return window.kchatStatuses;
     }catch(error){
@@ -4770,13 +4808,13 @@ $("statusCropApply").onclick=()=>{
  $("statusCropControls").classList.add("hidden");
  $("statusCropButton").classList.remove("active");
 };
-$("saveMediaStatus").onclick=async()=>{const caption=$("mediaStatusCaption").value.trim();try{if(statusEditorEditingId){await apiRequest("/api/statuses/"+encodeURIComponent(statusEditorEditingId),{method:"PUT",body:JSON.stringify({text:caption})});}else if(!statusEditorFiles.length){if(!caption){alert("Write something first.");return;}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:caption})});}else{$("myStatusCard").classList.add("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","0%");for(let i=0;i<statusEditorFiles.length;i++){const f=statusEditorFiles[i];$("myStatusCard").style.setProperty("--upload-progress",Math.round(i/statusEditorFiles.length*100)+"%");if(f.size>5*1024*1024)throw new Error(f.name+" is larger than 5 MB.");$("statusUploadProgress").textContent="Uploading "+(i+1)+" of "+statusEditorFiles.length+"…";let data;if(f.type.startsWith("image/")&&($("statusFilter").value!=="none"||statusEditorCrop||statusEditorStrokes.length||$("statusEditorPreview").querySelector(".status-media-text-overlay,.status-sticker-overlay"))){const image=new Image();const objectUrl=URL.createObjectURL(f);await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error("Could not process "+f.name));image.src=objectUrl;});const sourceWidth=image.naturalWidth,sourceHeight=image.naturalHeight,canvas=document.createElement("canvas");if(statusEditorCrop){const side=Math.min(sourceWidth,sourceHeight);canvas.width=side;canvas.height=side;}else{canvas.width=sourceWidth;canvas.height=sourceHeight;}const context=canvas.getContext("2d");context.filter=$("statusFilter").value;if(statusEditorCrop){const side=Math.min(sourceWidth,sourceHeight);context.drawImage(image,(sourceWidth-side)/2,(sourceHeight-side)/2,side,side,0,0,side,side);}else{context.drawImage(image,0,0);}if(statusEditorCanvas&&statusEditorDraw){context.filter="none";context.drawImage(statusEditorCanvas,0,0,canvas.width,canvas.height);}
+$("saveMediaStatus").onclick=async()=>{const caption=$("mediaStatusCaption").value.trim();try{if(statusEditorEditingId){await apiRequest("/api/statuses/"+encodeURIComponent(statusEditorEditingId),{method:"PUT",body:JSON.stringify({text:caption})});}else if(!statusEditorFiles.length){if(!caption){alert("Write something first.");return;}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:caption,expiry_hours:getStatusExpiryHours()})});}else{$("myStatusCard").classList.add("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","0%");for(let i=0;i<statusEditorFiles.length;i++){const f=statusEditorFiles[i];$("myStatusCard").style.setProperty("--upload-progress",Math.round(i/statusEditorFiles.length*100)+"%");if(f.size>5*1024*1024)throw new Error(f.name+" is larger than 5 MB.");$("statusUploadProgress").textContent="Uploading "+(i+1)+" of "+statusEditorFiles.length+"…";let data;if(f.type.startsWith("image/")&&($("statusFilter").value!=="none"||statusEditorCrop||statusEditorStrokes.length||$("statusEditorPreview").querySelector(".status-media-text-overlay,.status-sticker-overlay"))){const image=new Image();const objectUrl=URL.createObjectURL(f);await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error("Could not process "+f.name));image.src=objectUrl;});const sourceWidth=image.naturalWidth,sourceHeight=image.naturalHeight,canvas=document.createElement("canvas");if(statusEditorCrop){const side=Math.min(sourceWidth,sourceHeight);canvas.width=side;canvas.height=side;}else{canvas.width=sourceWidth;canvas.height=sourceHeight;}const context=canvas.getContext("2d");context.filter=$("statusFilter").value;if(statusEditorCrop){const side=Math.min(sourceWidth,sourceHeight);context.drawImage(image,(sourceWidth-side)/2,(sourceHeight-side)/2,side,side,0,0,side,side);}else{context.drawImage(image,0,0);}if(statusEditorCanvas&&statusEditorDraw){context.filter="none";context.drawImage(statusEditorCanvas,0,0,canvas.width,canvas.height);}
 const previewBox=$("statusEditorPreview"),previewRect=previewBox.getBoundingClientRect();
 previewBox.querySelectorAll(".status-media-text-overlay,.status-sticker-overlay").forEach(sticker=>{
  const r=sticker.getBoundingClientRect(),x=(r.left+r.width/2-previewRect.left)*canvas.width/previewRect.width,y=(r.top+r.height/2-previewRect.top)*canvas.height/previewRect.height;
  context.save();context.filter="none";const scaleX=canvas.width/previewRect.width,scaleY=canvas.height/previewRect.height,padX=sticker.classList.contains("status-sticker-overlay")?12*scaleX:14*scaleX,padY=sticker.classList.contains("status-sticker-overlay")?8*scaleY:9*scaleY,bg=context.createLinearGradient(x-r.width*scaleX/2,y-r.height*scaleY/2,x+r.width*scaleX/2,y+r.height*scaleY/2);bg.addColorStop(0,"#063B46");bg.addColorStop(1,"#00B8D9");const left=x-r.width*scaleX/2,top=y-r.height*scaleY/2,w=r.width*scaleX,h=r.height*scaleY,rad=(sticker.classList.contains("status-sticker-overlay")?16:10)*scaleX;context.beginPath();context.roundRect(left,top,w,h,rad);context.fillStyle=bg;context.fill();context.textAlign="center";context.textBaseline="middle";const fontSize=parseFloat(getComputedStyle(sticker).fontSize)||28;context.font=(sticker.classList.contains("status-media-text-overlay")?"bold ":"")+(fontSize*scaleY)+"px Arial";context.fillStyle="#ffffff";const content=Array.from(sticker.childNodes).filter(node=>node.nodeType===Node.TEXT_NODE).map(node=>node.textContent).join("").trim()||sticker.textContent.trim();context.fillText(content,x,y);context.restore();
 });
-data=canvas.toDataURL("image/jpeg",.92);URL.revokeObjectURL(objectUrl);}else{data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error("Could not read "+f.name));r.readAsDataURL(f);});}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:i===0?caption:"",media_data:data,media_type:f.type.startsWith("video/")?"video":"image"})});}}$("myStatusCard").classList.remove("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","100%");hide($("mediaStatusEditor"));statusEditorFiles=[];statusEditorEditingId=null;await loadStatuses();const mine=(window.kchatStatuses||[]).filter(x=>x.is_mine);renderStatusStories();openStatusViewer(mine,0);}catch(error){$("myStatusCard").classList.remove("is-uploading");alert(error.message||"Could not share status.");$("statusUploadProgress").textContent="Upload failed — "+(error.message||"Try again.");}};
+data=canvas.toDataURL("image/jpeg",.92);URL.revokeObjectURL(objectUrl);}else{data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error("Could not read "+f.name));r.readAsDataURL(f);});}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:i===0?caption:"",media_data:data,media_type:f.type.startsWith("video/")?"video":"image",expiry_hours:getStatusExpiryHours()})});}}$("myStatusCard").classList.remove("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","100%");hide($("mediaStatusEditor"));statusEditorFiles=[];statusEditorEditingId=null;await loadStatuses();const mine=(window.kchatStatuses||[]).filter(x=>x.is_mine);renderStatusStories();openStatusViewer(mine,0);}catch(error){$("myStatusCard").classList.remove("is-uploading");alert(error.message||"Could not share status.");$("statusUploadProgress").textContent="Upload failed — "+(error.message||"Try again.");}};
 $("editMyStatusButton").onclick=()=>{const item=statusViewerItems[statusViewerIndex];if(!item?.is_mine)return;closeStatusViewer();openMediaStatusEditor([],item);};
 
 function showJustCreatedStatus(status){
@@ -4848,7 +4886,7 @@ $("publishTextStatus").addEventListener("click",async()=>{
     const button=$("publishTextStatus");button.disabled=true;
     try{
         const background=textStatusBackgrounds[textStatusBackgroundIndex];
-        const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:value,background})});
+        const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:value,background,expiry_hours:getStatusExpiryHours()})});
         $("textStatusInput").value="";
         hide($("textStatusModal"));
         showJustCreatedStatus(result.status);
@@ -4882,7 +4920,7 @@ $("voiceStatusRecord").addEventListener("click",async()=>{
  voiceStatusRecorder.start();voiceStatusStarted=Date.now();$("voiceStatusHint").textContent="Recording… tap the microphone to finish (30-second maximum)";voiceStatusClock=setInterval(()=>{const sec=Math.floor((Date.now()-voiceStatusStarted)/1000);$("voiceStatusTimer").textContent="00:"+String(Math.min(30,sec)).padStart(2,"0");if(sec>=30&&voiceStatusRecorder&&voiceStatusRecorder.state==="recording")voiceStatusRecorder.stop();},250);
  }catch(error){alert("Microphone access was denied or unavailable. Allow microphone access and try again.");}
 });
-$("shareVoiceStatus").addEventListener("click",async()=>{if(!voiceStatusBlob)return;const button=$("shareVoiceStatus");button.disabled=true;button.textContent="Uploading…";try{if(voiceStatusBlob.size>5*1024*1024)throw new Error("Recording too large. Please record a shorter voice status.");const reader=new FileReader();const data=await new Promise((resolve,reject)=>{reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Could not read recording."));reader.readAsDataURL(voiceStatusBlob);});const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({media_data:data,media_type:"audio",text:""})});hide($("voiceStatusModal"));hide($("textStatusModal"));resetVoiceStatus();showJustCreatedStatus(result.status);}catch(error){alert(error.message||"Could not share voice status.");button.disabled=false;button.textContent="Share voice status";}});
+$("shareVoiceStatus").addEventListener("click",async()=>{if(!voiceStatusBlob)return;const button=$("shareVoiceStatus");button.disabled=true;button.textContent="Uploading…";try{if(voiceStatusBlob.size>5*1024*1024)throw new Error("Recording too large. Please record a shorter voice status.");const reader=new FileReader();const data=await new Promise((resolve,reject)=>{reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Could not read recording."));reader.readAsDataURL(voiceStatusBlob);});const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({media_data:data,media_type:"audio",text:"",expiry_hours:getStatusExpiryHours()})});hide($("voiceStatusModal"));hide($("textStatusModal"));resetVoiceStatus();showJustCreatedStatus(result.status);}catch(error){alert(error.message||"Could not share voice status.");button.disabled=false;button.textContent="Share voice status";}});
 
 $("statusFileInput").addEventListener("change",event=>{const files=Array.from(event.target.files||[]);event.target.value="";if(!files.length)return;const invalid=files.find(f=>!f.type.startsWith("image/")&&!f.type.startsWith("video/"));if(invalid){alert("Choose images or videos only.");return;}hide($("textStatusModal"));openMediaStatusEditor(files);});
 $("exploreChannelsButton").addEventListener("click",loadChannels);
