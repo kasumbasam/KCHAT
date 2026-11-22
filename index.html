@@ -5271,6 +5271,62 @@ document.querySelectorAll("[data-main-nav]").forEach(button=>button.addEventList
     }
 }));
 
+// Horizontal swipe navigation: Chats <-> Stories <-> Calls.
+function navigateKchatSwipeTab(tab) {
+    if (!["chat", "status", "call"].includes(tab) || tab === activeTab) return;
+    document.querySelectorAll("[data-main-nav]").forEach(button => button.classList.toggle("active", button.dataset.mainNav === tab));
+    if (tab === "status") {
+        openKchatUpdatesScreen();
+        document.querySelectorAll("[data-main-nav]").forEach(button => button.classList.toggle("active", button.dataset.mainNav === "status"));
+        return;
+    }
+    closeKchatUpdatesScreen(tab);
+    if (tab === "chat") {
+        activeFilter = "all";
+        document.querySelectorAll(".filter-btn").forEach(item => item.classList.toggle("active", item.dataset.filter === "all"));
+        $("chatSearch").placeholder = "Search conversations";
+        $("appScreen").classList.remove("mobile-chat-open");
+        hide($("chatScreen"));
+        show($("welcomeScreen"));
+        renderContacts();
+        loadContacts().catch(error => console.warn("KCHAT swipe inbox refresh failed:", error));
+    } else {
+        $("appScreen").classList.remove("mobile-chat-open");
+        if (currentChat) show($("chatScreen"));
+        else show($("welcomeScreen"));
+        renderContacts();
+    }
+}
+
+(() => {
+    const app = $("appScreen");
+    if (!app) return;
+    let startX = 0, startY = 0, swipeTarget = null;
+    app.addEventListener("touchstart", event => {
+        if (event.touches.length !== 1) { swipeTarget = null; return; }
+        const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+        if (!target || target.closest("#chatScreen, input, textarea, select, [contenteditable='true'], .modal, .status-viewer, .status-editor, .my-status-screen")) {
+            swipeTarget = null;
+            return;
+        }
+        startX = event.touches[0].clientX;
+        startY = event.touches[0].clientY;
+        swipeTarget = target;
+    }, { passive: true });
+    app.addEventListener("touchend", event => {
+        if (!swipeTarget || event.changedTouches.length !== 1) return;
+        const dx = event.changedTouches[0].clientX - startX;
+        const dy = event.changedTouches[0].clientY - startY;
+        swipeTarget = null;
+        if (Math.abs(dx) < 75 || Math.abs(dx) < Math.abs(dy) * 1.35) return;
+        const order = ["chat", "status", "call"];
+        const current = order.indexOf(activeTab);
+        if (current < 0) return;
+        const next = current + (dx < 0 ? 1 : -1);
+        if (next >= 0 && next < order.length) navigateKchatSwipeTab(order[next]);
+    }, { passive: true });
+})();
+
 // WhatsApp Tabs (CHAT, CALLS, STATUS) Switching Logic
 document.querySelectorAll(".whatsapp-tab-btn").forEach(button => {
     button.addEventListener("click", () => {
