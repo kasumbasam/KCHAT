@@ -1834,6 +1834,7 @@ hr {
 .chat-theme-swatches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .chat-theme-swatches button,.chat-wallpaper-presets button{border:1px solid var(--border);border-radius:12px;background:var(--panel2);color:var(--text);padding:9px;text-align:left;display:flex;align-items:center;gap:10px}
 .chat-theme-swatches button>span{height:38px;flex:1;border-radius:8px;background:linear-gradient(135deg,var(--swatch-in) 0 48%,var(--swatch-out) 48% 100%)}
+.chat-theme-swatches button.selected,.chat-wallpaper-presets button.selected{border:2px solid var(--accent);padding:8px}
 .chat-theme-swatches button strong,.chat-wallpaper-presets strong{font-size:13px}
 .chat-wallpaper-presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
 .chat-wallpaper-presets button{flex-direction:column;align-items:stretch;gap:6px}
@@ -4692,7 +4693,10 @@ function moveStatusViewer(direction) {
     statusViewerIndex=next;
     const nextItem=statusViewerItems[statusViewerIndex];
     if(nextItem&&!nextItem.is_mine&&nextItem.id!=="status-loading"){
-        apiRequest("/api/statuses/"+encodeURIComponent(nextItem.id)+"/view",{method:"POST"}).catch(error=>console.warn("Status view not recorded:",error));
+        apiRequest("/api/statuses/"+encodeURIComponent(nextItem.id)+"/view",{method:"POST"}).then(()=>{
+            nextItem.is_viewed_by_me=true;
+            renderStatusStories();
+        }).catch(error=>console.warn("Status view not recorded:",error));
     }
     renderStatusViewer();
 }
@@ -5078,7 +5082,7 @@ function renderStatusStories(){
         const selected=statuses.find(status=>String(status.id)===String(card.dataset.statusId));if(!selected)return;
         const personStatuses=statuses.filter(status=>!status.is_mine&&status.username===selected.username);
         openStatusViewer(personStatuses,Math.max(0,personStatuses.findIndex(status=>String(status.id)===String(selected.id))));
-        apiRequest("/api/statuses/"+encodeURIComponent(selected.id)+"/view",{method:"POST"}).then(()=>{selected.is_viewed_by_me=true;}).catch(error=>console.warn("Status view not recorded:",error));
+        apiRequest("/api/statuses/"+encodeURIComponent(selected.id)+"/view",{method:"POST"}).then(()=>{selected.is_viewed_by_me=true;renderStatusStories();}).catch(error=>console.warn("Status view not recorded:",error));
     }));
 }
 
@@ -6109,6 +6113,8 @@ $("chatMoreButton").addEventListener("click", (e) => {
 
 $("chatMenuTheme").addEventListener("click",()=>{
     hide($("chatMenu"));
+    const peer=currentChatContact();
+    if(peer.type==="group"||peer.is_group){alert("Chat themes are currently available in private conversations.");return;}
     openChatTheme();
 });
 $("closeChatTheme").addEventListener("click",()=>hide($("chatThemeModal")));
