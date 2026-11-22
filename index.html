@@ -2538,7 +2538,7 @@ html, body {
     <header><strong id="statusInteractionsTitle">Status interactions</strong><button type="button" id="closeStatusInteractions" aria-label="Close interactions">×</button></header>
     <div id="statusInteractionsContent" class="status-interactions-content"><div class="status-interactions-empty">Loading…</div></div>
     <form id="statusReplyForm" class="status-reply-form"><input id="statusReplyInput" maxlength="1000" placeholder="Reply to this status…" autocomplete="off"><button type="submit">Send</button></form>
-    <div class="status-interactions-actions"><button type="button" id="likeStatusButton">♡ Like</button><button type="button" id="reshareStatusButton">↗ Share status</button></div>
+    <div class="status-interactions-actions" id="statusInteractionsActions"><button type="button" id="likeStatusButton">♡ Like</button><button type="button" id="reshareStatusButton">↗ Share status</button></div>
 </div>
 <!-- UPDATES MENU -->
 <div id="updatesMenu" class="menu-popup hidden">
@@ -4839,6 +4839,13 @@ function closeStatusInteractions(){
     if(!$("statusViewer").classList.contains("hidden"))resumeStatusViewer();
 }
 $("closeStatusInteractions").addEventListener("click",closeStatusInteractions);
+document.addEventListener("click",event=>{
+    const target=event.target instanceof Element?event.target:null;
+    if(target&&target.closest("#viewedByButton")){
+        event.preventDefault();event.stopImmediatePropagation();openStatusInteractions();
+    }
+},true);
+
 $("statusReplyForm").addEventListener("submit",async event=>{
     event.preventDefault();const item=statusViewerItems[statusViewerIndex],input=$("statusReplyInput"),message=input.value.trim();if(!item||!message)return;
     try{await apiRequest("/api/statuses/"+encodeURIComponent(item.id)+"/reply",{method:"POST",body:JSON.stringify({message})});input.value="";$("statusInteractionsContent").replaceChildren();const sent=document.createElement("div");sent.className="status-interaction-empty";sent.textContent="Reply sent."; $("statusInteractionsContent").appendChild(sent);}
