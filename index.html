@@ -4152,7 +4152,7 @@ function renderContacts() {
         const preview = isTyping
             ? "typing…"
             : cleanLastMessage
-                ? (cleanLastMessage.startsWith("data:image/") ? "📷 Photo" : (decodedLastReply ? "↩ " : "") + cleanLastMessage)
+                ? (cleanLastMessage.startsWith("data:image/") ? "📷 Photo" : cleanLastMessage)
                 : (contactsOnly ? "KCHAT contact" : "Start a conversation");
         const isMine = String(contact.last_message_sender || "").toLowerCase() === String(currentUser || "").toLowerCase();
         const deliveryStatus = String(contact.last_message_status || "sent").toLowerCase();
