@@ -1823,6 +1823,50 @@ hr {
 
 </style>
 
+<style id="kchat-chat-theme-and-status-styles">
+/* Per-conversation themes */
+.chat-theme-dialog{width:min(620px,94vw);max-height:90vh;overflow:auto;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:20px;padding:16px}
+.chat-theme-heading{display:flex;align-items:center;gap:12px}.chat-theme-heading button{border:0;background:transparent;color:var(--text);font-size:24px}.chat-theme-heading h2{margin:0;font-size:21px}
+.chat-theme-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0;border-bottom:1px solid var(--border);padding-bottom:10px}
+.chat-theme-tabs button{border:0;border-radius:20px;background:var(--panel2);color:var(--text);padding:10px 5px;font-size:14px}
+.chat-theme-tabs button.active{background:var(--accent);color:#001419;font-weight:700}
+.chat-theme-panel{padding:5px 0 12px}
+.chat-theme-swatches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.chat-theme-swatches button,.chat-wallpaper-presets button{border:1px solid var(--border);border-radius:12px;background:var(--panel2);color:var(--text);padding:9px;text-align:left;display:flex;align-items:center;gap:10px}
+.chat-theme-swatches button>span{height:38px;flex:1;border-radius:8px;background:linear-gradient(135deg,var(--swatch-in) 0 48%,var(--swatch-out) 48% 100%)}
+.chat-theme-swatches button strong,.chat-wallpaper-presets strong{font-size:13px}
+.chat-wallpaper-presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.chat-wallpaper-presets button{flex-direction:column;align-items:stretch;gap:6px}
+.chat-wallpaper-presets button>span{height:76px;border-radius:8px;background:#111}
+.wallpaper-midnight>span{background:radial-gradient(circle at 70% 20%,#00b8d9,#111827 55%,#03060b)!important}
+.wallpaper-aurora>span{background:linear-gradient(145deg,#071b36,#087d78,#572d80)!important}
+.wallpaper-desert>span{background:linear-gradient(145deg,#f7c77d,#a85e43,#432f4a)!important}
+.wallpaper-ocean>span{background:linear-gradient(145deg,#062a48,#087f9b,#a6dce7)!important}
+.wallpaper-flowers>span{background:radial-gradient(circle at 25% 35%,#ff9cc5 0 12%,transparent 13%),radial-gradient(circle at 70% 65%,#e8a6ff 0 15%,transparent 16%),linear-gradient(145deg,#192b32,#4c315c)!important}
+.wallpaper-none>span{display:grid;place-items:center;background:var(--panel)!important;font-size:30px}
+.chat-theme-ai-preview{display:block;width:100%;max-height:270px;object-fit:cover;border-radius:12px;margin:12px 0}
+.chat-theme-panel textarea{width:100%;box-sizing:border-box;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:12px}
+#mainChatArea{background-size:cover;background-position:center;background-repeat:no-repeat}
+.message-bubble{background:var(--chat-incoming-bubble,var(--bubble))}
+.message-row.mine .message-bubble{background:var(--chat-outgoing-bubble,#063B46)}
+/* Unsaved sender safety notice */
+.unsaved-chat-notice{display:flex;align-items:flex-start;gap:12px;padding:13px 14px;background:#202a30;border-bottom:1px solid #e3a13b;color:#f4f6f7;flex-wrap:wrap}
+.unsaved-chat-warning-icon{width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:grid;place-items:center;background:#f0b44c;color:#1a1a1a;font-weight:900}
+.unsaved-chat-copy{display:flex;flex:1;min-width:180px;flex-direction:column;gap:4px}
+.unsaved-chat-copy strong{font-size:16px}.unsaved-chat-copy span{font-size:14px;color:#f0c36c}.unsaved-chat-copy small{font-size:12px;color:#c4cdd1}
+.unsaved-chat-actions{width:100%;display:flex;gap:8px;flex-wrap:wrap;padding-left:42px}
+.unsaved-chat-actions button{border:1px solid #68757c;border-radius:8px;padding:8px 10px;background:transparent;color:#fff;font-size:13px}
+#unsavedContinueButton{background:#00bfa5;border-color:#00bfa5;color:#001b18;font-weight:700}
+#unsavedCancelButton{color:#ffc0c0;border-color:#a85b5b}
+.status-ring{width:62px;height:62px;flex:0 0 62px;border-radius:50%;padding:3px;display:grid;place-items:center}
+.status-ring .status-story-avatar{width:56px;height:56px;flex-basis:56px;border:0}
+.status-story-count{position:absolute;left:60px;top:6px;min-width:17px;height:17px;padding:0 4px;border-radius:10px;background:#20c878;color:#06150e;border:2px solid #080d10;font:700 10px Arial,sans-serif;display:grid;place-items:center}
+.my-status-count{position:absolute;left:43px;top:0;min-width:17px;height:17px;padding:0 4px;border-radius:10px;background:#20c878;color:#06150e;border:2px solid #080d10;font:700 10px Arial,sans-serif;display:grid;place-items:center}
+.status-sharing-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0;padding:12px;border-radius:12px;background:var(--panel2)}
+.status-sharing-toggle span{display:flex;flex-direction:column;gap:3px}.status-sharing-toggle small{color:var(--muted);font-size:12px}
+.status-sharing-toggle input{width:22px;height:22px;accent-color:#20c878}
+@media(max-width:600px){.chat-theme-dialog{padding:13px}.chat-theme-swatches,.chat-wallpaper-presets{grid-template-columns:repeat(2,minmax(0,1fr))}.unsaved-chat-actions{padding-left:0}}
+</style>
 </head>
 
 <body>
@@ -2039,6 +2083,19 @@ hr {
                 </header>
 
                 <div id="pinnedMessageBanner" class="pinned-message-banner hidden" role="button" tabindex="0" aria-label="Jump to pinned message"></div>
+                <section id="unsavedChatNotice" class="unsaved-chat-notice hidden" aria-live="polite">
+                    <div class="unsaved-chat-warning-icon">!</div>
+                    <div class="unsaved-chat-copy">
+                        <strong>Do you trust this person?</strong>
+                        <span id="unsavedChatLabel">Inbox from unsaved number</span>
+                        <small id="unsavedChatDetails">This number is not in your KCHAT contacts.</small>
+                    </div>
+                    <div class="unsaved-chat-actions">
+                        <button type="button" id="unsavedContinueButton">Continue to chat</button>
+                        <button type="button" id="unsavedAddContactButton">Add contact</button>
+                        <button type="button" id="unsavedCancelButton">Cancel chat</button>
+                    </div>
+                </section>
                 <div id="messagesArea" class="messages-area"></div>
 
                 <button type="button" id="kchatAiChatFab" class="kchat-ai-ring kchat-ai-chat-ring" aria-label="Open KCHAT AI in this conversation" title="Ask KCHAT AI"><span><img class="kchat-ai-logo-image" src="/kchat-ai-logo.svg" alt="KCHAT AI logo"></span></button>
@@ -2189,6 +2246,55 @@ hr {
     </div>
 </section>
 
+<!-- PER-CHAT THEME AND WALLPAPER -->
+<div id="chatThemeModal" class="modal-backdrop hidden">
+    <section class="chat-theme-dialog" role="dialog" aria-modal="true" aria-labelledby="chatThemeHeading">
+        <header class="chat-theme-heading">
+            <button type="button" id="closeChatTheme" aria-label="Back">←</button>
+            <h2 id="chatThemeHeading">Chat theme</h2>
+        </header>
+        <nav class="chat-theme-tabs" aria-label="Chat theme options">
+            <button type="button" data-chat-theme-tab="bubbles" class="active">Chat bubble</button>
+            <button type="button" data-chat-theme-tab="wallpaper">Wallpaper</button>
+            <button type="button" data-chat-theme-tab="ai">Use AI</button>
+        </nav>
+        <section id="chatThemeBubblesPanel" class="chat-theme-panel">
+            <p class="small muted">Choose the bubble colours for this conversation.</p>
+            <div class="chat-theme-swatches">
+                <button type="button" data-chat-theme-preset="default"><span style="--swatch-in:#25313a;--swatch-out:#063b46"></span><strong>Obsidian</strong></button>
+                <button type="button" data-chat-theme-preset="mint"><span style="--swatch-in:#d9f5dc;--swatch-out:#277b62"></span><strong>Mint</strong></button>
+                <button type="button" data-chat-theme-preset="sand"><span style="--swatch-in:#f0e4d2;--swatch-out:#806348"></span><strong>Sand</strong></button>
+                <button type="button" data-chat-theme-preset="coral"><span style="--swatch-in:#ffd5ca;--swatch-out:#9c4051"></span><strong>Coral</strong></button>
+                <button type="button" data-chat-theme-preset="sunset"><span style="--swatch-in:#f8d29a;--swatch-out:#8c4162"></span><strong>Sunset</strong></button>
+                <button type="button" data-chat-theme-preset="ocean"><span style="--swatch-in:#b7e7f4;--swatch-out:#176d91"></span><strong>Ocean</strong></button>
+                <button type="button" data-chat-theme-preset="lavender"><span style="--swatch-in:#e8dcff;--swatch-out:#674d91"></span><strong>Lavender</strong></button>
+                <button type="button" data-chat-theme-preset="obsidian"><span style="--swatch-in:#242d37;--swatch-out:#00a9b8"></span><strong>Neon</strong></button>
+            </div>
+        </section>
+        <section id="chatThemeWallpaperPanel" class="chat-theme-panel hidden">
+            <p class="small muted">Choose a wallpaper for this conversation only.</p>
+            <div class="chat-wallpaper-presets">
+                <button type="button" data-chat-wallpaper="preset:midnight" class="wallpaper-midnight"><span></span><strong>Midnight</strong></button>
+                <button type="button" data-chat-wallpaper="preset:aurora" class="wallpaper-aurora"><span></span><strong>Aurora</strong></button>
+                <button type="button" data-chat-wallpaper="preset:desert" class="wallpaper-desert"><span></span><strong>Desert</strong></button>
+                <button type="button" data-chat-wallpaper="preset:ocean" class="wallpaper-ocean"><span></span><strong>Ocean</strong></button>
+                <button type="button" data-chat-wallpaper="preset:flowers" class="wallpaper-flowers"><span></span><strong>Flowers</strong></button>
+                <button type="button" data-chat-wallpaper="" class="wallpaper-none"><span>×</span><strong>No wallpaper</strong></button>
+            </div>
+            <button type="button" class="secondary-btn" id="chooseChatWallpaper">Choose from gallery</button>
+            <input type="file" id="chatThemeWallpaperFile" accept="image/png,image/jpeg,image/webp" class="hidden">
+        </section>
+        <section id="chatThemeAiPanel" class="chat-theme-panel hidden">
+            <p class="small muted">Describe an image and KCHAT AI will create a wallpaper for this chat.</p>
+            <textarea id="chatThemeAiPrompt" rows="3" maxlength="1500" placeholder="Example: peaceful night sky above a lake with soft cyan stars"></textarea>
+            <button type="button" class="primary-btn" id="generateChatWallpaper">Generate wallpaper</button>
+            <p id="chatThemeAiStatus" class="small muted" aria-live="polite"></p>
+            <img id="chatThemeAiPreview" class="chat-theme-ai-preview hidden" alt="AI generated chat wallpaper preview">
+            <button type="button" class="primary-btn hidden" id="applyAiChatWallpaper">Apply to this chat</button>
+        </section>
+    </section>
+</div>
+
 <!-- STATUS PRIVACY -->
 <div id="statusPrivacyModal" class="modal-backdrop hidden">
     <div class="modal-card">
@@ -2198,8 +2304,10 @@ hr {
             <option value="all_contacts">My contacts</option>
             <option value="my_contacts_except">My contacts except…</option>
             <option value="only_share_with">Only share with…</option>
+            <option value="close_friends">Close friends</option>
         </select>
         <p id="statusAudienceHelp" class="small muted">Your stories are visible to your saved KCHAT contacts.</p>
+        <label class="status-sharing-toggle"><span><strong>Allow sharing</strong><small>Let people who can view your story reshare it</small></span><input type="checkbox" id="allowStatusSharingToggle" checked></label>
         <input id="statusAudienceSearch" type="search" placeholder="Search contacts" style="width:100%;margin:8px 0">
         <div id="statusAudienceContacts" style="max-height:230px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;padding:4px"></div>
         <div class="modal-actions"><button class="secondary-btn" id="closeStatusPrivacy">Cancel</button><button class="primary-btn" id="saveStatusPrivacy">Save</button></div>
@@ -2322,7 +2430,7 @@ hr {
 <!-- UPDATES MENU -->
 <div id="updatesMenu" class="menu-popup hidden">
     <button id="createChannelMenu">Create channel</button>
-    <button id="statusPrivacyMenu">Story privacy</button>
+    <button id="statusPrivacyMenu">Status privacy</button>
     <button id="storyDurationMenu">Story duration</button>
     <button id="starredUpdatesMenu">Starred</button>
     <button id="updatesSettingsMenu">Settings</button>
@@ -2343,6 +2451,7 @@ hr {
 <!-- CHAT MENU -->
 <div id="chatMenu" class="menu-popup hidden">
     <button id="chatMenuProfile">View contact</button>
+    <button id="chatMenuTheme">Chat theme</button>
     <button id="chatMenuFavorite">Add to favorites</button>
     <button id="chatMenuPin">Pin conversation</button>
     <button id="chatMenuHide">Hide conversation</button>
