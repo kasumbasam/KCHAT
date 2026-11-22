@@ -621,6 +621,59 @@ async def kchat_ai_delete_memory(memory_id: int, request: Request):
     return {"success": True, "deleted": result.rowcount > 0}
 
 
+@app.post("/api/ai/wallpaper")
+async def generate_chat_wallpaper(request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    token = (os.environ.get("CLOUDFLARE_API_TOKEN") or os.environ.get("CLOUDFLARE_AUTH_TOKEN") or os.environ.get("CF_API_TOKEN") or "").strip()
+    account_id = (os.environ.get("CLOUDFLARE_ACCOUNT_ID") or os.environ.get("CF_ACCOUNT_ID") or "").strip()
+    if not token or not account_id:
+        return JSONResponse({"error": "AI wallpaper generation needs the existing Cloudflare Workers AI account and API token in Render."}, status_code=503)
+
+    try:
+        data = await request.json()
+        prompt = str(data.get("prompt") or "").strip()
+        if not prompt:
+            return JSONResponse({"error": "Describe the wallpaper you want."}, status_code=400)
+        if len(prompt) > 1500:
+            return JSONResponse({"error": "Keep the wallpaper description under 1,500 characters."}, status_code=400)
+
+        import asyncio
+        import urllib.request
+        import urllib.error
+        url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/black-forest-labs/flux-1-schnell"
+        payload = json.dumps({
+            "prompt": "Create a beautiful vertical smartphone chat wallpaper. " + prompt +
+                      ". No text, no letters, no logos, clean composition, low visual clutter behind chat messages.",
+            "steps": 4
+        }).encode("utf-8")
+
+        def call_cloudflare():
+            req = urllib.request.Request(url, data=payload, headers={
+                "Authorization": "Bearer " + token,
+                "Content-Type": "application/json"
+            }, method="POST")
+            with urllib.request.urlopen(req, timeout=180) as response:
+                return response.read()
+
+        raw = await asyncio.to_thread(call_cloudflare)
+        result = json.loads(raw.decode("utf-8"))
+        image_data = result.get("result", {})
+        encoded = image_data.get("image") if isinstance(image_data, dict) else None
+        if not encoded:
+            raise RuntimeError("Cloudflare returned no wallpaper image.")
+        return {"success": True, "image": "data:image/jpeg;base64," + encoded}
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")[:500]
+        print("KCHAT AI wallpaper HTTP error:", error.code, detail)
+        return JSONResponse({"error": "AI wallpaper generation failed. Check Cloudflare Workers AI access and available credits."}, status_code=502)
+    except Exception as error:
+        print("KCHAT AI wallpaper error:", repr(error))
+        return JSONResponse({"error": "Could not generate the wallpaper. Please try again."}, status_code=502)
+
+
 @app.post("/api/ai/chat")
 async def kchat_ai_chat(request: Request):
     account = get_account_from_request(request)
@@ -3605,9 +3658,12 @@ async def get_statuses(request: Request):
                 excluded = {str(name).lower() for name in owner_privacy.get("status_excluded", [])}
                 allowed = {str(name).lower() for name in owner_privacy.get("status_allowed", [])}
                 viewer_name = account["username"].lower()
+                close_friends = {str(name).lower() for name in owner_privacy.get("status_close_friends", [])}
                 if audience == "my_contacts_except" and viewer_name in excluded:
                     continue
                 if audience == "only_share_with" and viewer_name not in allowed:
+                    continue
+                if audience == "close_friends" and viewer_name not in close_friends:
                     continue
             visible_rows.append(row)
 
@@ -3617,6 +3673,15 @@ async def get_statuses(request: Request):
         own_status_ids = [row["id"] for row in visible_rows
                           if str(row["owner_id"]) == str(account["id"])]
         viewers_by_status = {str(status_id): [] for status_id in own_status_ids}
+        all_visible_status_ids = [row["id"] for row in visible_rows]
+        viewed_status_ids = set()
+        if all_visible_status_ids:
+            with get_db() as conn:
+                viewed_rows = conn.execute("""
+                    SELECT status_id FROM status_views
+                    WHERE viewer_id = %s AND status_id = ANY(%s)
+                """, (account["id"], all_visible_status_ids)).fetchall()
+            viewed_status_ids = {str(row["status_id"]) for row in viewed_rows}
         if own_status_ids:
             with get_db() as conn:
                 viewer_rows = conn.execute("""
@@ -3645,6 +3710,7 @@ async def get_statuses(request: Request):
                 "created_at": row["created_at"].isoformat(),
                 "expires_at": row["expires_at"].isoformat(),
                 "is_mine": str(row["owner_id"]) == str(account["id"]),
+                "is_viewed_by_me": str(row["id"]) in viewed_status_ids,
                 "view_count": len(viewers_by_status.get(str(row["id"]), []))
                     if str(row["owner_id"]) == str(account["id"]) else None,
                 "viewers": viewers_by_status.get(str(row["id"]), [])
@@ -3680,7 +3746,8 @@ async def get_status_media(status_id: str, request: Request):
                 excluded = {str(name).lower() for name in privacy.get("status_excluded", [])}
                 allowed = {str(name).lower() for name in privacy.get("status_allowed", [])}
                 viewer_name = str(account["username"]).lower()
-                if (audience == "my_contacts_except" and viewer_name in excluded) or (audience == "only_share_with" and viewer_name not in allowed):
+                close_friends = {str(name).lower() for name in privacy.get("status_close_friends", [])}
+                if (audience == "my_contacts_except" and viewer_name in excluded) or (audience == "only_share_with" and viewer_name not in allowed) or (audience == "close_friends" and viewer_name not in close_friends):
                     return JSONResponse({"error": "You cannot view this story."}, status_code=403)
             media_data = row["media_data"]
         header, encoded = media_data.split(",", 1)
@@ -3958,6 +4025,7 @@ DEFAULT_PRIVACY_SETTINGS = {
     "status_audience": "all_contacts",
     "status_excluded": [],
     "status_allowed": [],
+    "status_close_friends": [],
     "allow_status_sharing": True,
     "default_message_timer": 0,
     "silence_unknown_calls": False,
@@ -3991,7 +4059,8 @@ PRIVACY_VISIBILITY_OPTIONS = {
     "status_audience": [
         "all_contacts",
         "my_contacts_except",
-        "only_share_with"
+        "only_share_with",
+        "close_friends"
     ]
 }
 
@@ -4134,7 +4203,7 @@ async def update_privacy(request: Request):
 
             settings["default_message_timer"] = timer
 
-        for key in ["status_excluded", "status_allowed"]:
+        for key in ["status_excluded", "status_allowed", "status_close_friends"]:
             if key in data:
                 value = data[key]
 
