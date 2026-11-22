@@ -664,7 +664,7 @@ async def generate_chat_wallpaper(request: Request):
         encoded = image_data.get("image") if isinstance(image_data, dict) else (image_data if isinstance(image_data, str) else None)
         if not encoded:
             raise RuntimeError("Cloudflare returned no wallpaper image.")
-        return {"success": True, "image": "data:image/jpeg;base64," + encoded}
+        return {"success": True, "image": "data:image/png;base64," + encoded}
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", errors="replace")[:500]
         print("KCHAT AI wallpaper HTTP error:", error.code, detail)
