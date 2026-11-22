@@ -660,6 +660,8 @@ async def generate_chat_wallpaper(request: Request):
 
         raw = await asyncio.to_thread(call_cloudflare)
         result = json.loads(raw.decode("utf-8"))
+        if result.get("success") is False:
+            raise RuntimeError("Cloudflare reported that wallpaper generation failed.")
         image_data = result.get("result", {})
         encoded = image_data.get("image") if isinstance(image_data, dict) else (image_data if isinstance(image_data, str) else None)
         if not encoded:
