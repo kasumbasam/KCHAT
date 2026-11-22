@@ -2139,6 +2139,7 @@ hr {
                         <button type="button" class="my-status-card" id="myStatusCard" aria-label="My story. Tap to add or view your story">
                             <span class="my-status-avatar-wrap">
                                 <span class="my-status-photo" id="myStatusPhoto"><span id="myStatusInitial">S</span></span>
+                                <span class="my-status-count hidden" id="myStatusCount"></span>
                                 <span class="my-status-add" aria-hidden="true">+</span>
                             </span>
                             <span class="my-status-copy">
@@ -5015,6 +5016,14 @@ function showJustCreatedStatus(status){
     const mine=window.kchatStatuses.filter(item=>item.is_mine);
     openStatusViewer(mine,0);
 }
+function buildStoryRingGradient(items){
+    const count=Math.max(1,items.length),step=100/count,gap=Math.min(2,step*.16);
+    const slices=items.map((item,index)=>{
+        const color=item.is_viewed_by_me?"#68757b":"#20c878";
+        return color+" "+(index*step+gap/2)+"% "+((index+1)*step-gap/2)+"%";
+    });
+    return "conic-gradient(from -90deg,"+slices.join(",")+")";
+}
 function renderStatusStories(){
     const statuses=window.kchatStatuses||[];
     const mine=statuses.filter(item=>item.is_mine);
@@ -5022,11 +5031,20 @@ function renderStatusStories(){
     const photo=currentProfile?.profile_picture;
     $("myStatusPhoto").innerHTML=photo?'<img src="'+escapeHTML(photo)+'" alt="My profile">':'<span id="myStatusInitial">'+escapeHTML((currentUser||"S").charAt(0).toUpperCase())+'</span>';
     $("myStatusPhoto").classList.toggle("has-status",mine.length>0);
+    if(mine.length){
+        $("myStatusPhoto").style.borderColor="transparent";
+        $("myStatusPhoto").style.background="linear-gradient(#263238,#263238) padding-box,"+buildStoryRingGradient(mine)+" border-box";
+    }else{
+        $("myStatusPhoto").style.background="";
+        $("myStatusPhoto").style.borderColor="#59656b";
+    }
+    const mineCount=$("myStatusCount");
+    if(mineCount){mineCount.textContent=String(mine.length);mineCount.classList.toggle("hidden",mine.length===0);}
     $("myStatusTitle").textContent="My story";
     const latestMine=mine[0]||null;
     const subtitle=$("myStatusSubtitle");
     const preview=$("myStatusPreview");
-    subtitle.textContent=latestMine?"Tap to view your story · "+new Date(latestMine.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"Tap to add story";
+    subtitle.textContent=latestMine?"Tap to view your story · "+mine.length+" update"+(mine.length===1?"":"s")+" · "+new Date(latestMine.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"Tap to add story";
     preview.className="my-status-preview hidden";
     preview.textContent="";
     preview.style.background="";
@@ -5042,30 +5060,25 @@ function renderStatusStories(){
             preview.style.backgroundImage=latestMine.media_data?"url("+JSON.stringify(latestMine.media_data)+")":"linear-gradient(135deg,#253b45,#101820)";
             preview.setAttribute("aria-label","Latest video status");
         }else if(latestMine.media_type==="audio"){
-            preview.className="my-status-preview text-preview";
-            preview.textContent="🎙 Voice status";
+            preview.className="my-status-preview text-preview";preview.textContent="🎙 Voice status";
         }else{
-            preview.className="my-status-preview text-preview";
-            preview.textContent=(latestMine.text||"Written status").slice(0,90);
-            preview.style.background=latestMine.background||"#546E7A";
+            preview.className="my-status-preview text-preview";preview.textContent=(latestMine.text||"Written status").slice(0,90);preview.style.background=latestMine.background||"#546E7A";
         }
     }
-    const latestByUser=new Map();
-    others.forEach(item=>{
-        const key=item.username||"";
-        if(!latestByUser.has(key))latestByUser.set(key,item);
-    });
-    $("otherStatusStories").innerHTML=latestByUser.size?Array.from(latestByUser.values()).map(item=>{
-        const pic=item.profile_picture?'<img src="'+escapeHTML(item.profile_picture)+'" alt="">':escapeHTML((item.username||"?").charAt(0).toUpperCase());
+    const byUser=new Map();
+    others.forEach(item=>{const key=item.username||"";if(!byUser.has(key))byUser.set(key,[]);byUser.get(key).push(item);});
+    const people=Array.from(byUser.entries()).sort((a,b)=>new Date(b[1][0]?.created_at||0)-new Date(a[1][0]?.created_at||0));
+    $("otherStatusStories").innerHTML=people.length?people.map(([username,items])=>{
+        const item=items[0],pic=item.profile_picture?'<img src="'+escapeHTML(item.profile_picture)+'" alt="">':escapeHTML((username||"?").charAt(0).toUpperCase());
         const time=item.created_at?new Date(item.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"";
-        return '<button class="status-story-card" type="button" data-status-id="'+escapeHTML(item.id)+'"><span class="status-story-avatar">'+pic+'</span><span class="status-story-copy"><span class="status-story-name">'+escapeHTML(item.username)+'</span><span class="status-story-time">'+escapeHTML(time)+'</span></span></button>';
-    }).join("") :'<div class="status-empty-card">No recent stories</div>';
+        const ring=buildStoryRingGradient(items);
+        return '<button class="status-story-card" type="button" data-status-id="'+escapeHTML(item.id)+'"><span class="status-ring" style="background:'+ring+'"><span class="status-story-avatar">'+pic+'</span></span><span class="status-story-count">'+items.length+'</span><span class="status-story-copy"><span class="status-story-name">'+escapeHTML(username)+'</span><span class="status-story-time">'+escapeHTML(time)+' · '+items.length+' update'+(items.length===1?"":"s")+'</span></span></button>';
+    }).join(""):'<div class="status-empty-card">No recent stories</div>';
     $("otherStatusStories").querySelectorAll("[data-status-id]").forEach(card=>card.addEventListener("click",()=>{
-        const selected=statuses.find(status=>status.id===card.dataset.statusId);
-        if(!selected)return;
+        const selected=statuses.find(status=>String(status.id)===String(card.dataset.statusId));if(!selected)return;
         const personStatuses=statuses.filter(status=>!status.is_mine&&status.username===selected.username);
-        openStatusViewer(personStatuses,Math.max(0,personStatuses.findIndex(status=>status.id===selected.id)));
-        apiRequest("/api/statuses/"+encodeURIComponent(selected.id)+"/view",{method:"POST"}).catch(error=>console.warn("Status view not recorded:",error));
+        openStatusViewer(personStatuses,Math.max(0,personStatuses.findIndex(status=>String(status.id)===String(selected.id))));
+        apiRequest("/api/statuses/"+encodeURIComponent(selected.id)+"/view",{method:"POST"}).then(()=>{selected.is_viewed_by_me=true;}).catch(error=>console.warn("Status view not recorded:",error));
     }));
 }
 
@@ -5148,7 +5161,7 @@ $("saveCreateChannel").addEventListener("click",async()=>{
     }catch(error){showMessage($("createChannelMessage"),error.message||"Could not create channel.",true);}
     finally{button.disabled=false;button.textContent="Create channel";}
 });
-let statusPrivacySettings={status_audience:"all_contacts",status_excluded:[],status_allowed:[]};
+let statusPrivacySettings={status_audience:"all_contacts",status_excluded:[],status_allowed:[],status_close_friends:[],allow_status_sharing:true};
 function statusContactEntries(){
     const list=Array.isArray(contacts)?contacts:[];
     const seen=new Set();
@@ -5164,10 +5177,10 @@ function renderStatusAudienceContacts(){
     const relevant=mode!=="all_contacts";
     box.style.display=relevant?"block":"none";
     $("statusAudienceSearch").style.display=relevant?"block":"none";
-    help.textContent=mode==="all_contacts"?"Your stories are visible to your saved KCHAT contacts.":mode==="my_contacts_except"?"Select contacts who should NOT see your stories.":"Select only the contacts allowed to see your stories.";
+    help.textContent=mode==="all_contacts"?"Your stories are visible to your saved KCHAT contacts.":mode==="my_contacts_except"?"Select contacts who should NOT see your stories.":mode==="close_friends"?"Only the contacts you mark as close friends can see your stories.":"Select only the contacts allowed to see your stories.";
     if(!relevant)return;
     const query=$("statusAudienceSearch").value.trim().toLowerCase();
-    const selected=new Set(mode==="my_contacts_except"?statusPrivacySettings.status_excluded:statusPrivacySettings.status_allowed);
+    const selected=new Set(mode==="my_contacts_except"?statusPrivacySettings.status_excluded:mode==="close_friends"?statusPrivacySettings.status_close_friends:statusPrivacySettings.status_allowed);
     const people=statusContactEntries().filter(p=>p._storyUsername.toLowerCase().includes(query));
     box.innerHTML=people.length?people.map(p=>{
         const name=p._storyUsername,checked=selected.has(name);
@@ -5181,8 +5194,9 @@ $("statusPrivacyMenu").addEventListener("click",async()=>{
     hide($("updatesMenu"));show($("statusPrivacyModal"));
     try{
         const result=await apiRequest("/api/privacy");
-        statusPrivacySettings={status_audience:result.settings?.status_audience||"all_contacts",status_excluded:result.settings?.status_excluded||[],status_allowed:result.settings?.status_allowed||[]};
+        statusPrivacySettings={status_audience:result.settings?.status_audience||"all_contacts",status_excluded:result.settings?.status_excluded||[],status_allowed:result.settings?.status_allowed||[],status_close_friends:result.settings?.status_close_friends||[],allow_status_sharing:result.settings?.allow_status_sharing!==false};
         $("statusAudienceSelect").value=statusPrivacySettings.status_audience;
+        $("allowStatusSharingToggle").checked=statusPrivacySettings.allow_status_sharing;
         $("statusAudienceSearch").value="";
         renderStatusAudienceContacts();
     }catch(error){alert(error.message||"Could not load story privacy.");}
@@ -5193,7 +5207,7 @@ $("saveStatusPrivacy").addEventListener("click",async()=>{
     try{
         const mode=$("statusAudienceSelect").value;
         const chosen=Array.from($("statusAudienceContacts").querySelectorAll('input[data-story-audience-person]:checked')).map(input=>input.dataset.storyAudiencePerson);
-        const payload={status_audience:mode,status_excluded:mode==="my_contacts_except"?chosen:statusPrivacySettings.status_excluded,status_allowed:mode==="only_share_with"?chosen:statusPrivacySettings.status_allowed};
+        const payload={status_audience:mode,status_excluded:mode==="my_contacts_except"?chosen:statusPrivacySettings.status_excluded,status_allowed:mode==="only_share_with"?chosen:statusPrivacySettings.status_allowed,status_close_friends:mode==="close_friends"?chosen:statusPrivacySettings.status_close_friends,allow_status_sharing:$("allowStatusSharingToggle").checked};
         await apiRequest("/api/privacy",{method:"PUT",body:JSON.stringify(payload)});
         statusPrivacySettings={...statusPrivacySettings,...payload};
         hide($("statusPrivacyModal"));alert("Story privacy saved.");
