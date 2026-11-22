@@ -3778,76 +3778,96 @@ $("savePrivacyButton").addEventListener("click", async () => {
 
 // Contacts and Conversations
 async function loadContacts() {
-    try {
-        // Load saved contacts and the actual conversation inbox separately.
-        // The inbox is the source of truth for last messages and delivery reports.
-        const [contactData, inboxData] = await Promise.all([
-            apiRequest("/api/contacts"),
-            apiRequest("/api/inbox?include_hidden=true")
-        ]);
+    // Contacts and message history are independent sources. Never let a
+    // temporary failure in one endpoint hide data returned by the other.
+    let contactData = null;
+    let inboxData = null;
+    let contactsError = null;
+    let inboxError = null;
 
-        const savedContacts = Array.isArray(contactData.contacts) ? contactData.contacts : [];
-        const inboxItems = Array.isArray(inboxData.inbox) ? inboxData.inbox : [];
-        let groupItems = [];
-        try { const groupData = await apiRequest("/api/groups"); groupItems = Array.isArray(groupData.groups) ? groupData.groups : []; } catch {}
-        const byName = new Map();
+    const results = await Promise.allSettled([
+        apiRequest("/api/contacts"),
+        apiRequest("/api/inbox?include_hidden=true")
+    ]);
+    if (results[0].status === "fulfilled") contactData = results[0].value;
+    else contactsError = results[0].reason;
+    if (results[1].status === "fulfilled") inboxData = results[1].value;
+    else inboxError = results[1].reason;
 
-        // Keep every saved contact, including people with whom no message exists yet.
-        savedContacts.forEach(entry => {
-            const name = contactName(entry);
-            if (name) byName.set(name.toLowerCase(), {
-                username: name,
-                is_saved_contact: true,
-                last_message: "",
-                last_message_sender: "",
-                last_message_status: "",
-                last_message_time: null,
-                unread_count: 0,
-                hidden: false,
-                pinned: false
-            });
-        });
-
-        // Keep account memberships visible as groups, separately from private contacts.
-        groupItems.forEach(group => {
-            if (!group || !group.name) return;
-            byName.set(String(group.name).toLowerCase(), {
-                username: group.name, type: "group", is_group: true,
-                group_id: group.id, member_count: group.member_count,
-                role: group.role, last_message: "Group · " + Number(group.member_count || 0) + " members",
-                unread_count: 0, hidden: false, pinned: false
-            });
-        });
-
-        // Merge real conversation data over the saved-contact placeholders.
-        inboxItems.forEach(item => {
-            const name = contactName(item);
-            if (name) byName.set(name.toLowerCase(), {
-                ...(byName.get(name.toLowerCase()) || {}),
-                ...item
-            });
-        });
-
-        contacts = Array.from(byName.values()).sort((a, b) => {
-            if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1;
-            const aTime = a.last_message_time ? new Date(a.last_message_time).getTime() : 0;
-            const bTime = b.last_message_time ? new Date(b.last_message_time).getTime() : 0;
-            return bTime - aTime;
-        });
-        renderContacts();
-        return true;
-    } catch (error) {
-        console.error("KCHAT inbox could not be loaded:", error);
-        // Keep the contact list usable if the inbox endpoint is temporarily unavailable.
-        try {
-            const data = await apiRequest("/api/contacts");
-            contacts = Array.isArray(data.contacts) ? data.contacts : [];
-        } catch {
-            contacts = [];
+    if (!contactData && !inboxData) {
+        console.error("KCHAT contacts and inbox both failed:", contactsError, inboxError);
+        const list = $("chatList");
+        if (list) {
+            list.innerHTML = '<div class="conversation-media-empty" style="padding:24px;text-align:center;">Could not load your contacts or conversations. Your messages have not been deleted. Check your connection and tap Refresh contacts to try again.</div>';
         }
-        renderContacts();
         return false;
     }
+
+    const savedContacts = Array.isArray(contactData?.contacts) ? contactData.contacts : [];
+    const inboxItems = Array.isArray(inboxData?.inbox) ? inboxData.inbox : [];
+    let groupItems = [];
+    try {
+        const groupData = await apiRequest("/api/groups");
+        groupItems = Array.isArray(groupData.groups) ? groupData.groups : [];
+    } catch (error) {
+        console.warn("KCHAT groups could not be loaded:", error);
+    }
+
+    const byName = new Map();
+    savedContacts.forEach(entry => {
+        const name = contactName(entry);
+        if (name) byName.set(name.toLowerCase(), {
+            username: name,
+            is_saved_contact: true,
+            last_message: "",
+            last_message_sender: "",
+            last_message_status: "",
+            last_message_time: null,
+            unread_count: 0,
+            hidden: false,
+            pinned: false
+        });
+    });
+
+    groupItems.forEach(group => {
+        if (!group || !group.name) return;
+        byName.set(String(group.name).toLowerCase(), {
+            username: group.name, type: "group", is_group: true,
+            group_id: group.id, member_count: group.member_count,
+            role: group.role, last_message: "Group · " + Number(group.member_count || 0) + " members",
+            unread_count: 0, hidden: false, pinned: false
+        });
+    });
+
+    inboxItems.forEach(item => {
+        const name = contactName(item);
+        if (name) byName.set(name.toLowerCase(), {
+            ...(byName.get(name.toLowerCase()) || {}),
+            ...item
+        });
+    });
+
+    contacts = Array.from(byName.values()).sort((a, b) => {
+        if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1;
+        const aTime = a.last_message_time ? new Date(a.last_message_time).getTime() : 0;
+        const bTime = b.last_message_time ? new Date(b.last_message_time).getTime() : 0;
+        return bTime - aTime;
+    });
+    renderContacts();
+
+    if (inboxError) {
+        console.error("KCHAT conversation history endpoint failed:", inboxError);
+        const list = $("chatList");
+        if (list) {
+            const warning = document.createElement("div");
+            warning.className = "conversation-media-empty";
+            warning.style.cssText = "padding:10px 16px;text-align:center;color:var(--muted);font-size:13px;";
+            warning.textContent = "Your saved contacts loaded, but conversation history could not be retrieved. Tap Refresh contacts to retry.";
+            list.prepend(warning);
+        }
+    }
+    if (contactsError) console.warn("KCHAT saved contacts endpoint failed:", contactsError);
+    return true;
 }
 
 function contactName(contact) {
@@ -7039,6 +7059,7 @@ if (document.readyState === "loading") {
    setStatus("Message not completed. You can try again.",true);
   }finally{clearInterval(workTimer);lock(false);input.focus();}
  }
+ window.kchatAiSendFromMain = event => sendKchatAIMessage(event);
  // Bind the visible AI send control directly. A direct click handler avoids
  // mobile WebView form-submit quirks and nested-form parsing swallowing taps.
  // Keep Enter-to-send on the same handler; normal Chats sending is untouched.
