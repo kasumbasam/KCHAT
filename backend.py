@@ -2090,8 +2090,14 @@ async def update_chat_settings(username: str, request: Request):
                 wallpaper = data["wallpaper"]
                 if not isinstance(wallpaper, str) or len(wallpaper) > 2800000:
                     return JSONResponse({"error": "Wallpaper must be an image smaller than 2 MB."}, status_code=400)
-                if wallpaper and not re.match(r"^data:image/(?:png|jpeg|webp);base64,", wallpaper):
-                    return JSONResponse({"error": "Choose a PNG, JPEG or WebP wallpaper image."}, status_code=400)
+                if wallpaper and not (
+                    re.match(r"^data:image/(?:png|jpeg|webp);base64,", wallpaper)
+                    or wallpaper in {
+                        "preset:midnight", "preset:aurora", "preset:desert",
+                        "preset:ocean", "preset:flowers"
+                    }
+                ):
+                    return JSONResponse({"error": "Choose a supported wallpaper image or preset."}, status_code=400)
                 settings["wallpaper"] = wallpaper
 
             # Save the current user's settings.
