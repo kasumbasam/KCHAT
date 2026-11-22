@@ -3615,6 +3615,143 @@ def get_status_view_details(status_id):
     }
 
 
+
+def ensure_status_interactions_table():
+    with get_db() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS status_replies (
+                id BIGSERIAL PRIMARY KEY,
+                status_id TEXT NOT NULL REFERENCES status_updates(id) ON DELETE CASCADE,
+                sender_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                message TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS status_likes (
+                status_id TEXT NOT NULL REFERENCES status_updates(id) ON DELETE CASCADE,
+                user_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY(status_id, user_id)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS status_reshares (
+                id BIGSERIAL PRIMARY KEY,
+                status_id TEXT NOT NULL REFERENCES status_updates(id) ON DELETE CASCADE,
+                user_id BIGINT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE(status_id, user_id)
+            )
+        """)
+
+
+@app.get("/api/statuses/{status_id}/interactions")
+async def get_status_interactions(status_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    try:
+        ensure_status_table()
+        ensure_status_interactions_table()
+        with get_db() as conn:
+            status = conn.execute("SELECT owner_id FROM status_updates WHERE id=%s AND expires_at>NOW()", (status_id,)).fetchone()
+            if not status:
+                return JSONResponse({"error": "Status not found or expired."}, status_code=404)
+            is_owner = str(status["owner_id"]) == str(account["id"])
+            replies = conn.execute("""
+                SELECT a.username, r.message, r.created_at
+                FROM status_replies r JOIN accounts a ON a.id=r.sender_id
+                WHERE r.status_id=%s ORDER BY r.created_at DESC
+            """, (status_id,)).fetchall()
+            likes = conn.execute("""
+                SELECT a.username, l.created_at FROM status_likes l
+                JOIN accounts a ON a.id=l.user_id WHERE l.status_id=%s
+                ORDER BY l.created_at DESC
+            """, (status_id,)).fetchall()
+            shares = conn.execute("""
+                SELECT a.username, r.created_at FROM status_reshares r
+                JOIN accounts a ON a.id=r.user_id WHERE r.status_id=%s
+                ORDER BY r.created_at DESC
+            """, (status_id,)).fetchall()
+        viewers = get_status_view_details(status_id)["viewers"] if is_owner else []
+        return {
+            "success": True, "is_owner": is_owner,
+            "viewers": viewers if is_owner else [],
+            "view_count": len(viewers) if is_owner else None,
+            "replies": [{"username":x["username"],"message":x["message"],"created_at":x["created_at"].isoformat()} for x in replies] if is_owner else [],
+            "reply_count": len(replies) if is_owner else None,
+            "likes": [{"username":x["username"],"created_at":x["created_at"].isoformat()} for x in likes] if is_owner else [],
+            "like_count": len(likes) if is_owner else None,
+            "liked_by_me": any(str(x["username"]).lower()==str(account["username"]).lower() for x in likes),
+            "reshares": [{"username":x["username"],"created_at":x["created_at"].isoformat()} for x in shares] if is_owner else [],
+            "reshare_count": len(shares) if is_owner else None
+        }
+    except Exception as error:
+        print("Status interactions error:", error)
+        return JSONResponse({"error":"Could not load status interactions."}, status_code=500)
+
+
+@app.post("/api/statuses/{status_id}/reply")
+async def reply_to_status(status_id: str, request: Request):
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error":"Please log in again."}, status_code=401)
+    try:
+        data=await request.json()
+        message=str(data.get("message","")).strip()[:1000]
+        if not message:
+            return JSONResponse({"error":"Write a reply first."},status_code=400)
+        ensure_status_table(); ensure_status_interactions_table()
+        with get_db() as conn:
+            status=conn.execute("SELECT id,owner_id FROM status_updates WHERE id=%s AND expires_at>NOW()",(status_id,)).fetchone()
+            if not status:return JSONResponse({"error":"Status not found or expired."},status_code=404)
+            if str(status["owner_id"])!=str(account["id"]):
+                contact=conn.execute("SELECT 1 FROM contacts WHERE owner_id=%s AND contact_id=%s",(account["id"],status["owner_id"])).fetchone()
+                if not contact:return JSONResponse({"error":"You cannot reply to this status."},status_code=403)
+            conn.execute("INSERT INTO status_replies(status_id,sender_id,message) VALUES(%s,%s,%s)",(status_id,account["id"],message))
+        return {"success":True}
+    except Exception as error:
+        print("Status reply error:",error)
+        return JSONResponse({"error":"Could not send status reply."},status_code=500)
+
+
+@app.post("/api/statuses/{status_id}/like")
+async def like_status(status_id: str, request: Request):
+    account=get_account_from_request(request)
+    if not account:return JSONResponse({"error":"Please log in again."},status_code=401)
+    try:
+        ensure_status_table();ensure_status_interactions_table()
+        with get_db() as conn:
+            status=conn.execute("SELECT id,owner_id FROM status_updates WHERE id=%s AND expires_at>NOW()",(status_id,)).fetchone()
+            if not status:return JSONResponse({"error":"Status not found or expired."},status_code=404)
+            if str(status["owner_id"])==str(account["id"]):return JSONResponse({"error":"You cannot like your own status."},status_code=400)
+            conn.execute("INSERT INTO status_likes(status_id,user_id) VALUES(%s,%s) ON CONFLICT DO NOTHING",(status_id,account["id"]))
+        return {"success":True,"liked":True}
+    except Exception as error:
+        print("Status like error:",error)
+        return JSONResponse({"error":"Could not like status."},status_code=500)
+
+
+@app.post("/api/statuses/{status_id}/reshare")
+async def reshare_status(status_id: str, request: Request):
+    account=get_account_from_request(request)
+    if not account:return JSONResponse({"error":"Please log in again."},status_code=401)
+    try:
+        ensure_status_table();ensure_status_interactions_table()
+        with get_db() as conn:
+            status=conn.execute("SELECT id,owner_id FROM status_updates WHERE id=%s AND expires_at>NOW()",(status_id,)).fetchone()
+            if not status:return JSONResponse({"error":"Status not found or expired."},status_code=404)
+            if str(status["owner_id"])==str(account["id"]):return JSONResponse({"error":"You cannot reshare your own status."},status_code=400)
+            contact=conn.execute("SELECT 1 FROM contacts WHERE owner_id=%s AND contact_id=%s",(account["id"],status["owner_id"])).fetchone()
+            if not contact:return JSONResponse({"error":"You cannot reshare this status."},status_code=403)
+            conn.execute("INSERT INTO status_reshares(status_id,user_id) VALUES(%s,%s) ON CONFLICT(status_id,user_id) DO UPDATE SET created_at=NOW()",(status_id,account["id"]))
+        return {"success":True}
+    except Exception as error:
+        print("Status reshare error:",error)
+        return JSONResponse({"error":"Could not reshare status."},status_code=500)
+
+
 @app.get("/api/statuses")
 async def get_statuses(request: Request):
     account = get_account_from_request(request)
