@@ -3390,7 +3390,7 @@ async function startKChat() {
 
 async function loadMyProfile() {
     try {
-        const data = await apiRequest("/api/profile/" + encodeURIComponent(currentUser));
+        const data = await apiRequest("/api/profile/me");
         currentProfile = data.profile || data.user || data;
         currentUser = currentProfile.username || currentUser;
         saveKchatSession(authToken, currentUser);
