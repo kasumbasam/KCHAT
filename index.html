@@ -2747,6 +2747,15 @@ hr {
             </select>
         </div>
 
+        <hr>
+        <div class="settings-section" id="privacyBlockedContactsSection">
+            <h3>Blocked contacts</h3>
+            <p class="small muted">People you've blocked cannot contact you through KCHAT.</p>
+            <div id="privacyBlockedContactsList">
+                <p class="small muted">Loading blocked contacts…</p>
+            </div>
+        </div>
+
         <button class="primary-btn" id="savePrivacyButton">
             Save Privacy Settings
         </button>
@@ -6390,6 +6399,10 @@ $("menuSearchMessages")?.addEventListener("click", () => {
 });
 
 $("menuBlocked")?.addEventListener("click", openBlockedContacts);
+$("subOpenPrivacy").addEventListener("click",async()=>{
+    show($("privacyScreen"));
+    await loadBlockedContactsInto("privacyBlockedContactsList");
+});
 
 $("chatMenuProfile").addEventListener("click", async () => {
     hide($("chatMenu"));
@@ -6784,10 +6797,43 @@ $("runMessageSearch").addEventListener("click", async () => {
     $("messageSearchResults").innerHTML = `<div class="settings-row"><span>Result: "${escapeHTML(query)}"</span></div>`;
 });
 
+async function loadBlockedContactsInto(containerId) {
+    const container=$(containerId);
+    if(!container)return;
+    container.innerHTML='<p class="small muted">Loading blocked contacts…</p>';
+    try{
+        const result=await apiRequest("/api/blocks");
+        const blocked=Array.isArray(result?.blocked)?result.blocked:[];
+        if(!blocked.length){
+            container.innerHTML='<p class="small muted">You have no blocked contacts.</p>';
+            return;
+        }
+        container.innerHTML=blocked.map(item=>{
+            const username=String(item.username||"");
+            return '<div class="settings-row privacy-blocked-contact"><span>'+escapeHTML(username)+'</span><button type="button" class="secondary-btn" data-unblock-user="'+escapeHTML(username)+'">Unblock</button></div>';
+        }).join("");
+        container.querySelectorAll("[data-unblock-user]").forEach(button=>button.addEventListener("click",async()=>{
+            const username=button.dataset.unblockUser;
+            if(!confirm("Unblock "+username+"?"))return;
+            button.disabled=true;
+            try{
+                const response=await apiRequest("/api/blocks/"+encodeURIComponent(username),{method:"DELETE"});
+                if(!response||response.success!==true)throw new Error(response?.error||"Could not unblock this contact.");
+                await loadBlockedContactsInto(containerId);
+            }catch(error){
+                alert(error.message||"Could not unblock this contact.");
+                button.disabled=false;
+            }
+        }));
+    }catch(error){
+        container.innerHTML='<p class="small muted">Could not load blocked contacts. Please try again.</p><button type="button" class="secondary-btn" data-reload-blocked>Refresh</button>';
+        container.querySelector("[data-reload-blocked]")?.addEventListener("click",()=>loadBlockedContactsInto(containerId));
+    }
+}
 async function openBlockedContacts() {
     hide($("mainMenu"));
     show($("blockedModal"));
-    $("blockedContactsList").innerHTML = `<div class="settings-row"><span>SpamBot_99</span><button class="secondary-btn" onclick="this.parentElement.remove()">Unblock</button></div>`;
+    await loadBlockedContactsInto("blockedContactsList");
 }
 
 $("closeBlockedModal").addEventListener("click", () => {
