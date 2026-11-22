@@ -2541,7 +2541,7 @@ html, body {
         <div id="statusViewerContent" class="status-viewer-content"></div>
         <button type="button" class="status-viewer-side next" id="nextStatusButton" aria-label="Next status"></button>
     </div>
-    <footer class="status-viewer-footer" id="statusViewerFooter"><button type="button" id="viewedByButton" class="viewed-by-button" hidden>◉ Viewed by 0</button><span id="statusViewerPosition"></span><button type="button" id="viewerLikeButton" class="viewer-like-button" aria-label="Like status" title="Like status">♥</button></footer><div id="statusLikeBurstLayer" class="status-like-burst-layer" aria-hidden="true"></div>
+    <footer class="status-viewer-footer" id="statusViewerFooter"><button type="button" id="viewedByButton" class="viewed-by-button" hidden>◉ Viewed by 0</button><span id="statusViewerPosition"></span><button type="button" id="viewerLikeButton" class="viewer-like-button" aria-label="Like status" title="Like status">💙</button></footer><div id="statusLikeBurstLayer" class="status-like-burst-layer" aria-hidden="true"></div>
 </div>
 
 <div id="statusInteractionsPanel" class="status-interactions-panel hidden" aria-label="Status interactions">
@@ -4885,7 +4885,7 @@ $("statusViewer").addEventListener("touchend",event=>{
 function emitStatusLikeBurst(){
  const layer=$("statusLikeBurstLayer");if(!layer)return;
  for(let i=0;i<7;i++){
-  const heart=document.createElement("span");heart.className="status-like-particle";heart.textContent="♥";
+  const heart=document.createElement("span");heart.className="status-like-particle";heart.textContent="💙";
   heart.style.left=(42+Math.random()*16)+"%";
   heart.style.setProperty("--drift",(Math.random()*90-45)+"px");
   heart.style.setProperty("--spin",(Math.random()*36-18)+"deg");
