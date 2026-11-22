@@ -1967,6 +1967,17 @@ html, body {
 .status-interactions-actions button:disabled{opacity:.5}
 .status-viewer-footer{touch-action:pan-y}
 </style>
+<style id="kchatStatusLikeButtonStyles">
+.status-viewer-footer{position:relative;display:flex;align-items:center;gap:10px}
+.viewer-like-button{margin-left:auto;width:34px;height:34px;min-width:34px;border:1px solid #00dfff88;border-radius:50%;background:#071b25;color:#00dfff;font-size:17px;line-height:1;display:grid;place-items:center;box-shadow:0 0 10px #00dfff22;cursor:pointer;padding:0;transition:transform .15s ease,background .15s ease}
+.viewer-like-button:active{transform:scale(.88)}
+.viewer-like-button.liked{background:#00dfff;color:#00131b;box-shadow:0 0 14px #00dfff77}
+.viewer-like-button:disabled{opacity:.65}
+.status-like-burst-layer{position:fixed;inset:0;z-index:10020;pointer-events:none;overflow:hidden}
+.status-like-particle{position:absolute;bottom:74px;color:#00dfff;text-shadow:0 0 8px #00dfff99;font-size:13px;animation:kchatLikeFloat 1.35s ease-out forwards;opacity:0}
+@keyframes kchatLikeFloat{0%{transform:translate(0,0) scale(.55) rotate(-8deg);opacity:0}15%{opacity:1}100%{transform:translate(var(--drift),-190px) scale(.8) rotate(var(--spin));opacity:0}}
+@media(prefers-reduced-motion:reduce){.status-like-particle{animation-duration:.4s}}
+</style>
 </head>
 
 <body>
@@ -2530,7 +2541,7 @@ html, body {
         <div id="statusViewerContent" class="status-viewer-content"></div>
         <button type="button" class="status-viewer-side next" id="nextStatusButton" aria-label="Next status"></button>
     </div>
-    <footer class="status-viewer-footer" id="statusViewerFooter"><button type="button" id="viewedByButton" class="viewed-by-button" hidden>◉ Viewed by 0</button><span id="statusViewerPosition"></span></footer>
+    <footer class="status-viewer-footer" id="statusViewerFooter"><button type="button" id="viewedByButton" class="viewed-by-button" hidden>◉ Viewed by 0</button><span id="statusViewerPosition"></span><button type="button" id="viewerLikeButton" class="viewer-like-button" aria-label="Like status" title="Like status">♥</button></footer><div id="statusLikeBurstLayer" class="status-like-burst-layer" aria-hidden="true"></div>
 </div>
 
 <div id="statusInteractionsPanel" class="status-interactions-panel hidden" aria-label="Status interactions">
@@ -4677,6 +4688,8 @@ function scheduleStatusAdvance(duration) {
     statusViewerTimer=setTimeout(()=>{statusViewerTimer=null;statusViewerRemaining=0;moveStatusViewer(1);},statusViewerRemaining);
 }
 function renderStatusViewer() {
+ const likeButton=$("viewerLikeButton");likeButton.disabled=false;likeButton.dataset.liked="false";likeButton.classList.remove("liked");likeButton.hidden=!!statusViewerItems[statusViewerIndex]?.is_mine;
+
     clearStatusViewerTimer();
     const item=statusViewerItems[statusViewerIndex];
     if(!item){closeStatusViewer();return;}
@@ -4869,6 +4882,25 @@ $("statusViewer").addEventListener("touchend",event=>{
     const dy=event.changedTouches[0].clientY-statusInteractionsTouchStartY;statusInteractionsTouchStartY=null;
     if(dy < -65)openStatusInteractions();
 },{passive:true});
+function emitStatusLikeBurst(){
+ const layer=$("statusLikeBurstLayer");if(!layer)return;
+ for(let i=0;i<7;i++){
+  const heart=document.createElement("span");heart.className="status-like-particle";heart.textContent="♥";
+  heart.style.left=(42+Math.random()*16)+"%";
+  heart.style.setProperty("--drift",(Math.random()*90-45)+"px");
+  heart.style.setProperty("--spin",(Math.random()*36-18)+"deg");
+  heart.style.animationDelay=(i*55)+"ms";
+  heart.style.fontSize=(11+Math.random()*5)+"px";
+  layer.appendChild(heart);heart.addEventListener("animationend",()=>heart.remove(),{once:true});
+ }
+}
+$("viewerLikeButton").addEventListener("click",async event=>{
+ event.stopPropagation();const item=statusViewerItems[statusViewerIndex];if(!item||item.is_mine)return;
+ const button=$("viewerLikeButton");if(button.dataset.liked==="true")return;button.disabled=true;
+ try{await apiRequest("/api/statuses/"+encodeURIComponent(item.id)+"/like",{method:"POST"});button.dataset.liked="true";button.classList.add("liked");button.setAttribute("aria-label","Status liked");emitStatusLikeBurst();}
+ catch(error){alert(error.message||"Could not like this status.");}
+ finally{button.disabled=false;}
+});
 function openStatusViewer(items,index=0) {
     clearStatusViewerTimer();
     statusViewerPaused=false;
