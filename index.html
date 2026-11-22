@@ -1879,6 +1879,61 @@ hr {
 .status-sharing-toggle input{width:22px;height:22px;accent-color:#20c878}
 @media(max-width:600px){.chat-theme-dialog{padding:13px}.chat-theme-swatches,.chat-wallpaper-presets{grid-template-columns:repeat(2,minmax(0,1fr))}.unsaved-chat-actions{padding-left:0}}
 </style>
+<style id="kchatMobileNoHorizontalDuplication">
+/* Keep the mobile app inside the phone viewport; only designated rows may scroll sideways. */
+html, body {
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+}
+#appScreen {
+    width:100%;
+    max-width:100vw;
+    overflow:hidden;
+}
+#appScreen .app-layout,
+#appScreen .sidebar,
+#appScreen .main-area {
+    min-width:0;
+    max-width:100%;
+}
+#appScreen .sidebar {
+    overflow-x:hidden;
+}
+#appScreen .filter-row,
+#appScreen .whatsapp-tabs {
+    width:100%;
+    max-width:100%;
+    overscroll-behavior-x:contain;
+}
+#appScreen .filter-row {
+    flex:0 0 auto;
+    -webkit-overflow-scrolling:touch;
+}
+#appScreen .chat-list,
+#appScreen .welcome-screen,
+#appScreen .main-area,
+#appScreen .status-screen {
+    overflow-x:hidden;
+}
+@media (max-width:750px) {
+    #appScreen .app-layout,
+    #appScreen .sidebar,
+    #appScreen .main-area {
+        width:100%;
+        max-width:100vw;
+    }
+    #appScreen .sidebar {
+        flex:0 0 100%;
+    }
+    #appScreen.status-open .status-screen {
+        left:0 !important;
+        right:0 !important;
+        width:100vw !important;
+        max-width:100vw !important;
+    }
+}
+</style>
 </head>
 
 <body>
@@ -5305,7 +5360,7 @@ function navigateKchatSwipeTab(tab) {
     app.addEventListener("touchstart", event => {
         if (event.touches.length !== 1) { swipeTarget = null; return; }
         const target = event.target instanceof Element ? event.target : event.target?.parentElement;
-        if (!target || target.closest("#chatScreen, input, textarea, select, [contenteditable='true'], .modal, .status-viewer, .status-editor, .my-status-screen")) {
+        if (!target || target.closest("#chatScreen, input, textarea, select, [contenteditable='true'], .modal, .status-viewer, .status-editor, .my-status-screen, .filter-row, .whatsapp-tabs, [data-horizontal-scroll], .call-history-filters")) {
             swipeTarget = null;
             return;
         }
