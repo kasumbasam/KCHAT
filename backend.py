@@ -238,6 +238,10 @@ def init_db():
             ALTER TABLE chat_preferences
             ADD COLUMN IF NOT EXISTS media_visibility BOOLEAN NOT NULL DEFAULT TRUE
         """)
+        conn.execute("""
+            ALTER TABLE chat_preferences
+            ADD COLUMN IF NOT EXISTS wallpaper TEXT NOT NULL DEFAULT ''
+        """)
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS call_history (
@@ -1818,9 +1822,15 @@ async def get_inbox(request: Request, include_hidden: bool = False):
         """, (account["id"],)).fetchall()
 
         profiles = conn.execute("""
-            SELECT id, username, profile_picture, about
+            SELECT id, username, phone_number, profile_picture, about
             FROM accounts
         """).fetchall()
+        saved_contact_rows = conn.execute("""
+            SELECT a.username FROM contacts c
+            JOIN accounts a ON a.id = c.contact_id
+            WHERE c.owner_id = %s
+        """, (account["id"],)).fetchall()
+        saved_contact_names = {row["username"].lower() for row in saved_contact_rows}
 
     profile_map = {
         row["username"].lower(): row
@@ -1870,6 +1880,8 @@ async def get_inbox(request: Request, include_hidden: bool = False):
                 "about": (
                     "" if restricted else peer_profile.get("about", "")
                 ),
+                "phone_number": peer_profile.get("phone_number"),
+                "is_saved_contact": key in saved_contact_names,
                 "last_message": (
                     "📷 Photo"
                     if str(row["text"]).startswith("data:image/")
@@ -1902,6 +1914,7 @@ async def get_inbox(request: Request, include_hidden: bool = False):
                 "disappearing_seconds": pref.get("disappearing_seconds", 0),
                 "theme": pref.get("theme", "default"),
                 "media_visibility": pref.get("media_visibility", True),
+                "wallpaper": pref.get("wallpaper", ""),
                 "blocked": key in blocked_names,
                 "restricted": restricted
             }
@@ -1977,7 +1990,8 @@ async def update_chat_settings(username: str, request: Request):
                 "theme": current["theme"] if current else "default",
                 "media_visibility": (
                     current["media_visibility"] if current else True
-                )
+                ),
+                "wallpaper": current["wallpaper"] if current else ""
             }
 
             boolean_fields = [
@@ -2009,7 +2023,8 @@ async def update_chat_settings(username: str, request: Request):
                 theme = str(data["theme"]).lower()
 
                 if theme not in (
-                    "default", "dark", "light", "blue", "green"
+                    "default", "mint", "sand", "coral", "sunset",
+                    "ocean", "lavender", "obsidian", "dark", "light", "blue", "green"
                 ):
                     return JSONResponse({
                         "error": "Invalid chat theme."
@@ -2017,13 +2032,21 @@ async def update_chat_settings(username: str, request: Request):
 
                 settings["theme"] = theme
 
+            if "wallpaper" in data:
+                wallpaper = data["wallpaper"]
+                if not isinstance(wallpaper, str) or len(wallpaper) > 2800000:
+                    return JSONResponse({"error": "Wallpaper must be an image smaller than 2 MB."}, status_code=400)
+                if wallpaper and not re.match(r"^data:image/(?:png|jpeg|webp);base64,", wallpaper):
+                    return JSONResponse({"error": "Choose a PNG, JPEG or WebP wallpaper image."}, status_code=400)
+                settings["wallpaper"] = wallpaper
+
             # Save the current user's settings.
             conn.execute("""
                 INSERT INTO chat_preferences (
                     owner_id, peer_id, pinned, hidden, muted,
-                    disappearing_seconds, theme, media_visibility, updated_at
+                    disappearing_seconds, theme, media_visibility, wallpaper, updated_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
                 ON CONFLICT (owner_id, peer_id)
                 DO UPDATE SET
                     pinned = EXCLUDED.pinned,
@@ -2032,6 +2055,7 @@ async def update_chat_settings(username: str, request: Request):
                     disappearing_seconds = EXCLUDED.disappearing_seconds,
                     theme = EXCLUDED.theme,
                     media_visibility = EXCLUDED.media_visibility,
+                    wallpaper = EXCLUDED.wallpaper,
                     updated_at = NOW()
             """, (
                 account["id"],
