@@ -7039,17 +7039,26 @@ if (document.readyState === "loading") {
    setStatus("Message not completed. You can try again.",true);
   }finally{clearInterval(workTimer);lock(false);input.focus();}
  }
- // Use the form's native submit event for the AI composer. This makes the
- // visible Send button, keyboard submission, and requestSubmit() all use the
- // same AI-only handler while leaving normal Chats sending untouched.
+ // Bind the visible AI send control directly. A direct click handler avoids
+ // mobile WebView form-submit quirks and nested-form parsing swallowing taps.
+ // Keep Enter-to-send on the same handler; normal Chats sending is untouched.
  const sendButton=document.getElementById("kchatAiSendButton");
- if(sendButton)sendButton.type="submit";
- form.addEventListener("submit",sendKchatAIMessage);
+ if(sendButton){
+  sendButton.type="button";
+  sendButton.addEventListener("click",event=>{
+   event.preventDefault();
+   event.stopPropagation();
+   sendKchatAIMessage(event);
+  });
+ }
+ form.addEventListener("submit",event=>{
+  event.preventDefault();
+  sendKchatAIMessage(event);
+ });
  input.addEventListener("keydown",event=>{
   if(event.key==="Enter"&&!event.shiftKey){
    event.preventDefault();
-   if(typeof form.requestSubmit==="function")form.requestSubmit();
-   else sendKchatAIMessage(event);
+   sendKchatAIMessage(event);
   }
  });
 })();
