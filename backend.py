@@ -1387,6 +1387,21 @@ async def delete_account(request: Request):
 
 # ---------------- PROFILE AND ABOUT ----------------
 
+@app.get("/api/profile/me")
+async def get_my_profile(request: Request):
+    """Return the authenticated account's own profile without a username lookup."""
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    return {
+        "username": account["username"],
+        "phone_number": account["phone_number"],
+        "profile_picture": account["profile_picture"],
+        "about": account["about"] or ""
+    }
+
+
 @app.get("/api/profile/{username}")
 async def get_profile(username: str, request: Request):
     account = get_account_from_request(request)
