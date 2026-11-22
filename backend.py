@@ -661,7 +661,7 @@ async def generate_chat_wallpaper(request: Request):
         raw = await asyncio.to_thread(call_cloudflare)
         result = json.loads(raw.decode("utf-8"))
         image_data = result.get("result", {})
-        encoded = image_data.get("image") if isinstance(image_data, dict) else None
+        encoded = image_data.get("image") if isinstance(image_data, dict) else (image_data if isinstance(image_data, str) else None)
         if not encoded:
             raise RuntimeError("Cloudflare returned no wallpaper image.")
         return {"success": True, "image": "data:image/jpeg;base64," + encoded}
@@ -1861,7 +1861,8 @@ async def get_inbox(request: Request, include_hidden: bool = False):
                 chat_preferences.muted,
                 chat_preferences.disappearing_seconds,
                 chat_preferences.theme,
-                chat_preferences.media_visibility
+                chat_preferences.media_visibility,
+                chat_preferences.wallpaper
             FROM chat_preferences
             JOIN accounts ON accounts.id = chat_preferences.peer_id
             WHERE chat_preferences.owner_id = %s
