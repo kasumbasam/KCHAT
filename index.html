@@ -1847,8 +1847,8 @@ hr {
 .chat-theme-ai-preview{display:block;width:100%;max-height:270px;object-fit:cover;border-radius:12px;margin:12px 0}
 .chat-theme-panel textarea{width:100%;box-sizing:border-box;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:12px}
 #mainChatArea{background-size:cover;background-position:center;background-repeat:no-repeat}
-.message-bubble{background:var(--chat-incoming-bubble,var(--bubble))}
-.message-row.mine .message-bubble{background:var(--chat-outgoing-bubble,#063B46)}
+.message-bubble{background:var(--chat-incoming-bubble,var(--bubble));color:var(--chat-incoming-text,var(--text))}
+.message-row.mine .message-bubble{background:var(--chat-outgoing-bubble,#063B46);color:var(--chat-outgoing-text,#fff)}
 /* Unsaved sender safety notice */
 .unsaved-chat-notice{display:flex;align-items:flex-start;gap:12px;padding:13px 14px;background:#202a30;border-bottom:1px solid #e3a13b;color:#f4f6f7;flex-wrap:wrap}
 .unsaved-chat-warning-icon{width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:grid;place-items:center;background:#f0b44c;color:#1a1a1a;font-weight:900}
@@ -5309,14 +5309,14 @@ document.querySelectorAll(".filter-btn").forEach(button => {
 });
 
 const CHAT_BUBBLE_THEMES = {
-    "default": { incoming:"#25313a", outgoing:"#063b46" },
-    "mint": { incoming:"#d9f5dc", outgoing:"#277b62" },
-    "sand": { incoming:"#f0e4d2", outgoing:"#806348" },
-    "coral": { incoming:"#ffd5ca", outgoing:"#9c4051" },
-    "sunset": { incoming:"#f8d29a", outgoing:"#8c4162" },
-    "ocean": { incoming:"#b7e7f4", outgoing:"#176d91" },
-    "lavender": { incoming:"#e8dcff", outgoing:"#674d91" },
-    "obsidian": { incoming:"#242d37", outgoing:"#00a9b8" }
+    "default": { incoming:"#25313a", outgoing:"#063b46", incomingText:"#f5f7f8", outgoingText:"#ffffff" },
+    "mint": { incoming:"#d9f5dc", outgoing:"#277b62", incomingText:"#143022", outgoingText:"#ffffff" },
+    "sand": { incoming:"#f0e4d2", outgoing:"#806348", incomingText:"#362b20", outgoingText:"#ffffff" },
+    "coral": { incoming:"#ffd5ca", outgoing:"#9c4051", incomingText:"#3d2420", outgoingText:"#ffffff" },
+    "sunset": { incoming:"#f8d29a", outgoing:"#8c4162", incomingText:"#3b2918", outgoingText:"#ffffff" },
+    "ocean": { incoming:"#b7e7f4", outgoing:"#176d91", incomingText:"#0d2e3b", outgoingText:"#ffffff" },
+    "lavender": { incoming:"#e8dcff", outgoing:"#674d91", incomingText:"#2d2440", outgoingText:"#ffffff" },
+    "obsidian": { incoming:"#242d37", outgoing:"#00a9b8", incomingText:"#f5f7f8", outgoingText:"#001418" }
 };
 const CHAT_WALLPAPERS = {
     "preset:midnight":"radial-gradient(circle at 70% 20%,#00b8d9,#111827 55%,#03060b)",
@@ -5336,6 +5336,8 @@ function applyChatAppearance(theme,wallpaper){
     const palette=CHAT_BUBBLE_THEMES[theme]||CHAT_BUBBLE_THEMES.default;
     area.style.setProperty("--chat-incoming-bubble",palette.incoming);
     area.style.setProperty("--chat-outgoing-bubble",palette.outgoing);
+    area.style.setProperty("--chat-incoming-text",palette.incomingText);
+    area.style.setProperty("--chat-outgoing-text",palette.outgoingText);
     area.dataset.chatTheme=theme||"default";
     area.style.backgroundImage="";
     if(wallpaper&&wallpaper.startsWith("preset:")){
@@ -6160,7 +6162,7 @@ $("unsavedCancelButton").addEventListener("click",returnToConversations);
 $("unsavedAddContactButton").addEventListener("click",()=>{
     $("newContactUsername").value=currentChat;
     $("addContactMessage").textContent="";
-    hide($("unsavedChatNotice"));hide($("chatScreen"));show($("addContactModal"));
+    hide($("unsavedChatNotice"));show($("addContactModal"));
     $("newContactUsername").focus();
 });
 
