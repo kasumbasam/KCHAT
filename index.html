@@ -4148,7 +4148,8 @@ function renderContacts() {
         const isTyping = typingUsers.has(name.toLowerCase());
         const rawLastMessage = String(contact.last_message || "");
         const decodedLastReply = decodeReplyText(rawLastMessage);
-        const cleanLastMessage = decodedLastReply ? decodedLastReply.text : rawLastMessage;
+        const cleanLastMessage = (decodedLastReply ? decodedLastReply.text : rawLastMessage)
+            .replace(/^(?:↩️?|↪️?|↳|⤷)\s*/u, "");
         const preview = isTyping
             ? "typing…"
             : cleanLastMessage
@@ -5485,7 +5486,11 @@ let replyingToMessage = null;
 
 function messagePreviewText(message) {
     const value = String(message?.text || "");
-    return value.startsWith("data:image/") ? "Photo" : value.slice(0, 180);
+    if (value.startsWith("data:image/")) return "Photo";
+    const decoded = decodeReplyText(value);
+    return String(decoded ? decoded.text : value)
+        .replace(/^(?:↩️?|↪️?|↳|⤷)\s*/u, "")
+        .slice(0, 180);
 }
 
 function setReplyToMessage(message) {
@@ -5518,7 +5523,10 @@ function encodeReplyText(reply, text) {
 }
 
 function decodeReplyText(value) {
-    const match = String(value || "").match(/^\[\[KCHAT_REPLY:([^\]]+)\]\]\n([\s\S]*)$/);
+    const raw = String(value || "");
+    // Accept LF, CRLF, and escaped newline separators so older mobile
+    // clients' reply metadata is decoded consistently.
+    const match = raw.match(/^\[\[KCHAT_REPLY:([^\]]+)\]\](?:\r?\n|\\n)([\s\S]*)$/);
     if (!match) return null;
     try {
         const reply = JSON.parse(decodeURIComponent(match[1]));
