@@ -5807,6 +5807,64 @@ $("mainMenuButton").addEventListener("click", (e) => {
     $("mainMenu").classList.toggle("hidden");
 });
 
+// Reliable delegated menu actions: handle taps on the menu itself before
+// legacy per-button handlers, so nested icon/text taps work on mobile too.
+$("mainMenu").addEventListener("click", async (event) => {
+    const item = event.target instanceof Element ? event.target.closest("button") : null;
+    if (!item || !$("mainMenu").contains(item)) return;
+    const action = item.id;
+    if (!["menuRefreshContacts", "menuAddContact", "menuNewGroup", "menuInviteFriends"].includes(action)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    if (action === "menuRefreshContacts") {
+        item.disabled = true;
+        item.innerHTML = '<span class="wa-menu-icon">↻</span>Refreshing…';
+        try {
+            hide($("mainMenu"));
+            const refreshed = await loadContacts();
+            alert(refreshed ? "KCHAT contacts refreshed." : "Could not refresh contacts. Check your connection and try again.");
+        } catch (error) {
+            alert(error.message || "Could not refresh contacts. Please try again.");
+        } finally {
+            item.disabled = false;
+            item.innerHTML = '<span class="wa-menu-icon">↻</span>Refresh contacts';
+        }
+        return;
+    }
+
+    hide($("mainMenu"));
+    if (action === "menuAddContact") {
+        $("newContactUsername").value = "";
+        $("addContactMessage").textContent = "";
+        show($("addContactModal"));
+        $("newContactUsername").focus();
+        return;
+    }
+    if (action === "menuNewGroup") {
+        $("newGroupName").value = "";
+        $("groupMessage").textContent = "";
+        show($("newGroupModal"));
+        renderGroupPicker();
+        return;
+    }
+    if (action === "menuInviteFriends") {
+        const invite = { title: "Join me on KCHAT", text: "Let's chat on KCHAT.", url: window.location.origin };
+        try {
+            if (navigator.share) await navigator.share(invite);
+            else if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(invite.text + " " + invite.url);
+                alert("KCHAT invite link copied. Share it with your friends.");
+            } else {
+                window.prompt("Copy this KCHAT invite link:", invite.url);
+            }
+        } catch (error) {
+            if (error.name !== "AbortError") alert("Could not open the sharing options. Please try again.");
+        }
+    }
+}, true);
+
 $("chatMoreButton").addEventListener("click", (e) => {
     e.stopPropagation();
     $("chatMenu").classList.toggle("hidden");
