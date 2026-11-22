@@ -1946,6 +1946,27 @@ html, body {
     }
 }
 </style>
+<style id="statusInteractionsStyles">
+.status-interactions-panel{position:fixed;z-index:10040;left:0;right:0;bottom:0;max-height:72dvh;min-height:190px;background:#10171b;color:#f4f7f8;border:1px solid #ffffff22;border-bottom:0;border-radius:20px 20px 0 0;box-shadow:0 -12px 38px #0009;display:flex;flex-direction:column;padding:8px 16px max(12px,env(safe-area-inset-bottom));}
+.status-interactions-panel.hidden{display:none!important}
+.status-interactions-grabber{width:42px;height:4px;border-radius:9px;background:#849096;margin:2px auto 10px}
+.status-interactions-panel header{display:flex;align-items:center;justify-content:space-between;padding:4px 0 12px;border-bottom:1px solid #ffffff20}
+.status-interactions-panel header strong{font-size:17px}
+.status-interactions-panel header button{border:0;background:transparent;color:#fff;font-size:28px}
+.status-interactions-content{overflow-y:auto;min-height:60px;padding:8px 0;flex:1}
+.status-interaction-section{padding:8px 0;border-bottom:1px solid #ffffff18}
+.status-interaction-section h4{margin:0 0 8px;font-size:14px;color:#00dff5}
+.status-interaction-row{display:flex;align-items:flex-start;gap:10px;padding:8px 2px;font-size:14px}
+.status-interaction-row small{display:block;color:#aab4b9;margin-top:3px}
+.status-interaction-empty{padding:12px;color:#aab4b9;font-size:14px}
+.status-reply-form{display:flex;gap:8px;padding:8px 0}
+.status-reply-form input{flex:1;min-width:0;border-radius:20px;background:#202a30;color:#fff;border:1px solid #ffffff25;padding:10px 13px}
+.status-reply-form button,.status-interactions-actions button{border:0;border-radius:20px;padding:9px 14px;background:#00dff5;color:#001014;font-weight:700}
+.status-interactions-actions{display:flex;gap:8px;padding:4px 0}
+.status-interactions-actions button{flex:1}
+.status-interactions-actions button:disabled{opacity:.5}
+.status-viewer-footer{touch-action:pan-y}
+</style>
 </head>
 
 <body>
@@ -2512,6 +2533,13 @@ html, body {
     <footer class="status-viewer-footer" id="statusViewerFooter"><button type="button" id="viewedByButton" class="viewed-by-button" hidden>◉ Viewed by 0</button><span id="statusViewerPosition"></span></footer>
 </div>
 
+<div id="statusInteractionsPanel" class="status-interactions-panel hidden" aria-label="Status interactions">
+    <div class="status-interactions-grabber"></div>
+    <header><strong id="statusInteractionsTitle">Status interactions</strong><button type="button" id="closeStatusInteractions" aria-label="Close interactions">×</button></header>
+    <div id="statusInteractionsContent" class="status-interactions-content"><div class="status-interactions-empty">Loading…</div></div>
+    <form id="statusReplyForm" class="status-reply-form"><input id="statusReplyInput" maxlength="1000" placeholder="Reply to this status…" autocomplete="off"><button type="submit">Send</button></form>
+    <div class="status-interactions-actions"><button type="button" id="likeStatusButton">♡ Like</button><button type="button" id="reshareStatusButton">↗ Share status</button></div>
+</div>
 <!-- UPDATES MENU -->
 <div id="updatesMenu" class="menu-popup hidden">
     <button id="createChannelMenu">Create channel</button>
@@ -4767,6 +4795,73 @@ $("viewedByButton").addEventListener("click",event=>{
     const lines=viewers.length?viewers.map(viewer=>viewer.username+" · "+new Date(viewer.viewed_at).toLocaleString()).join("\n"):"No views yet.";
     alert("Viewed by ("+viewers.length+")\n\n"+lines);
 });
+let statusInteractionsTouchStartY=null;
+function statusInteractionTime(value){
+    if(!value)return "";
+    const date=new Date(value);
+    if(Number.isNaN(date.getTime()))return "";
+    const minutes=Math.max(0,Math.floor((Date.now()-date.getTime())/60000));
+    return minutes<1?"just now":minutes<60?minutes+" minutes ago":minutes<1440?Math.floor(minutes/60)+" hours ago":date.toLocaleString();
+}
+function appendStatusInteractionSection(parent,title,rows,formatter){
+    const section=document.createElement("section");section.className="status-interaction-section";
+    const heading=document.createElement("h4");heading.textContent=title+" ("+rows.length+")";section.appendChild(heading);
+    if(!rows.length){const empty=document.createElement("div");empty.className="status-interaction-empty";empty.textContent="No "+title.toLowerCase()+" yet.";section.appendChild(empty);}
+    rows.forEach(row=>{const line=document.createElement("div");line.className="status-interaction-row";const copy=document.createElement("div");const name=document.createElement("strong");name.textContent=row.username||"KCHAT user";copy.appendChild(name);const detail=document.createElement("small");detail.textContent=formatter(row);copy.appendChild(detail);line.appendChild(copy);section.appendChild(line);});
+    parent.appendChild(section);
+}
+async function openStatusInteractions(){
+    const item=statusViewerItems[statusViewerIndex];if(!item||item.id==="status-loading")return;
+    clearStatusViewerTimer();statusViewerPaused=true;
+    const panel=$("statusInteractionsPanel"),content=$("statusInteractionsContent");
+    panel.classList.remove("hidden");content.replaceChildren();
+    $("statusInteractionsTitle").textContent=item.is_mine?"Your status · Interactions":"Status · Interactions";
+    $("statusReplyForm").classList.toggle("hidden",!!item.is_mine);
+    $("statusInteractionsActions").classList.toggle("hidden",!!item.is_mine);
+    try{
+        const data=await apiRequest("/api/statuses/"+encodeURIComponent(item.id)+"/interactions");
+        if(statusViewerItems[statusViewerIndex]!==item)return;
+        if(item.is_mine){
+            appendStatusInteractionSection(content,"Replies",data.replies||[],row=>row.message+" · "+statusInteractionTime(row.created_at));
+            appendStatusInteractionSection(content,"Views",data.viewers||[],row=>"Viewed "+statusInteractionTime(row.viewed_at));
+            appendStatusInteractionSection(content,"Reshares",data.reshares||[],row=>"Reshared "+statusInteractionTime(row.created_at));
+            appendStatusInteractionSection(content,"Likes",data.likes||[],row=>"Liked "+statusInteractionTime(row.created_at));
+        }else{
+            const liked=document.createElement("div");liked.className="status-interaction-empty";liked.textContent=data.liked_by_me?"You liked this status.":"Swipe up to reply or like this status.";content.appendChild(liked);
+            $("likeStatusButton").textContent=data.liked_by_me?"♥ Liked":"♡ Like";
+        }
+        if(item.is_mine&&!content.children.length){const empty=document.createElement("div");empty.className="status-interaction-empty";empty.textContent="No interactions yet.";content.appendChild(empty);}
+    }catch(error){const empty=document.createElement("div");empty.className="status-interaction-empty";empty.textContent=error.message||"Could not load status interactions.";content.replaceChildren(empty);}
+}
+function closeStatusInteractions(){
+    $("statusInteractionsPanel").classList.add("hidden");
+    statusViewerPaused=false;
+    if(!$("statusViewer").classList.contains("hidden"))resumeStatusViewer();
+}
+$("closeStatusInteractions").addEventListener("click",closeStatusInteractions);
+$("statusReplyForm").addEventListener("submit",async event=>{
+    event.preventDefault();const item=statusViewerItems[statusViewerIndex],input=$("statusReplyInput"),message=input.value.trim();if(!item||!message)return;
+    try{await apiRequest("/api/statuses/"+encodeURIComponent(item.id)+"/reply",{method:"POST",body:JSON.stringify({message})});input.value="";$("statusInteractionsContent").replaceChildren();const sent=document.createElement("div");sent.className="status-interaction-empty";sent.textContent="Reply sent."; $("statusInteractionsContent").appendChild(sent);}
+    catch(error){alert(error.message||"Could not send reply.");}
+});
+$("likeStatusButton").addEventListener("click",async()=>{
+    const item=statusViewerItems[statusViewerIndex];if(!item)return;
+    try{await apiRequest("/api/statuses/"+encodeURIComponent(item.id)+"/like",{method:"POST"});$("likeStatusButton").textContent="♥ Liked";}
+    catch(error){alert(error.message||"Could not like status.");}
+});
+$("reshareStatusButton").addEventListener("click",async()=>{
+    const item=statusViewerItems[statusViewerIndex];if(!item)return;
+    try{await apiRequest("/api/statuses/"+encodeURIComponent(item.id)+"/reshare",{method:"POST"});alert("Status reshared.");}
+    catch(error){alert(error.message||"Could not reshare status.");}
+});
+$("statusViewer").addEventListener("touchstart",event=>{
+    if(event.touches.length===1)statusInteractionsTouchStartY=event.touches[0].clientY;
+},{passive:true});
+$("statusViewer").addEventListener("touchend",event=>{
+    if(statusInteractionsTouchStartY===null||event.changedTouches.length!==1)return;
+    const dy=event.changedTouches[0].clientY-statusInteractionsTouchStartY;statusInteractionsTouchStartY=null;
+    if(dy < -65)openStatusInteractions();
+},{passive:true});
 function openStatusViewer(items,index=0) {
     clearStatusViewerTimer();
     statusViewerPaused=false;
