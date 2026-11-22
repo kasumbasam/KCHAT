@@ -5932,7 +5932,7 @@ $("menuStarredMessages").addEventListener("click", () => {
 // Contacts are shown in the dedicated CONTACTS tab; the phone-contact picker
 // remains available from the New Chat and Phone Contacts actions.
 
-$("menuLogout").addEventListener("click", logout);
+$("menuLogout")?.addEventListener("click", logout);
 $("settingsLogoutButton").addEventListener("click", logout);
 
 $("menuRefreshContacts").addEventListener("click", async () => {
@@ -5979,7 +5979,7 @@ $("menuNewGroup").addEventListener("click", () => {
     renderGroupPicker();
 });
 
-$("menuInbox").addEventListener("click", async () => {
+$("menuInbox")?.addEventListener("click", async () => {
     hide($("mainMenu"));
     try {
         await apiRequest("/api/messages/read-all", { method: "POST" });
@@ -5988,12 +5988,12 @@ $("menuInbox").addEventListener("click", async () => {
     await loadContacts();
 });
 
-$("menuSearchMessages").addEventListener("click", () => {
+$("menuSearchMessages")?.addEventListener("click", () => {
     hide($("mainMenu"));
     show($("messageSearchModal"));
 });
 
-$("menuBlocked").addEventListener("click", openBlockedContacts);
+$("menuBlocked")?.addEventListener("click", openBlockedContacts);
 
 $("chatMenuProfile").addEventListener("click", async () => {
     hide($("chatMenu"));
