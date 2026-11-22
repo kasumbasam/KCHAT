@@ -1869,6 +1869,7 @@ hr {
 .unsaved-chat-actions button{border:1px solid #68757c;border-radius:8px;padding:8px 10px;background:transparent;color:#fff;font-size:13px}
 #unsavedContinueButton{background:#00bfa5;border-color:#00bfa5;color:#001b18;font-weight:700}
 #unsavedCancelButton{color:#ffc0c0;border-color:#a85b5b}
+#unsavedBlockButton{color:#ffb4b4;border-color:#b94c59;background:#351b22;font-weight:700}
 .status-ring{width:62px;height:62px;flex:0 0 62px;border-radius:50%;padding:3px;display:grid;place-items:center}
 .status-ring .status-story-avatar{width:56px;height:56px;flex-basis:56px;border:0}
 .status-story-count{position:absolute;left:60px;top:6px;min-width:17px;height:17px;padding:0 4px;border-radius:10px;background:#20c878;color:#06150e;border:2px solid #080d10;font:700 10px Arial,sans-serif;display:grid;place-items:center}
@@ -2105,6 +2106,7 @@ hr {
                         <button type="button" id="unsavedContinueButton">Continue to chat</button>
                         <button type="button" id="unsavedAddContactButton">Add contact</button>
                         <button type="button" id="unsavedCancelButton">Cancel chat</button>
+            <button type="button" id="unsavedBlockButton" class="unsaved-block-button">Block chat</button>
                     </div>
                 </section>
                 <div id="messagesArea" class="messages-area"></div>
@@ -6180,6 +6182,25 @@ $("applyAiChatWallpaper").addEventListener("click",async()=>{
 });
 $("unsavedContinueButton").addEventListener("click",()=>hide($("unsavedChatNotice")));
 $("unsavedCancelButton").addEventListener("click",returnToConversations);
+$("unsavedBlockButton").addEventListener("click",async()=>{
+    const username=String(currentChat||"").trim();
+    if(!username)return;
+    if(!confirm("Block "+username+"? They will be added to your blocked contacts."))return;
+    const button=$("unsavedBlockButton");
+    button.disabled=true;
+    try{
+        const result=await apiRequest("/api/blocks",{method:"POST",body:JSON.stringify({username})});
+        if(!result||result.success!==true)throw new Error(result?.error||"Could not block this contact.");
+        alert(username+" has been blocked.");
+        hide($("unsavedChatNotice"));
+        await loadContacts();
+        returnToConversations();
+    }catch(error){
+        alert(error.message||"Could not block this contact. Please try again.");
+    }finally{
+        button.disabled=false;
+    }
+});
 $("unsavedAddContactButton").addEventListener("click",()=>{
     $("newContactUsername").value=currentChat;
     $("addContactMessage").textContent="";
