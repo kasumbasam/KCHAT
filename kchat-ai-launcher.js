@@ -219,6 +219,81 @@
   document.addEventListener("click", function (event) {
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
+    // Own these high-priority taps here as a safety net, even if the main
+    // page script failed while initializing other unrelated controls.
+    const menuAction = target.closest("#menuRefreshContacts, #menuAddContact, #menuNewGroup, #menuInviteFriends");
+    if (menuAction) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+      const menu = document.getElementById("mainMenu");
+      if (menu) menu.classList.add("hidden");
+      (async () => {
+        try {
+          if (menuAction.id === "menuRefreshContacts") {
+            menuAction.disabled = true;
+            if (typeof window.loadContacts === "function") {
+              const ok = await window.loadContacts();
+              if (!ok) throw new Error("KCHAT could not retrieve your contacts or conversations. Check your connection and try again.");
+            } else {
+              const headers = {};
+              const token = readAiToken();
+              if (token) headers.Authorization = "Bearer " + token;
+              const responses = await Promise.all([
+                fetch("/api/contacts", { credentials: "same-origin", headers, cache: "no-store" }),
+                fetch("/api/inbox?include_hidden=true", { credentials: "same-origin", headers, cache: "no-store" })
+              ]);
+              if (responses.every(response => !response.ok)) throw new Error("KCHAT could not refresh your contacts or conversations.");
+            }
+            alert("KCHAT refresh completed.");
+          } else if (menuAction.id === "menuAddContact") {
+            const modal = document.getElementById("addContactModal");
+            const field = document.getElementById("newContactUsername");
+            const message = document.getElementById("addContactMessage");
+            if (!modal) throw new Error("The Add Contact window is unavailable. Reload KCHAT and try again.");
+            if (field) field.value = "";
+            if (message) message.textContent = "";
+            modal.classList.remove("hidden");
+            if (field) field.focus();
+          } else if (menuAction.id === "menuNewGroup") {
+            const modal = document.getElementById("newGroupModal");
+            const field = document.getElementById("newGroupName");
+            const message = document.getElementById("groupMessage");
+            if (!modal) throw new Error("The New Group window is unavailable. Reload KCHAT and try again.");
+            if (field) field.value = "";
+            if (message) message.textContent = "";
+            modal.classList.remove("hidden");
+            if (typeof window.renderGroupPicker === "function") window.renderGroupPicker();
+          } else {
+            const invite = { title: "Join me on KCHAT", text: "Let's chat on KCHAT.", url: window.location.origin };
+            if (navigator.share) await navigator.share(invite);
+            else if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(invite.text + " " + invite.url);
+              alert("KCHAT invite link copied. Share it with your friends.");
+            } else {
+              window.prompt("Copy this KCHAT invite link:", invite.url);
+            }
+          }
+        } catch (error) {
+          if (error && error.name !== "AbortError") alert(error.message || "That KCHAT menu action could not be completed.");
+        } finally {
+          if (menuAction.id === "menuRefreshContacts") menuAction.disabled = false;
+        }
+      })();
+      return;
+    }
+
+    if (target.closest("#kchatAiSendButton")) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+      if (typeof window.kchatAiSendFromMain === "function") {
+        window.kchatAiSendFromMain(event);
+      } else {
+        sendAiFromLauncher(event);
+      }
+      return;
+    }
     if (target.closest("#kchatAiFab")) {
       event.preventDefault();
       event.stopPropagation();
