@@ -5072,12 +5072,24 @@ $("saveStatusPrivacy").addEventListener("click",async()=>{
 });
 $("starredUpdatesMenu").addEventListener("click",()=>{hide($("updatesMenu"));alert("Starred status updates will appear here after status sharing is enabled.");});
 $("updatesSettingsMenu").addEventListener("click",()=>{hide($("updatesMenu"));openSettings();});
-document.querySelectorAll("[data-main-nav]").forEach(button=>button.addEventListener("click",()=>{
+document.querySelectorAll("[data-main-nav]").forEach(button=>button.addEventListener("click",async()=>{
     const tab=button.dataset.mainNav;
     if(tab==="status")return;
     closeKchatUpdatesScreen(tab);
     document.querySelectorAll(".whatsapp-tab-btn").forEach(item=>item.classList.toggle("active",item.dataset.tab===tab));
-    if(tab==="chat"||tab==="call"){
+    if(tab==="chat"){
+        // Always return to the full inbox, not a stale Groups/Hidden filter.
+        activeFilter="all";
+        document.querySelectorAll(".filter-btn").forEach(item=>item.classList.toggle("active",item.dataset.filter==="all"));
+        $("chatSearch").placeholder="Search conversations";
+        $("appScreen").classList.remove("mobile-chat-open");
+        hide($("chatScreen"));
+        show($("welcomeScreen"));
+        renderContacts();
+        // The bottom Chats navigation must refresh the account's saved contacts
+        // and private-message inbox, just like the top CHAT tab.
+        await loadContacts();
+    } else if(tab==="call"){
         if(currentChat)show($("chatScreen"));else show($("welcomeScreen"));
         renderContacts();
     } else {
