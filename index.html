@@ -744,6 +744,16 @@ hr {
 .updates-header-actions{display:flex;gap:8px}
 .status-page-scroll{flex:1;overflow-y:auto;padding:10px 0 105px}
 .status-section-title{font-size:19px;font-weight:600;color:#aeb8bd;margin:17px 18px 8px}
+.status-section-heading{display:flex;align-items:center;justify-content:space-between;margin:0 18px 8px}
+.status-section-heading .status-section-title{margin:17px 0 8px}
+.status-privacy-shortcut{width:36px;height:36px;margin-top:8px;border:0;border-radius:50%;background:#202a30;color:#dce5e8;display:grid;place-items:center}
+.status-privacy-shortcut svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.recent-updates-title{padding-top:17px;border-top:1px solid #ffffff12;margin-top:8px}
+.my-status-card{border-bottom:1px solid #ffffff12}
+.status-story-card{border-bottom:1px solid #ffffff0c}
+.status-story-avatar{border:0}
+.status-ring{padding:3px}
+.status-story-count{left:62px;top:7px;background:#20c878;color:#06150e}
 .status-stories{display:flex;flex-direction:column;gap:0;min-height:0}
 .my-status-card,.status-story-card{position:relative;width:100%;min-height:78px;display:flex;align-items:center;gap:14px;padding:10px 18px;border:0;border-radius:0;background:transparent;color:#f5f7f8;text-align:left;overflow:hidden}
 .my-status-avatar-wrap{position:relative;width:60px;height:60px;flex:0 0 60px;display:block}
@@ -2135,7 +2145,12 @@ hr {
                     </div>
                 </header>
                 <div class="status-page-scroll">
-                    <div class="status-section-title">Stories</div>
+                    <div class="status-section-heading">
+                        <div class="status-section-title">Status</div>
+                        <button type="button" class="status-privacy-shortcut" id="statusPrivacyShortcutButton" aria-label="Status privacy" title="Status privacy">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                        </button>
+                    </div>
                     <div class="status-stories" id="statusStories">
                         <button type="button" class="my-status-card" id="myStatusCard" aria-label="My story. Tap to add or view your story">
                             <span class="my-status-avatar-wrap">
@@ -2144,14 +2159,13 @@ hr {
                                 <span class="my-status-add" aria-hidden="true">+</span>
                             </span>
                             <span class="my-status-copy">
-                                <strong id="myStatusTitle">My story</strong>
+                                <strong id="myStatusTitle">My status</strong>
                                 <small id="myStatusSubtitle">Tap to add story</small>
                                 <span id="myStatusPreview" class="my-status-preview hidden"></span>
                             </span>
-                            <span class="my-story-trailing" id="myStoryTrailing" aria-hidden="true">＋</span>
                         </button>
                     </div>
-                    <div class="status-section-title">Recent stories</div>
+                    <div class="status-section-title recent-updates-title">Recent updates</div>
                     <div id="otherStatusStories" class="other-status-stories">
                         <div class="status-empty-card">No recent stories</div>
                     </div>
@@ -4423,6 +4437,7 @@ function showUpdatesMenu() {
     menu.classList.toggle("hidden");
 }
 $("updatesMenuButton").addEventListener("click",showUpdatesMenu);
+$("statusPrivacyShortcutButton").addEventListener("click",()=>$("statusPrivacyMenu").click());
 function getStatusExpiryHours(){const value=Number(localStorage.getItem("kchat_story_expiry_hours")||24);return [12,24,48].includes(value)?value:24;}
 $("storyDurationMenu").addEventListener("click",()=>{
     hide($("updatesMenu"));
@@ -5044,7 +5059,7 @@ function renderStatusStories(){
     }
     const mineCount=$("myStatusCount");
     if(mineCount){mineCount.textContent=String(mine.length);mineCount.classList.toggle("hidden",mine.length===0);}
-    $("myStatusTitle").textContent="My story";
+    $("myStatusTitle").textContent="My status";
     const latestMine=mine[0]||null;
     const subtitle=$("myStatusSubtitle");
     const preview=$("myStatusPreview");
