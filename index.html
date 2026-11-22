@@ -5308,6 +5308,81 @@ document.querySelectorAll(".filter-btn").forEach(button => {
     });
 });
 
+const CHAT_BUBBLE_THEMES = {
+    "default": { incoming:"#25313a", outgoing:"#063b46" },
+    "mint": { incoming:"#d9f5dc", outgoing:"#277b62" },
+    "sand": { incoming:"#f0e4d2", outgoing:"#806348" },
+    "coral": { incoming:"#ffd5ca", outgoing:"#9c4051" },
+    "sunset": { incoming:"#f8d29a", outgoing:"#8c4162" },
+    "ocean": { incoming:"#b7e7f4", outgoing:"#176d91" },
+    "lavender": { incoming:"#e8dcff", outgoing:"#674d91" },
+    "obsidian": { incoming:"#242d37", outgoing:"#00a9b8" }
+};
+const CHAT_WALLPAPERS = {
+    "preset:midnight":"radial-gradient(circle at 70% 20%,#00b8d9,#111827 55%,#03060b)",
+    "preset:aurora":"linear-gradient(145deg,#071b36,#087d78,#572d80)",
+    "preset:desert":"linear-gradient(145deg,#f7c77d,#a85e43,#432f4a)",
+    "preset:ocean":"linear-gradient(145deg,#062a48,#087f9b,#a6dce7)",
+    "preset:flowers":"radial-gradient(circle at 25% 35%,#ff9cc5 0 12%,transparent 13%),radial-gradient(circle at 70% 65%,#e8a6ff 0 15%,transparent 16%),linear-gradient(145deg,#192b32,#4c315c)"
+};
+let activeChatTheme="default";
+let activeChatWallpaper="";
+let generatedChatWallpaper="";
+function currentChatContact(){
+    return contacts.find(item=>contactName(item).toLowerCase()===String(currentChat||"").toLowerCase())||{};
+}
+function applyChatAppearance(theme,wallpaper){
+    const area=$("mainChatArea");if(!area)return;
+    const palette=CHAT_BUBBLE_THEMES[theme]||CHAT_BUBBLE_THEMES.default;
+    area.style.setProperty("--chat-incoming-bubble",palette.incoming);
+    area.style.setProperty("--chat-outgoing-bubble",palette.outgoing);
+    area.dataset.chatTheme=theme||"default";
+    area.style.backgroundImage="";
+    if(wallpaper&&wallpaper.startsWith("preset:")){
+        area.style.backgroundImage=CHAT_WALLPAPERS[wallpaper]||"";
+        area.style.backgroundColor="#101820";
+    }else if(wallpaper&&wallpaper.startsWith("data:image/")){
+        area.style.backgroundImage="url("+JSON.stringify(wallpaper)+")";
+        area.style.backgroundColor="#101820";
+    }else{
+        area.style.removeProperty("background-color");
+    }
+}
+function updateChatThemeSelection(){
+    document.querySelectorAll("[data-chat-theme-preset]").forEach(button=>button.classList.toggle("selected",button.dataset.chatThemePreset===activeChatTheme));
+    document.querySelectorAll("[data-chat-wallpaper]").forEach(button=>button.classList.toggle("selected",button.dataset.chatWallpaper===activeChatWallpaper));
+}
+function openChatTheme(){
+    const contact=currentChatContact();
+    activeChatTheme=CHAT_BUBBLE_THEMES[contact.theme]?contact.theme:"default";
+    activeChatWallpaper=contact.wallpaper||"";
+    generatedChatWallpaper="";
+    $("chatThemeAiPreview").classList.add("hidden");
+    $("applyAiChatWallpaper").classList.add("hidden");
+    $("chatThemeAiStatus").textContent="";
+    setChatThemeTab("bubbles");
+    updateChatThemeSelection();
+    show($("chatThemeModal"));
+}
+function setChatThemeTab(tab){
+    document.querySelectorAll("[data-chat-theme-tab]").forEach(button=>button.classList.toggle("active",button.dataset.chatThemeTab===tab));
+    $("chatThemeBubblesPanel").classList.toggle("hidden",tab!=="bubbles");
+    $("chatThemeWallpaperPanel").classList.toggle("hidden",tab!=="wallpaper");
+    $("chatThemeAiPanel").classList.toggle("hidden",tab!=="ai");
+}
+async function saveChatAppearance(theme=activeChatTheme,wallpaper=activeChatWallpaper){
+    if(!currentChat)throw new Error("Open a conversation first.");
+    const result=await apiRequest("/api/chats/"+encodeURIComponent(currentChat)+"/settings",{
+        method:"PUT",body:JSON.stringify({theme,wallpaper})
+    });
+    if(!result||result.success!==true)throw new Error(result?.error||"Could not save this chat theme.");
+    activeChatTheme=theme;activeChatWallpaper=wallpaper;
+    const contact=currentChatContact();
+    contact.theme=theme;contact.wallpaper=wallpaper;
+    applyChatAppearance(theme,wallpaper);
+    updateChatThemeSelection();
+    return result;
+}
 async function openChat(username) {
     if (!username) return;
 
@@ -5320,6 +5395,15 @@ async function openChat(username) {
     $("activeChatName").textContent = username;
     $("activeChatAvatar").textContent = username.charAt(0).toUpperCase();
     $("activeChatStatus").textContent = onlineUsers.has(username.toLowerCase()) ? "Online" : formatLastSeen(contactLastSeen.get(username.toLowerCase()));
+    const chatContact=currentChatContact();
+    applyChatAppearance(chatContact.theme||"default",chatContact.wallpaper||"");
+    const unsavedNotice=$("unsavedChatNotice");
+    const isUnsaved=chatContact.is_saved_contact===false;
+    unsavedNotice.classList.toggle("hidden",!isUnsaved);
+    if(isUnsaved){
+        $("unsavedChatLabel").textContent="Inbox from unsaved · "+(chatContact.phone_number||username);
+        $("unsavedChatDetails").textContent="Not a contact. Only continue if you recognise and trust this person.";
+    }
 
     // Always clear any full-screen layer before showing a conversation.
     const appScreen = $("appScreen");
@@ -6019,6 +6103,65 @@ $("mainMenu").addEventListener("click", async (event) => {
 $("chatMoreButton").addEventListener("click", (e) => {
     e.stopPropagation();
     $("chatMenu").classList.toggle("hidden");
+});
+
+$("chatMenuTheme").addEventListener("click",()=>{
+    hide($("chatMenu"));
+    openChatTheme();
+});
+$("closeChatTheme").addEventListener("click",()=>hide($("chatThemeModal")));
+document.querySelectorAll("[data-chat-theme-tab]").forEach(button=>button.addEventListener("click",()=>setChatThemeTab(button.dataset.chatThemeTab)));
+document.querySelectorAll("[data-chat-theme-preset]").forEach(button=>button.addEventListener("click",async()=>{
+    try{await saveChatAppearance(button.dataset.chatThemePreset,activeChatWallpaper);}
+    catch(error){alert(error.message||"Could not apply this chat bubble theme.");}
+}));
+document.querySelectorAll("[data-chat-wallpaper]").forEach(button=>button.addEventListener("click",async()=>{
+    try{await saveChatAppearance(activeChatTheme,button.dataset.chatWallpaper);}
+    catch(error){alert(error.message||"Could not apply this wallpaper.");}
+}));
+$("chooseChatWallpaper").addEventListener("click",()=>$("chatThemeWallpaperFile").click());
+$("chatThemeWallpaperFile").addEventListener("change",event=>{
+    const file=event.target.files&&event.target.files[0];if(!file)return;
+    if(!["image/png","image/jpeg","image/webp"].includes(file.type)||file.size>2000000){
+        alert("Choose a PNG, JPEG or WebP image smaller than 2 MB.");event.target.value="";return;
+    }
+    const reader=new FileReader();
+    reader.onload=async()=>{
+        try{await saveChatAppearance(activeChatTheme,String(reader.result||""));}
+        catch(error){alert(error.message||"Could not save this wallpaper.");}
+        event.target.value="";
+    };
+    reader.onerror=()=>alert("Could not read that wallpaper image.");
+    reader.readAsDataURL(file);
+});
+$("generateChatWallpaper").addEventListener("click",async()=>{
+    const button=$("generateChatWallpaper"),prompt=$("chatThemeAiPrompt").value.trim();
+    if(!prompt){$("chatThemeAiStatus").textContent="Describe the wallpaper first.";return;}
+    button.disabled=true;$("chatThemeAiStatus").textContent="KCHAT AI is creating your wallpaper…";
+    try{
+        const result=await apiRequest("/api/ai/wallpaper",{method:"POST",body:JSON.stringify({prompt})});
+        if(!result?.image)throw new Error(result?.error||"The AI did not return an image.");
+        generatedChatWallpaper=result.image;
+        $("chatThemeAiPreview").src=generatedChatWallpaper;
+        $("chatThemeAiPreview").classList.remove("hidden");
+        $("applyAiChatWallpaper").classList.remove("hidden");
+        $("chatThemeAiStatus").textContent="Your wallpaper is ready. Preview it, then apply it to this chat.";
+    }catch(error){$("chatThemeAiStatus").textContent=error.message||"Could not generate wallpaper.";}
+    finally{button.disabled=false;}
+});
+$("applyAiChatWallpaper").addEventListener("click",async()=>{
+    const button=$("applyAiChatWallpaper");button.disabled=true;
+    try{await saveChatAppearance(activeChatTheme,generatedChatWallpaper);$("chatThemeAiStatus").textContent="AI wallpaper applied to this chat.";}
+    catch(error){alert(error.message||"Could not apply the AI wallpaper.");}
+    finally{button.disabled=false;}
+});
+$("unsavedContinueButton").addEventListener("click",()=>hide($("unsavedChatNotice")));
+$("unsavedCancelButton").addEventListener("click",returnToConversations);
+$("unsavedAddContactButton").addEventListener("click",()=>{
+    $("newContactUsername").value=currentChat;
+    $("addContactMessage").textContent="";
+    hide($("unsavedChatNotice"));hide($("chatScreen"));show($("addContactModal"));
+    $("newContactUsername").focus();
 });
 
 // Pin or unpin the current conversation for this account only.
