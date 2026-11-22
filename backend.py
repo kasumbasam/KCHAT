@@ -5,6 +5,9 @@ import secrets
 import base64
 import re
 import json
+import asyncio
+import urllib.request
+import urllib.error
 
 from openai import AsyncOpenAI
 
@@ -640,9 +643,6 @@ async def generate_chat_wallpaper(request: Request):
         if len(prompt) > 1500:
             return JSONResponse({"error": "Keep the wallpaper description under 1,500 characters."}, status_code=400)
 
-        import asyncio
-        import urllib.request
-        import urllib.error
         url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/black-forest-labs/flux-1-schnell"
         payload = json.dumps({
             "prompt": "Create a beautiful vertical smartphone chat wallpaper. " + prompt +
