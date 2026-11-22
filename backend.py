@@ -2065,7 +2065,8 @@ async def update_chat_settings(username: str, request: Request):
                 settings["muted"],
                 settings["disappearing_seconds"],
                 settings["theme"],
-                settings["media_visibility"]
+                settings["media_visibility"],
+                settings["wallpaper"]
             ))
 
             # Disappearing-message duration is shared by both people.
