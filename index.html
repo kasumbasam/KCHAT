@@ -980,6 +980,7 @@ hr {
 .composer-inline-btn:hover { color:var(--accent); background:#ffffff0c; }
 .emoji-composer-btn { font-family:Arial,sans-serif; font-size:25px; }
 .voice-composer-btn { background:var(--accent); color:#06110b; }
+.chat-screen.voice-recording-active .message-composer{display:none!important}
 .voice-composer-btn:hover { filter:brightness(1.08); }
 .emoji-picker {
     position:absolute;
@@ -7507,6 +7508,7 @@ function resetChatVoiceMessage(){
     $("discardChatVoiceMessage").textContent="Delete";
     $("chatVoiceMessageModal").classList.add("hidden");
     $("chatVoiceMessageModal").classList.remove("voice-locked","voice-holding");
+    $("chatScreen").classList.remove("voice-recording-active");
 }
 function closeChatVoiceMessage(){
     resetChatVoiceMessage();
@@ -7615,6 +7617,7 @@ function handleChatVoicePointerDown(event){
     chatVoiceStartY=event.clientY;
     try{$("voiceMessageButton").setPointerCapture(event.pointerId);}catch{}
     $("voiceMessageButton").classList.add("voice-recording-active");
+    $("chatScreen").classList.add("voice-recording-active");
     $("chatVoiceMessageModal").classList.add("voice-holding");
     $("chatVoiceMessageModal").classList.remove("hidden");
     $("chatVoiceMessageState").textContent="Recording…";
