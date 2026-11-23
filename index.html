@@ -7310,6 +7310,7 @@ $("mediaFileInput").addEventListener("change", async event => {
     }
 });
 
+let chatVoiceRequestId=0;
 let chatVoiceRecorder=null;
 let chatVoiceStream=null;
 let chatVoiceChunks=[];
@@ -7319,6 +7320,7 @@ let chatVoiceTimer=null;
 let chatVoiceStartedAt=0;
 let chatVoiceSending=false;
 function resetChatVoiceMessage(){
+    chatVoiceRequestId++;
     if(chatVoiceTimer){clearInterval(chatVoiceTimer);chatVoiceTimer=null;}
     if(chatVoiceRecorder){
         chatVoiceRecorder.onstop=null;
@@ -7346,6 +7348,7 @@ function closeChatVoiceMessage(){
     hide($("chatVoiceMessageModal"));
 }
 async function startChatVoiceMessage(){
+    const requestId=++chatVoiceRequestId;
     if(!currentChat){alert("Open a conversation first.");hide($("chatVoiceMessageModal"));return;}
     if(dndMode){alert("Resume your KCHAT live connection before recording a voice message.");hide($("chatVoiceMessageModal"));return;}
     if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){
@@ -7353,9 +7356,11 @@ async function startChatVoiceMessage(){
         hide($("chatVoiceMessageModal"));return;
     }
     try{
-        chatVoiceStream=await navigator.mediaDevices.getUserMedia({audio:{
+        const acquiredStream=await navigator.mediaDevices.getUserMedia({audio:{
             echoCancellation:true,noiseSuppression:true,autoGainControl:true
         }});
+        if(requestId!==chatVoiceRequestId){acquiredStream.getTracks().forEach(track=>track.stop());return;}
+        chatVoiceStream=acquiredStream;
         const mimeType=["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg"].find(type=>MediaRecorder.isTypeSupported(type));
         chatVoiceRecorder=mimeType?new MediaRecorder(chatVoiceStream,{mimeType}):new MediaRecorder(chatVoiceStream);
         chatVoiceChunks=[];
