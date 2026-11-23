@@ -7454,8 +7454,6 @@ let chatVoiceGestureActive=false;
 let chatVoicePaused=false;
 let chatVoiceAutoSend=false;
 let chatVoicePermissionPending=false;
-let chatVoicePointerDownAt=0;
-let chatVoiceTapRequested=false;
 const chatVoiceMaxMs=120000;
 function chatVoiceFormatTime(ms){
     const seconds=Math.floor(ms/1000);
@@ -7484,8 +7482,6 @@ function resetChatVoiceMessage(){
     chatVoicePaused=false;
     chatVoiceAutoSend=false;
     chatVoicePermissionPending=false;
-    chatVoicePointerDownAt=0;
-    chatVoiceTapRequested=false;
     if(chatVoiceTimer){clearInterval(chatVoiceTimer);chatVoiceTimer=null;}
     if(chatVoiceRecorder){
         chatVoiceRecorder.onstop=null;
@@ -7539,7 +7535,7 @@ async function beginChatVoiceRecording(){
     chatVoicePermissionPending=true;
     try{
         const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-        if(requestId!==chatVoiceRequestId||(!chatVoiceGestureActive&&!chatVoiceTapRequested)){
+        if(requestId!==chatVoiceRequestId||!chatVoiceGestureActive){
             stream.getTracks().forEach(track=>track.stop());return false;
         }
         chatVoicePermissionPending=false;
@@ -7578,11 +7574,6 @@ async function beginChatVoiceRecording(){
         chatVoiceStartedAt=Date.now();
         $("chatVoiceRecordIndicator").classList.add("recording");
         chatVoiceTimer=setInterval(updateChatVoiceTimer,200);
-        if(chatVoiceTapRequested){
-            chatVoiceTapRequested=false;
-            chatVoiceLocked=true;
-            showLockedChatVoicePanel();
-        }
         return true;
     }catch(error){
         chatVoicePermissionPending=false;
@@ -7622,8 +7613,6 @@ function handleChatVoicePointerDown(event){
     chatVoicePointerId=event.pointerId;
     chatVoiceStartX=event.clientX;
     chatVoiceStartY=event.clientY;
-    chatVoicePointerDownAt=Date.now();
-    chatVoiceTapRequested=false;
     try{$("voiceMessageButton").setPointerCapture(event.pointerId);}catch{}
     $("voiceMessageButton").classList.add("voice-recording-active");
     $("chatVoiceMessageModal").classList.add("voice-holding");
@@ -7644,23 +7633,14 @@ function handleChatVoicePointerMove(event){
 }
 function handleChatVoicePointerUp(event){
     if(!chatVoiceGestureActive||event.pointerId!==chatVoicePointerId)return;
-    const quickTap=(Date.now()-chatVoicePointerDownAt)<280;
     chatVoiceGestureActive=false;
     $("voiceMessageButton").classList.remove("voice-recording-active");
     if(chatVoiceLocked)return;
     if(chatVoicePermissionPending){
-        if(quickTap){
-            chatVoiceTapRequested=true;
-            $("chatVoiceMessageHint").textContent="Starting microphone…";
-            return;
-        }
+        // The finger was released before microphone permission completed.
+        // Cancel this attempt instead of unexpectedly opening a locked recorder.
         chatVoiceRequestId++;
         chatVoicePermissionPending=false;
-        return;
-    }
-    if(quickTap&&chatVoiceRecorder){
-        chatVoiceLocked=true;
-        showLockedChatVoicePanel();
         return;
     }
     stopChatVoiceRecording(true);
