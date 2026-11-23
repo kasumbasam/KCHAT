@@ -1941,7 +1941,7 @@ async def get_inbox(request: Request, include_hidden: bool = False):
                 "last_message": (
                     "📷 Photo"
                     if str(row["text"]).startswith("data:image/")
-                    else row["text"]
+                    else ("🎤 Voice message" if str(row["text"]).startswith("data:audio/") else row["text"])
                 ),
                 "last_message_id": row["id"],
                 "last_message_time": (
@@ -2537,8 +2537,8 @@ async def edit_private_message(message_id: str, request: Request):
                 return JSONResponse({"error": "You can only edit messages you sent."}, status_code=403)
             if message["revoked_at"]:
                 return JSONResponse({"error": "A deleted message cannot be edited."}, status_code=409)
-            if str(message["text"]).startswith("data:image/"):
-                return JSONResponse({"error": "Photo messages cannot be edited."}, status_code=400)
+            if str(message["text"]).startswith(("data:image/", "data:audio/")):
+                return JSONResponse({"error": "Photo and voice messages cannot be edited."}, status_code=400)
 
             conn.execute("""
                 UPDATE messages SET text = %s, edited_at = NOW()
@@ -2577,13 +2577,23 @@ async def send_private_message(request: Request):
             r"data:image/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}",
             message_text
         ))
+        is_audio = bool(re.fullmatch(
+            r"data:audio/[A-Za-z0-9.+-]+(?:;[A-Za-z0-9=.+-]+)*;base64,[A-Za-z0-9+/]+={0,2}",
+            message_text
+        ))
         if not recipient_name or not message_text:
             return JSONResponse({"error": "Choose a recipient and enter a message."}, status_code=400)
+        if message_text.startswith("data:audio/") and not is_audio:
+            return JSONResponse({"error": "This voice recording format is not supported."}, status_code=400)
         if is_image and len(message_text) > 3_400_000:
             return JSONResponse({
                 "error": "That photo is too large after compression. Choose a smaller photo."
             }, status_code=413)
-        if not is_image and len(message_text) > 10000:
+        if is_audio and len(message_text) > 7_000_000:
+            return JSONResponse({
+                "error": "Voice recording is too large. Record a shorter message."
+            }, status_code=413)
+        if not is_image and not is_audio and len(message_text) > 10000:
             return JSONResponse({
                 "error": "Messages cannot exceed 10,000 characters."
             }, status_code=413)
