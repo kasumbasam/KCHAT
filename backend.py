@@ -2578,8 +2578,9 @@ async def send_private_message(request: Request):
             message_text
         ))
         is_audio = bool(re.fullmatch(
-            r"data:audio/[A-Za-z0-9.+-]+(?:;[A-Za-z0-9=.+-]+)*;base64,[A-Za-z0-9+/]+={0,2}",
-            message_text
+            r"data:audio/[^,]+;base64,[A-Za-z0-9+/]+={0,2}",
+            message_text,
+            re.IGNORECASE
         ))
         if not recipient_name or not message_text:
             return JSONResponse({"error": "Choose a recipient and enter a message."}, status_code=400)
