@@ -5574,6 +5574,7 @@ $("starredUpdatesMenu").addEventListener("click",()=>{hide($("updatesMenu"));ale
 $("updatesSettingsMenu").addEventListener("click",()=>{hide($("updatesMenu"));openSettings();});
 document.querySelectorAll("[data-main-nav]").forEach(button=>button.addEventListener("click",async()=>{
     const tab=button.dataset.mainNav;
+    if (tab !== "status" || !$("statusScreen")?.classList.contains("hidden")) cancelVoiceRecordingWhenLeavingChat();
     if(tab==="status")return;
     closeKchatUpdatesScreen(tab);
     document.querySelectorAll(".whatsapp-tab-btn").forEach(item=>item.classList.toggle("active",item.dataset.tab===tab));
@@ -5600,6 +5601,7 @@ document.querySelectorAll("[data-main-nav]").forEach(button=>button.addEventList
 // Horizontal swipe navigation: Chats <-> Stories <-> Calls.
 function navigateKchatSwipeTab(tab) {
     if (!["chat", "status", "call"].includes(tab) || tab === activeTab) return;
+    cancelVoiceRecordingWhenLeavingChat();
     document.querySelectorAll("[data-main-nav]").forEach(button => button.classList.toggle("active", button.dataset.mainNav === tab));
     if (tab === "status") {
         openKchatUpdatesScreen();
@@ -5656,6 +5658,7 @@ function navigateKchatSwipeTab(tab) {
 // WhatsApp Tabs (CHAT, CALLS, STATUS) Switching Logic
 document.querySelectorAll(".whatsapp-tab-btn").forEach(button => {
     button.addEventListener("click", () => {
+        cancelVoiceRecordingWhenLeavingChat();
         document.querySelectorAll(".whatsapp-tab-btn").forEach(item => item.classList.remove("active"));
         button.classList.add("active");
         activeTab = button.dataset.tab;
@@ -5799,6 +5802,10 @@ async function saveChatAppearance(theme=activeChatTheme,wallpaper=activeChatWall
 }
 async function openChat(username) {
     if (!username) return;
+    // Changing conversations abandons any unfinished voice recording.
+    if (currentChat && String(currentChat).toLowerCase() !== String(username).toLowerCase()) {
+        cancelVoiceRecordingWhenLeavingChat();
+    }
 
     // Show the conversation immediately; network and menu updates must not
     // prevent navigation if a secondary operation fails.
@@ -5857,7 +5864,14 @@ async function openChat(username) {
     }
 }
 
+function cancelVoiceRecordingWhenLeavingChat() {
+    // A recording belongs to the conversation in which it was started.
+    // Never carry an unfinished recording panel into another screen/chat.
+    resetChatVoiceMessage();
+}
+
 function returnToConversations() {
+    cancelVoiceRecordingWhenLeavingChat();
     const app = $("appScreen");
     const chat = $("chatScreen");
     const welcome = $("welcomeScreen");
@@ -7741,6 +7755,7 @@ $("chatAudioCallButton").addEventListener("click", () => startKchatCall("audio",
 $("chatVideoCallButton").addEventListener("click", () => startKchatCall("video", currentChat));
 
 function logout() {
+    cancelVoiceRecordingWhenLeavingChat();
     // Revoke the server-side session and clear the HttpOnly cookie as well.
     try {
         fetch("/api/logout", {
