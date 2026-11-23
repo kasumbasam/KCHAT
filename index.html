@@ -823,7 +823,7 @@ hr {
 .status-bottom-nav button.active .bottom-nav-icon{background:#003640}
 .status-bottom-nav button:focus-visible .bottom-nav-icon{outline:2px solid #00e5ff;outline-offset:2px}
 .text-status-backdrop{position:fixed;inset:0;z-index:10030;padding:0!important;background:#000!important}
-.text-status-card{width:100%;height:100dvh;max-width:100%!important;max-height:100dvh!important;border:0!important;border-radius:0!important;padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom)!important;background:#546E7A;display:flex;flex-direction:column;overflow:hidden;transition:background .18s ease}
+.text-status-card{width:100%;height:100dvh;max-width:100%!important;max-height:100dvh!important;border:0!important;border-radius:0!important;padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom)!important;background:#000;display:flex;flex-direction:column;overflow:hidden;transition:background .18s ease}
 .text-status-header{height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:space-between}
 .text-status-header button{width:44px;height:44px;border:0;border-radius:50%;background:#00000020;color:#fff;font:30px Arial,sans-serif;display:grid;place-items:center}
 .text-status-header button:last-child svg,.text-status-actions svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -847,7 +847,7 @@ hr {
 .text-status-emoji-tray{position:absolute;left:14px;right:14px;bottom:86px;z-index:8;display:flex;flex-wrap:wrap;gap:7px;padding:12px;border-radius:15px;background:#172126;border:1px solid #ffffff30;box-shadow:0 8px 28px #0008}
 .text-status-emoji-tray.hidden{display:none!important}
 .text-status-emoji-tray button{width:38px;height:38px;border:0;border-radius:9px;background:#ffffff12;font:24px Arial,sans-serif}
-.status-viewer-content .status-viewer-text{background:var(--status-text-background,transparent);border-radius:12px;min-width:100%;min-height:100%;display:flex;align-items:center;justify-content:center}
+.status-viewer-content .status-viewer-text{background:#000!important;color:#fff!important;border-radius:0;min-width:100%;min-height:100%;display:flex;align-items:center;justify-content:center}
 
 .status-viewer{position:fixed;inset:0;z-index:10020;background:#050708;color:#fff;display:flex;flex-direction:column;padding:12px max(12px,env(safe-area-inset-left)) max(12px,env(safe-area-inset-bottom));}
 .status-viewer.hidden{display:none}
@@ -4569,7 +4569,7 @@ $("storyDurationMenu").addEventListener("click",()=>{
 document.addEventListener("click",event=>{
     if(!event.target.closest("#updatesMenu")&&!event.target.closest("#updatesMenuButton")) hide($("updatesMenu"));
 });
-const textStatusBackgrounds=["#546E7A","#063B46","#6A1B9A","#AD1457","#1565C0","#8D6E63","#263238","#B26A00","#37474F","#5D4037"];
+const textStatusBackgrounds=["#000000"];
 let textStatusBackgroundIndex=0;
 function setTextStatusBackground(index){
     textStatusBackgroundIndex=(index+textStatusBackgrounds.length)%textStatusBackgrounds.length;
@@ -4740,7 +4740,7 @@ function renderStatusViewer() {
         const text=document.createElement("div");
         text.className="status-viewer-text";
         text.textContent=item.text||"";
-        text.style.background=item.background||"#546E7A";
+        text.style.background="#000000";
         content.appendChild(text);
     }
     $("statusViewerName").textContent=item.is_mine?"My story":(item.username||"Status");
@@ -5309,7 +5309,7 @@ function renderStatusStories(){
         }else if(latestMine.media_type==="audio"){
             preview.className="my-status-preview text-preview";preview.textContent="🎙 Voice status";
         }else{
-            preview.className="my-status-preview text-preview";preview.textContent=(latestMine.text||"Written status").slice(0,90);preview.style.background=latestMine.background||"#546E7A";
+            preview.className="my-status-preview text-preview";preview.textContent=(latestMine.text||"Written status").slice(0,90);preview.style.background="#000000";
         }
     }
     const byUser=new Map();
