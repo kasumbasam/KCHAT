@@ -2529,7 +2529,6 @@ html, body {
 <div id="statusViewer" class="status-viewer hidden" aria-label="Status viewer">
     <div class="status-viewer-progress" id="statusViewerProgress"></div>
     <header class="status-viewer-header">
-        <button type="button" id="closeStatusViewer" aria-label="Close status viewer">×</button>
         <div class="status-viewer-owner">
             <div id="statusViewerAvatar" class="status-viewer-avatar">S</div>
             <div><strong id="statusViewerName">My status</strong><small id="statusViewerTime"></small></div>
@@ -4891,6 +4890,7 @@ $("statusViewer").addEventListener("touchend",event=>{
     if(statusInteractionsTouchStartY===null||event.changedTouches.length!==1)return;
     const dy=event.changedTouches[0].clientY-statusInteractionsTouchStartY;statusInteractionsTouchStartY=null;
     if(dy < -65)openStatusInteractions();
+    else if(dy > 85 && $("statusInteractionsPanel").classList.contains("hidden"))closeStatusViewer();
 },{passive:true});
 function emitStatusLikeBurst(){
  const layer=$("statusLikeBurstLayer");if(!layer)return;
@@ -4937,7 +4937,6 @@ function moveStatusViewer(direction) {
     }
     renderStatusViewer();
 }
-$("closeStatusViewer").addEventListener("click",closeStatusViewer);
 // Hold anywhere on the status viewer to pause; release to resume.
 // Capture the pointer on the full viewer so finger movement cannot cancel the hold.
 const statusViewerStage=$("statusViewerStage");
@@ -4945,7 +4944,7 @@ const statusViewerSurface=$("statusViewer");
 let statusViewerPressStartedAt=0;
 statusViewerSurface.addEventListener("pointerdown",event=>{
     if(event.button!==undefined&&event.button!==0)return;
-    if(event.target instanceof Element && event.target.closest("#closeStatusViewer,#viewerLikeButton,#viewedByButton"))return;
+    if(event.target instanceof Element && event.target.closest("#viewerLikeButton,#viewedByButton"))return;
     statusViewerPressStartedAt=Date.now();
     statusViewerSuppressClick=false;
     try{statusViewerSurface.setPointerCapture(event.pointerId);}catch{}
