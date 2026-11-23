@@ -2616,7 +2616,7 @@ async def send_private_message(request: Request):
             "type": "private",
             "username": account["username"],
             "to": recipient,
-            "text": message_text if is_image else message_text[:10000],
+            "text": message_text if (is_image or is_audio) else message_text[:10000],
             "status": "sent"
         }
         item = save_message(item, private_room)
