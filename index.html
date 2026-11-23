@@ -4825,7 +4825,7 @@ function appendStatusInteractionSection(parent,title,rows,formatter){
 }
 async function openStatusInteractions(){
     const item=statusViewerItems[statusViewerIndex];if(!item||item.id==="status-loading")return;
-    clearStatusViewerTimer();statusViewerPaused=true;
+    pauseStatusViewer();
     const panel=$("statusInteractionsPanel"),content=$("statusInteractionsContent");
     panel.classList.remove("hidden");content.replaceChildren();
     $("statusInteractionsTitle").textContent=item.is_mine?"Your status · Interactions":"Status · Interactions";
@@ -4848,10 +4848,20 @@ async function openStatusInteractions(){
 }
 function closeStatusInteractions(){
     $("statusInteractionsPanel").classList.add("hidden");
-    statusViewerPaused=false;
     if(!$("statusViewer").classList.contains("hidden"))resumeStatusViewer();
 }
 $("closeStatusInteractions").addEventListener("click",closeStatusInteractions);
+let statusInteractionsPanelTouchStartY=null;
+$("statusInteractionsPanel").addEventListener("touchstart",event=>{
+    if(event.touches.length===1)statusInteractionsPanelTouchStartY=event.touches[0].clientY;
+    else statusInteractionsPanelTouchStartY=null;
+},{passive:true});
+$("statusInteractionsPanel").addEventListener("touchend",event=>{
+    if(statusInteractionsPanelTouchStartY===null||event.changedTouches.length!==1)return;
+    const deltaY=event.changedTouches[0].clientY-statusInteractionsPanelTouchStartY;
+    statusInteractionsPanelTouchStartY=null;
+    if(deltaY>65)closeStatusInteractions();
+},{passive:true});
 document.addEventListener("click",event=>{
     const target=event.target instanceof Element?event.target:null;
     if(target&&target.closest("#viewedByButton")){
