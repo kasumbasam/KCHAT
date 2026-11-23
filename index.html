@@ -633,6 +633,15 @@ hr {
 .chat-voice-message-card header button{border:0;background:transparent;color:var(--text);font-size:24px}
 .chat-voice-message-card footer{border-top:1px solid var(--border);border-bottom:0;flex-wrap:wrap}
 .chat-voice-message-card footer button{border:1px solid var(--border);border-radius:20px;padding:10px 13px;background:var(--panel2);color:var(--text)}
+.chat-voice-message-card footer.chat-voice-controls{justify-content:center;gap:24px;padding:16px 18px 20px}
+.chat-voice-message-card footer.chat-voice-controls button{width:52px;height:52px;min-width:52px;padding:0;border:0;border-radius:50%;display:grid;place-items:center;background:var(--panel2);color:var(--text);box-shadow:0 2px 10px #0004}
+.chat-voice-message-card footer.chat-voice-controls .voice-control-delete{background:#25303a;color:#e5edf3}
+.chat-voice-message-card footer.chat-voice-controls .voice-control-pause{background:#25303a;color:#fff}
+.chat-voice-message-card footer.chat-voice-controls .voice-control-send{background:var(--accent);color:#06111a}
+.chat-voice-message-card footer.chat-voice-controls button:disabled{opacity:.42;cursor:not-allowed}
+.chat-voice-message-card footer.chat-voice-controls .voice-control-send:not(:disabled){box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.chat-voice-message-card footer.chat-voice-controls button svg{display:block;pointer-events:none}
+
 .chat-voice-message-card footer button:last-child{background:var(--accent);color:#06111a;border-color:transparent;font-weight:700}
 .chat-voice-message-card button:disabled{opacity:.45}
 .chat-voice-message-body{display:flex;flex-direction:column;align-items:center;gap:12px;padding:26px 18px;text-align:center}
@@ -2525,10 +2534,16 @@ html, body {
       <audio id="chatVoiceMessagePreview" class="hidden" controls preload="metadata"></audio>
       <small id="chatVoiceMessageHint">Swipe up to lock • Swipe left to cancel</small>
     </div>
-    <footer>
-      <button type="button" id="discardChatVoiceMessage">Delete</button>
-      <button type="button" id="chatVoiceRecordButton" disabled>Ⅱ Pause</button>
-      <button type="button" id="sendChatVoiceMessage" disabled>Send</button>
+    <footer class="chat-voice-controls">
+      <button type="button" id="discardChatVoiceMessage" class="voice-control-delete" aria-label="Delete recording" title="Delete recording">
+        <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6"/></svg>
+      </button>
+      <button type="button" id="chatVoiceRecordButton" class="voice-control-pause" disabled aria-label="Pause recording" title="Pause recording">
+        <svg id="chatVoicePauseIcon" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>
+      </button>
+      <button type="button" id="sendChatVoiceMessage" class="voice-control-send" disabled aria-label="Send voice message" title="Send voice message">
+        <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4Z"/></svg>
+      </button>
     </footer>
   </section>
 </div>
@@ -7386,7 +7401,7 @@ function resetChatVoiceMessage(){
     $("chatVoiceRecordButton").disabled=true;
     $("chatVoiceRecordButton").textContent="Pause";
     $("sendChatVoiceMessage").disabled=true;
-    $("sendChatVoiceMessage").textContent="Send";
+    $("sendChatVoiceMessage").innerHTML='<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4Z"/></svg>';
     $("discardChatVoiceMessage").disabled=false;
     $("discardChatVoiceMessage").textContent="Delete";
     $("chatVoiceMessageModal").classList.add("hidden");
@@ -7402,7 +7417,9 @@ function showLockedChatVoicePanel(){
     $("chatVoiceMessageState").textContent="Recording locked";
     $("chatVoiceMessageHint").textContent="Your recording is safe. Pause, delete or send it.";
     $("chatVoiceRecordButton").disabled=false;
-    $("chatVoiceRecordButton").textContent="Ⅱ  Pause";
+    $("chatVoiceRecordButton").innerHTML='<svg id="chatVoicePauseIcon" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>';
+        $("chatVoiceRecordButton").setAttribute("aria-label","Pause recording");
+        $("chatVoiceRecordButton").title="Pause recording";
     $("sendChatVoiceMessage").disabled=true;
 }
 async function beginChatVoiceRecording(){
@@ -7522,7 +7539,7 @@ async function sendChatVoiceMessageNow(){
     const recipient=currentChat;
     chatVoiceSending=true;
     $("sendChatVoiceMessage").disabled=true;
-    $("sendChatVoiceMessage").textContent="Sending…";
+    $("sendChatVoiceMessage").innerHTML='<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
     try{
         const reader=new FileReader();
         const audioData=await new Promise((resolve,reject)=>{
@@ -7557,7 +7574,9 @@ $("chatVoiceRecordButton").addEventListener("click",()=>{
         chatVoicePaused=true;
         chatVoiceRecorder.pause();
         if(chatVoiceTimer){clearInterval(chatVoiceTimer);chatVoiceTimer=null;}
-        $("chatVoiceRecordButton").textContent="▶  Resume";
+        $("chatVoiceRecordButton").innerHTML='<svg id="chatVoicePlayIcon" viewBox="0 0 24 24" width="23" height="23" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg>';
+        $("chatVoiceRecordButton").setAttribute("aria-label","Resume recording");
+        $("chatVoiceRecordButton").title="Resume recording";
         $("chatVoiceMessageState").textContent="Recording paused";
         $("chatVoiceRecordIndicator").classList.remove("recording");
     }else if(chatVoiceRecorder.state==="paused"){
