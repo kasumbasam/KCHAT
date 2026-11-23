@@ -619,6 +619,21 @@ hr {
 .kchat-audio-message{display:flex;align-items:center;gap:8px;min-width:min(250px,65vw);max-width:100%;padding:3px 0}
 .kchat-audio-message audio{width:100%;max-width:280px;height:40px}
 .chat-voice-message-card{width:min(430px,calc(100vw - 28px));background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 18px 55px #0008}
+#chatVoiceMessageModal.voice-holding{align-items:flex-end;justify-content:center;padding:0 12px max(10px,env(safe-area-inset-bottom));background:transparent;pointer-events:none}
+#chatVoiceMessageModal.voice-holding .chat-voice-message-card{width:100%;max-width:560px;min-height:76px;padding:0 12px;background:#292b2e;border:0;border-radius:18px;box-shadow:0 5px 24px #0009;pointer-events:none;overflow:visible}
+#chatVoiceMessageModal.voice-holding .chat-voice-message-card>header,#chatVoiceMessageModal.voice-holding .chat-voice-message-body,#chatVoiceMessageModal.voice-holding .chat-voice-message-card>footer{display:none}
+.chat-voice-hold-bar{display:none;min-height:76px;align-items:center;justify-content:space-between;gap:12px;color:#f7f7f7}
+#chatVoiceMessageModal.voice-holding .chat-voice-hold-bar{display:flex}
+.chat-voice-hold-copy{display:flex;align-items:center;gap:11px;min-width:0;flex:1}
+.chat-voice-hold-mic{width:22px;height:22px;flex:0 0 22px;fill:none;stroke:#ff4b55;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;animation:kchatVoicePulse 1s infinite}
+.chat-voice-hold-copy strong{font:600 15px Arial,sans-serif;font-variant-numeric:tabular-nums}
+.chat-voice-hold-copy span{font:13px Arial,sans-serif;color:#c6c8cb;white-space:nowrap}
+.chat-voice-hold-mic-wrap{width:64px;height:76px;flex:0 0 64px;position:relative;display:flex;align-items:flex-end;justify-content:center}
+.chat-voice-hold-mic-button{width:58px;height:58px;margin-bottom:0;border-radius:50%;background:#c9ad86;color:#151515;display:grid;place-items:center}
+.chat-voice-hold-mic-button svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chat-voice-lock-slider{position:absolute;z-index:2;bottom:65px;left:8px;width:48px;height:94px;border-radius:25px;background:#17191c;border:1px solid #44484d;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;color:#fff;box-shadow:0 4px 12px #0008}
+.chat-voice-lock-slider span{font:26px/1 Arial,sans-serif;color:#f4f4f4}
+.chat-voice-lock-slider svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 #chatVoiceMessageModal.voice-locked{align-items:flex-end;justify-content:center;padding:12px 12px max(14px,env(safe-area-inset-bottom));background:transparent;pointer-events:none}
 #chatVoiceMessageModal.voice-locked .chat-voice-message-card{pointer-events:auto;border-color:var(--accent);box-shadow:0 8px 35px #000b}
 #voiceMessageButton.voice-recording-active{background:var(--accent);color:#001419;transform:scale(1.08)}
@@ -2525,6 +2540,17 @@ html, body {
 <!-- PRIVATE CHAT VOICE MESSAGE RECORDER / LOCKED RECORDING PANEL -->
 <div id="chatVoiceMessageModal" class="modal-backdrop hidden">
   <section class="chat-voice-message-card" role="dialog" aria-modal="true" aria-labelledby="chatVoiceMessageTitle">
+    <div class="chat-voice-hold-bar" aria-live="polite">
+      <div class="chat-voice-hold-copy">
+        <svg class="chat-voice-hold-mic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5m-4 0h8"/></svg>
+        <strong id="chatVoiceHoldTimer">00:00</strong>
+        <span>‹ Slide to cancel</span>
+      </div>
+      <div class="chat-voice-hold-mic-wrap">
+        <div class="chat-voice-lock-slider" aria-hidden="true"><span>⌃</span><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+        <div class="chat-voice-hold-mic-button" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5m-4 0h8"/></svg></div>
+      </div>
+    </div>
     <header><strong id="chatVoiceMessageTitle">Voice message</strong><button type="button" id="closeChatVoiceMessage" aria-label="Close voice message">×</button></header>
     <div class="chat-voice-message-body">
       <div class="chat-voice-record-indicator recording" id="chatVoiceRecordIndicator">●</div>
@@ -7365,6 +7391,7 @@ function chatVoiceElapsedNow(){
 function updateChatVoiceTimer(){
     const elapsed=chatVoiceElapsedNow();
     $("chatVoiceMessageTimer").textContent=chatVoiceFormatTime(elapsed);
+    const holdTimer=$("chatVoiceHoldTimer");if(holdTimer)holdTimer.textContent=chatVoiceFormatTime(elapsed);
     if(elapsed>=chatVoiceMaxMs&&chatVoiceRecorder?.state==="recording"){
         chatVoiceAutoSend=chatVoiceLocked;
         chatVoiceRecorder.stop();
@@ -7405,13 +7432,14 @@ function resetChatVoiceMessage(){
     $("discardChatVoiceMessage").disabled=false;
     $("discardChatVoiceMessage").textContent="Delete";
     $("chatVoiceMessageModal").classList.add("hidden");
-    $("chatVoiceMessageModal").classList.remove("voice-locked");
+    $("chatVoiceMessageModal").classList.remove("voice-locked","voice-holding");
 }
 function closeChatVoiceMessage(){
     resetChatVoiceMessage();
 }
 function showLockedChatVoicePanel(){
     const modal=$("chatVoiceMessageModal");
+    modal.classList.remove("voice-holding");
     modal.classList.add("voice-locked");
     modal.classList.remove("hidden");
     $("chatVoiceMessageState").textContent="Recording locked";
@@ -7513,6 +7541,8 @@ function handleChatVoicePointerDown(event){
     chatVoiceStartY=event.clientY;
     try{$("voiceMessageButton").setPointerCapture(event.pointerId);}catch{}
     $("voiceMessageButton").classList.add("voice-recording-active");
+    $("chatVoiceMessageModal").classList.add("voice-holding");
+    $("chatVoiceMessageModal").classList.remove("hidden");
     $("chatVoiceMessageState").textContent="Recording…";
     $("chatVoiceMessageHint").textContent="Swipe up to lock • Swipe left to cancel";
     beginChatVoiceRecording().then(started=>{
