@@ -2586,6 +2586,16 @@ async def send_private_message(request: Request):
             return JSONResponse({"error": "Choose a recipient and enter a message."}, status_code=400)
         if message_text.startswith("data:audio/") and not is_audio:
             return JSONResponse({"error": "This voice recording format is not supported."}, status_code=400)
+        if is_audio:
+            try:
+                audio_payload = message_text.split(",", 1)[1]
+                audio_bytes = base64.b64decode(audio_payload, validate=True)
+            except (IndexError, ValueError):
+                return JSONResponse({"error": "The voice recording data is invalid. Please record again."}, status_code=400)
+            if not audio_bytes:
+                return JSONResponse({"error": "The voice recording is empty. Please record again."}, status_code=400)
+            if len(audio_bytes) > 5 * 1024 * 1024:
+                return JSONResponse({"error": "Voice recording is too large. Record a shorter message."}, status_code=413)
         if is_image and len(message_text) > 3_400_000:
             return JSONResponse({
                 "error": "That photo is too large after compression. Choose a smaller photo."
