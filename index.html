@@ -7320,8 +7320,11 @@ let chatVoiceStartedAt=0;
 let chatVoiceSending=false;
 function resetChatVoiceMessage(){
     if(chatVoiceTimer){clearInterval(chatVoiceTimer);chatVoiceTimer=null;}
-    if(chatVoiceRecorder&&chatVoiceRecorder.state==="recording"){
-        try{chatVoiceRecorder.stop();}catch{}
+    if(chatVoiceRecorder){
+        chatVoiceRecorder.onstop=null;
+        chatVoiceRecorder.ondataavailable=null;
+        if(chatVoiceRecorder.state==="recording"){try{chatVoiceRecorder.stop();}catch{}}
+        chatVoiceRecorder=null;
     }
     if(chatVoiceStream){chatVoiceStream.getTracks().forEach(track=>track.stop());chatVoiceStream=null;}
     if(chatVoicePreviewUrl){URL.revokeObjectURL(chatVoicePreviewUrl);chatVoicePreviewUrl=null;}
@@ -7395,6 +7398,7 @@ async function startChatVoiceMessage(){
             if(seconds>=120&&chatVoiceRecorder?.state==="recording")chatVoiceRecorder.stop();
         },250);
     }catch(error){
+        if(chatVoiceStream){chatVoiceStream.getTracks().forEach(track=>track.stop());chatVoiceStream=null;}
         console.error("KCHAT voice recording error:",error);
         $("chatVoiceMessageState").textContent="Microphone unavailable";
         $("chatVoiceMessageHint").textContent="Allow microphone permission and try again.";
