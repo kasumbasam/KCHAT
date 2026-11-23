@@ -4864,6 +4864,17 @@ $("statusInteractionsPanel").addEventListener("pointerup",event=>{
     if(dy>70&&Math.abs(dy)>Math.abs(dx)*1.2)closeStatusInteractions();
 });
 $("statusInteractionsPanel").addEventListener("pointercancel",()=>{statusInteractionsPanelPointerStart=null;});
+let statusInteractionsPanelTouchStartY=null;
+$("statusInteractionsPanel").addEventListener("touchstart",event=>{
+    if(event.touches.length===1)statusInteractionsPanelTouchStartY=event.touches[0].clientY;
+    else statusInteractionsPanelTouchStartY=null;
+},{passive:true});
+$("statusInteractionsPanel").addEventListener("touchend",event=>{
+    if(statusInteractionsPanelTouchStartY===null||event.changedTouches.length!==1)return;
+    const deltaY=event.changedTouches[0].clientY-statusInteractionsPanelTouchStartY;
+    statusInteractionsPanelTouchStartY=null;
+    if(deltaY>70)closeStatusInteractions();
+},{passive:true});
 document.addEventListener("click",event=>{
     const target=event.target instanceof Element?event.target:null;
     if(target&&target.closest("#viewedByButton")){
