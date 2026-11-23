@@ -7420,7 +7420,8 @@ function showLockedChatVoicePanel(){
     $("chatVoiceRecordButton").innerHTML='<svg id="chatVoicePauseIcon" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>';
         $("chatVoiceRecordButton").setAttribute("aria-label","Pause recording");
         $("chatVoiceRecordButton").title="Pause recording";
-    $("sendChatVoiceMessage").disabled=true;
+    // Keep Send available while a locked voice recording is still in progress.
+    $("sendChatVoiceMessage").disabled=false;
 }
 async function beginChatVoiceRecording(){
     const requestId=++chatVoiceRequestId;
@@ -7535,7 +7536,17 @@ function handleChatVoicePointerUp(event){
     stopChatVoiceRecording(true);
 }
 async function sendChatVoiceMessageNow(){
-    if(!chatVoiceBlob||!currentChat||chatVoiceSending)return;
+    if(chatVoiceSending||!currentChat)return;
+    // Stop an active or paused recording first; onstop finalizes and sends the audio.
+    if(!chatVoiceBlob&&(chatVoiceRecorder?.state==="recording"||chatVoiceRecorder?.state==="paused")){
+        chatVoiceAutoSend=true;
+        $("sendChatVoiceMessage").disabled=true;
+        $("chatVoiceMessageState").textContent="Sending voice message…";
+        $("chatVoiceMessageHint").textContent="Finishing your recording";
+        stopChatVoiceRecording(true);
+        return;
+    }
+    if(!chatVoiceBlob)return;
     const recipient=currentChat;
     chatVoiceSending=true;
     $("sendChatVoiceMessage").disabled=true;
