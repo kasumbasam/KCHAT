@@ -616,6 +616,20 @@ hr {
     white-space:pre-wrap;
     line-height:1.4;
 }
+.kchat-audio-message{display:flex;align-items:center;gap:8px;min-width:min(250px,65vw);max-width:100%;padding:3px 0}
+.kchat-audio-message audio{width:100%;max-width:280px;height:40px}
+.chat-voice-message-card{width:min(430px,calc(100vw - 28px));background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 18px 55px #0008}
+.chat-voice-message-card header,.chat-voice-message-card footer{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px;border-bottom:1px solid var(--border)}
+.chat-voice-message-card header button{border:0;background:transparent;color:var(--text);font-size:24px}
+.chat-voice-message-card footer{border-top:1px solid var(--border);border-bottom:0;flex-wrap:wrap}
+.chat-voice-message-card footer button{border:1px solid var(--border);border-radius:20px;padding:10px 13px;background:var(--panel2);color:var(--text)}
+.chat-voice-message-card footer button:last-child{background:var(--accent);color:#06111a;border-color:transparent;font-weight:700}
+.chat-voice-message-card button:disabled{opacity:.45}
+.chat-voice-message-body{display:flex;flex-direction:column;align-items:center;gap:12px;padding:26px 18px;text-align:center}
+.chat-voice-record-indicator{font-size:32px;color:var(--accent)}
+.chat-voice-record-indicator.recording{color:#ff6b6b;animation:kchatVoicePulse 1s infinite}
+.chat-voice-message-body audio{width:100%;max-width:320px}
+@keyframes kchatVoicePulse{50%{opacity:.35;transform:scale(.88)}}
 
 .message-meta {
     display:flex;
@@ -2489,6 +2503,25 @@ html, body {
   <footer><button type="button" id="discardVoiceStatus">Discard</button><button type="button" id="shareVoiceStatus" disabled>Share voice story</button></footer>
  </section>
 </div>
+<!-- PRIVATE CHAT VOICE MESSAGE RECORDER -->
+<div id="chatVoiceMessageModal" class="modal-backdrop hidden">
+  <section class="chat-voice-message-card" role="dialog" aria-modal="true" aria-labelledby="chatVoiceMessageTitle">
+    <header><strong id="chatVoiceMessageTitle">Voice message</strong><button type="button" id="closeChatVoiceMessage" aria-label="Close voice message">×</button></header>
+    <div class="chat-voice-message-body">
+      <div class="chat-voice-record-indicator" id="chatVoiceRecordIndicator">●</div>
+      <strong id="chatVoiceMessageState">Preparing microphone…</strong>
+      <span id="chatVoiceMessageTimer">00:00</span>
+      <audio id="chatVoiceMessagePreview" class="hidden" controls preload="metadata"></audio>
+      <small id="chatVoiceMessageHint">Allow microphone access to record a voice message.</small>
+    </div>
+    <footer>
+      <button type="button" id="discardChatVoiceMessage">Discard</button>
+      <button type="button" id="chatVoiceRecordButton" disabled>Stop recording</button>
+      <button type="button" id="sendChatVoiceMessage" disabled>Send voice message</button>
+    </footer>
+  </section>
+</div>
+
 <!-- LIVE STATUS CAMERA -->
 <div id="statusCameraModal" class="modal-backdrop hidden status-camera-backdrop">
  <section class="status-camera-screen">
@@ -5953,6 +5986,10 @@ async function toggleMessagePin(messageId, pinned) {
 
 async function shareMessage(message) {
     const text = String(message.text || "");
+    if (text.startsWith("data:audio/")) {
+        alert("Voice messages can be played in the conversation. Audio sharing will be added separately.");
+        return;
+    }
     if (text.startsWith("data:image/")) {
         alert("Photo sharing from a message will be added with the media-sharing upgrade.");
         return;
@@ -6018,6 +6055,7 @@ let replyingToMessage = null;
 function messagePreviewText(message) {
     const value = String(message?.text || "");
     if (value.startsWith("data:image/")) return "Photo";
+    if (value.startsWith("data:audio/")) return "🎤 Voice message";
     const decoded = decodeReplyText(value);
     return String(decoded ? decoded.text : value)
         .replace(/^(?:↩️?|↪️?|↳|⤷)\s*/u, "")
@@ -6083,12 +6121,16 @@ function renderMessages() {
 
         const isImage = typeof message.text === "string"
             && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(message.text);
-        const decodedReply = !isImage ? decodeReplyText(message.text || "") : null;
+        const isAudio = typeof message.text === "string"
+            && /^data:audio\/[A-Za-z0-9.+-]+(?:;[A-Za-z0-9=.+-]+)*;base64,/.test(message.text);
+        const decodedReply = !isImage && !isAudio ? decodeReplyText(message.text || "") : null;
         const messageContent = isImage
             ? `<img class="message-image" src="${escapeHTML(message.text)}" alt="Photo sent in KCHAT" loading="lazy">`
-            : decodedReply
-                ? `<div class="message-reply-quote"><strong>${escapeHTML(decodedReply.reply.sender || "Contact")}</strong><span>${escapeHTML(decodedReply.reply.text || "Message")}</span></div><div class="message-text">${escapeHTML(decodedReply.text)}</div>`
-                : `<div class="message-text">${escapeHTML(message.text || "")}</div>`;
+            : isAudio
+                ? `<div class="kchat-audio-message"><span aria-hidden="true">🎤</span><audio controls preload="metadata" src="${escapeHTML(message.text)}" aria-label="Voice message from ${escapeHTML(sender)}"></audio></div>`
+                : decodedReply
+                    ? `<div class="message-reply-quote"><strong>${escapeHTML(decodedReply.reply.sender || "Contact")}</strong><span>${escapeHTML(decodedReply.reply.text || "Message")}</span></div><div class="message-text">${escapeHTML(decodedReply.text)}</div>`
+                    : `<div class="message-text">${escapeHTML(message.text || "")}</div>`;
         const status = String(message.status || "sent").toLowerCase();
         const receiptMarkup = mine && !message.revoked
             ? message.pending || status === "sending"
@@ -6123,6 +6165,7 @@ function renderMessages() {
             openMessageActionMenu(id, bubble, event.clientX, event.clientY);
         });
         bubble.addEventListener("pointerdown", event => {
+            if (event.target instanceof Element && event.target.closest("audio,button")) return;
             if (event.pointerType === "mouse" && event.button !== 0) return;
             try { bubble.setPointerCapture(event.pointerId); } catch {}
             swipeStart = { x: event.clientX, y: event.clientY };
@@ -7267,13 +7310,140 @@ $("mediaFileInput").addEventListener("change", async event => {
     }
 });
 
-$("voiceMessageButton").addEventListener("click", async () => {
-    if (!currentChat) {
-        alert("Open a conversation first.");
-        return;
+let chatVoiceRecorder=null;
+let chatVoiceStream=null;
+let chatVoiceChunks=[];
+let chatVoiceBlob=null;
+let chatVoicePreviewUrl=null;
+let chatVoiceTimer=null;
+let chatVoiceStartedAt=0;
+let chatVoiceSending=false;
+function resetChatVoiceMessage(){
+    if(chatVoiceTimer){clearInterval(chatVoiceTimer);chatVoiceTimer=null;}
+    if(chatVoiceRecorder&&chatVoiceRecorder.state==="recording"){
+        try{chatVoiceRecorder.stop();}catch{}
     }
-    messages.push({ username: currentUser, text: "🎤 [Voice Message Clip]", created_at: new Date().toISOString() });
-    renderMessages();
+    if(chatVoiceStream){chatVoiceStream.getTracks().forEach(track=>track.stop());chatVoiceStream=null;}
+    if(chatVoicePreviewUrl){URL.revokeObjectURL(chatVoicePreviewUrl);chatVoicePreviewUrl=null;}
+    chatVoiceRecorder=null;chatVoiceChunks=[];chatVoiceBlob=null;chatVoiceSending=false;
+    $("chatVoiceMessagePreview").pause();
+    $("chatVoiceMessagePreview").removeAttribute("src");
+    $("chatVoiceMessagePreview").classList.add("hidden");
+    $("chatVoiceMessageTimer").textContent="00:00";
+    $("chatVoiceMessageState").textContent="Preparing microphone…";
+    $("chatVoiceMessageHint").textContent="Allow microphone access to record a voice message.";
+    $("chatVoiceRecordIndicator").classList.remove("recording");
+    $("chatVoiceRecordButton").disabled=true;
+    $("chatVoiceRecordButton").textContent="Stop recording";
+    $("sendChatVoiceMessage").disabled=true;
+    $("sendChatVoiceMessage").textContent="Send voice message";
+}
+function closeChatVoiceMessage(){
+    resetChatVoiceMessage();
+    hide($("chatVoiceMessageModal"));
+}
+async function startChatVoiceMessage(){
+    if(!currentChat){alert("Open a conversation first.");hide($("chatVoiceMessageModal"));return;}
+    if(dndMode){alert("Resume your KCHAT live connection before recording a voice message.");hide($("chatVoiceMessageModal"));return;}
+    if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){
+        alert("Voice recording is not supported by this browser. Try the latest Chrome browser.");
+        hide($("chatVoiceMessageModal"));return;
+    }
+    try{
+        chatVoiceStream=await navigator.mediaDevices.getUserMedia({audio:{
+            echoCancellation:true,noiseSuppression:true,autoGainControl:true
+        }});
+        const mimeType=["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg"].find(type=>MediaRecorder.isTypeSupported(type));
+        chatVoiceRecorder=mimeType?new MediaRecorder(chatVoiceStream,{mimeType}):new MediaRecorder(chatVoiceStream);
+        chatVoiceChunks=[];
+        chatVoiceRecorder.ondataavailable=event=>{if(event.data&&event.data.size)chatVoiceChunks.push(event.data);};
+        chatVoiceRecorder.onerror=()=>{$("chatVoiceMessageHint").textContent="Recording failed. Please try again.";};
+        chatVoiceRecorder.onstop=()=>{
+            if(chatVoiceTimer){clearInterval(chatVoiceTimer);chatVoiceTimer=null;}
+            if(chatVoiceStream){chatVoiceStream.getTracks().forEach(track=>track.stop());chatVoiceStream=null;}
+            chatVoiceBlob=new Blob(chatVoiceChunks,{type:chatVoiceRecorder?.mimeType||"audio/webm"});
+            $("chatVoiceRecordIndicator").classList.remove("recording");
+            $("chatVoiceRecordButton").disabled=true;
+            $("chatVoiceRecordButton").textContent="Recording stopped";
+            if(!chatVoiceBlob.size){
+                $("chatVoiceMessageState").textContent="No audio recorded";
+                $("chatVoiceMessageHint").textContent="Discard and try recording again.";
+                return;
+            }
+            if(chatVoiceBlob.size>5*1024*1024){
+                $("chatVoiceMessageState").textContent="Recording is too large";
+                $("chatVoiceMessageHint").textContent="Please record a shorter voice message (maximum 5 MB).";
+                $("sendChatVoiceMessage").disabled=true;
+                return;
+            }
+            chatVoicePreviewUrl=URL.createObjectURL(chatVoiceBlob);
+            $("chatVoiceMessagePreview").src=chatVoicePreviewUrl;
+            $("chatVoiceMessagePreview").classList.remove("hidden");
+            $("chatVoiceMessageState").textContent="Preview your voice message";
+            $("chatVoiceMessageHint").textContent="Play it back, then send or discard.";
+            $("sendChatVoiceMessage").disabled=false;
+        };
+        chatVoiceRecorder.start(250);
+        chatVoiceStartedAt=Date.now();
+        $("chatVoiceMessageState").textContent="Recording voice message";
+        $("chatVoiceMessageHint").textContent="Tap Stop recording when you are finished.";
+        $("chatVoiceRecordIndicator").classList.add("recording");
+        $("chatVoiceRecordButton").disabled=false;
+        chatVoiceTimer=setInterval(()=>{
+            const seconds=Math.floor((Date.now()-chatVoiceStartedAt)/1000);
+            $("chatVoiceMessageTimer").textContent=String(Math.floor(seconds/60)).padStart(2,"0")+":"+String(seconds%60).padStart(2,"0");
+            if(seconds>=120&&chatVoiceRecorder?.state==="recording")chatVoiceRecorder.stop();
+        },250);
+    }catch(error){
+        console.error("KCHAT voice recording error:",error);
+        $("chatVoiceMessageState").textContent="Microphone unavailable";
+        $("chatVoiceMessageHint").textContent="Allow microphone permission and try again.";
+        $("chatVoiceRecordButton").disabled=true;
+        alert("KCHAT could not access your microphone. Check browser microphone permission and try again.");
+    }
+}
+$("voiceMessageButton").addEventListener("click",async()=>{
+    if(!currentChat){alert("Open a conversation first.");return;}
+    resetChatVoiceMessage();
+    show($("chatVoiceMessageModal"));
+    await startChatVoiceMessage();
+});
+$("chatVoiceRecordButton").addEventListener("click",()=>{
+    if(chatVoiceRecorder?.state==="recording")chatVoiceRecorder.stop();
+});
+$("closeChatVoiceMessage").addEventListener("click",closeChatVoiceMessage);
+$("discardChatVoiceMessage").addEventListener("click",closeChatVoiceMessage);
+$("chatVoiceMessageModal").addEventListener("click",event=>{
+    if(event.target===$("chatVoiceMessageModal"))closeChatVoiceMessage();
+});
+$("sendChatVoiceMessage").addEventListener("click",async()=>{
+    if(!chatVoiceBlob||!currentChat||chatVoiceSending)return;
+    const recipient=currentChat;
+    const button=$("sendChatVoiceMessage");
+    chatVoiceSending=true;button.disabled=true;button.textContent="Sending…";
+    try{
+        const reader=new FileReader();
+        const audioData=await new Promise((resolve,reject)=>{
+            reader.onload=()=>resolve(reader.result);
+            reader.onerror=()=>reject(new Error("Could not read the voice recording."));
+            reader.readAsDataURL(chatVoiceBlob);
+        });
+        if(typeof audioData!=="string"||!audioData.startsWith("data:audio/"))throw new Error("The recording format could not be prepared.");
+        const result=await apiRequest("/api/messages",{
+            method:"POST",
+            body:JSON.stringify({recipient,text:audioData,type:"private"})
+        });
+        if(!result?.success||!result.message)throw new Error(result?.error||"KCHAT could not send this voice message.");
+        if(String(currentChat||"").toLowerCase()===recipient.toLowerCase()){
+            if(!messages.some(item=>String(item.id)===String(result.message.id)))messages.push(result.message);
+            renderMessages();
+        }
+        closeChatVoiceMessage();
+        await loadContacts();
+    }catch(error){
+        chatVoiceSending=false;button.disabled=false;button.textContent="Send voice message";
+        alert(error.message||"Voice message could not be sent. Please try again.");
+    }
 });
 
 $("chatAudioCallButton").addEventListener("click", () => startKchatCall("audio", currentChat));
