@@ -2592,8 +2592,16 @@ async def send_private_message(request: Request):
                 audio_bytes = base64.b64decode(audio_payload, validate=True)
             except (IndexError, ValueError):
                 return JSONResponse({"error": "The voice recording data is invalid. Please record again."}, status_code=400)
-            if not audio_bytes:
-                return JSONResponse({"error": "The voice recording is empty. Please record again."}, status_code=400)
+            if len(audio_bytes) < 128:
+                return JSONResponse({"error": "The voice recording contains no usable audio. Please record again."}, status_code=400)
+            audio_mime = message_text.split(";", 1)[0][5:].lower()
+            valid_audio_header = (
+                (audio_mime == "audio/webm" and audio_bytes.startswith(bytes.fromhex("1A45DFA3")))
+                or (audio_mime == "audio/ogg" and audio_bytes.startswith(b"OggS"))
+                or (audio_mime == "audio/mp4" and len(audio_bytes) >= 12 and audio_bytes[4:8] == b"ftyp")
+            )
+            if not valid_audio_header:
+                return JSONResponse({"error": "The voice recording is not a valid playable audio file. Please record again."}, status_code=400)
             if len(audio_bytes) > 5 * 1024 * 1024:
                 return JSONResponse({"error": "Voice recording is too large. Record a shorter message."}, status_code=413)
         if is_image and len(message_text) > 3_400_000:
