@@ -6207,7 +6207,7 @@ function renderMessages() {
         const isImage = typeof message.text === "string"
             && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(message.text);
         const isAudio = typeof message.text === "string"
-            && /^data:audio\/[A-Za-z0-9.+-]+(?:;[A-Za-z0-9=.+-]+)*;base64,/.test(message.text);
+            && /^data:audio\/[^,]+;base64,/i.test(message.text);
         const decodedReply = !isImage && !isAudio ? decodeReplyText(message.text || "") : null;
         const messageContent = isImage
             ? `<img class="message-image" src="${escapeHTML(message.text)}" alt="Photo sent in KCHAT" loading="lazy">`
@@ -7493,9 +7493,11 @@ function resetChatVoiceMessage(){
     stopChatVoiceTracks();
     if(chatVoicePreviewUrl){URL.revokeObjectURL(chatVoicePreviewUrl);chatVoicePreviewUrl=null;}
     chatVoiceChunks=[];chatVoiceBlob=null;chatVoiceSending=false;chatVoiceElapsed=0;
-    $("chatVoiceMessagePreview").pause();
-    $("chatVoiceMessagePreview").removeAttribute("src");
-    $("chatVoiceMessagePreview").classList.add("hidden");
+    const voicePreview=$("chatVoiceMessagePreview");
+    voicePreview.pause();
+    voicePreview.removeAttribute("src");
+    voicePreview.load();
+    voicePreview.classList.add("hidden");
     $("chatVoiceMessageTimer").textContent="00:00";
     $("chatVoiceMessageState").textContent="Recording voice message";
     $("chatVoiceMessageHint").textContent="Swipe up to lock • Swipe left to cancel";
@@ -7553,10 +7555,22 @@ async function beginChatVoiceRecording(){
         chatVoiceRecorder.onstop=()=>{
             if(chatVoiceTimer){clearInterval(chatVoiceTimer);chatVoiceTimer=null;}
             stopChatVoiceTracks();
-            if(!chatVoiceChunks.length){return;}
-            chatVoiceBlob=new Blob(chatVoiceChunks,{type:chatVoiceRecorder?.mimeType||"audio/webm"});
             $("chatVoiceRecordIndicator").classList.remove("recording");
-            if(!chatVoiceBlob.size){resetChatVoiceMessage();return;}
+            const finalType=chatVoiceRecorder?.mimeType||chatVoiceChunks.find(chunk=>chunk.type)?.type||"audio/webm";
+            chatVoiceBlob=new Blob(chatVoiceChunks,{type:finalType});
+            if(!chatVoiceBlob.size){
+                $("chatVoiceMessageState").textContent="No audio was captured";
+                $("chatVoiceMessageHint").textContent="KCHAT did not receive audio from the microphone. Delete this attempt and record again.";
+                $("sendChatVoiceMessage").disabled=true;
+                $("chatVoiceRecordButton").disabled=true;
+                return;
+            }
+            if(!chatVoiceBlob.type||!chatVoiceBlob.type.toLowerCase().startsWith("audio/")){
+                $("chatVoiceMessageState").textContent="Unsupported recording format";
+                $("chatVoiceMessageHint").textContent="This browser did not create a playable audio file. Try Chrome and record again.";
+                $("sendChatVoiceMessage").disabled=true;
+                return;
+            }
             if(chatVoiceBlob.size>5*1024*1024){
                 $("chatVoiceMessageState").textContent="Recording is too large";
                 $("chatVoiceMessageHint").textContent="Maximum voice message size is 5 MB. Delete and record a shorter message.";
@@ -7564,8 +7578,11 @@ async function beginChatVoiceRecording(){
             }
             if(chatVoicePreviewUrl){URL.revokeObjectURL(chatVoicePreviewUrl);}
             chatVoicePreviewUrl=URL.createObjectURL(chatVoiceBlob);
-            $("chatVoiceMessagePreview").src=chatVoicePreviewUrl;
-            $("chatVoiceMessagePreview").classList.remove("hidden");
+            const preview=$("chatVoiceMessagePreview");
+            preview.pause();
+            preview.src=chatVoicePreviewUrl;
+            preview.load();
+            preview.classList.remove("hidden");
             $("chatVoiceMessageState").textContent="Voice message ready";
             $("chatVoiceMessageHint").textContent="Listen before sending, or delete the recording.";
             $("sendChatVoiceMessage").disabled=false;
