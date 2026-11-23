@@ -601,11 +601,12 @@ hr {
 }
 
 .message-bubble {
-    max-width:min(75%,520px);
-    padding:10px 12px;
-    border-radius:12px;
+    max-width:min(78%,520px);
+    padding:7px 10px;
+    border-radius:11px;
     background:var(--bubble);
     overflow-wrap:anywhere;
+    font-size:16px;
 }
 
 .message-row.mine .message-bubble {
@@ -614,7 +615,8 @@ hr {
 
 .message-text {
     white-space:pre-wrap;
-    line-height:1.4;
+    font-size:16px;
+    line-height:1.3;
 }
 .kchat-audio-message{display:flex;align-items:center;gap:8px;min-width:min(250px,65vw);max-width:100%;padding:3px 0}
 .voice-message-row{align-items:flex-end;gap:7px}.voice-message-row.mine{flex-direction:row-reverse}.voice-message-avatar{width:34px;height:34px;flex:0 0 34px;border-radius:50%;overflow:hidden;background:#183743;border:1px solid var(--accent);display:grid;place-items:center;color:var(--accent);font:700 14px Arial,sans-serif}.voice-message-avatar img{width:100%;height:100%;object-fit:cover}.voice-message-row .message-bubble{max-width:min(78%,460px);padding:9px 11px}.voice-message-row.mine .message-bubble{background:#075477;border:1px solid #079bd4}.voice-message-row:not(.mine) .message-bubble{background:#20252c;border:1px solid #343b44}.kchat-audio-message{display:flex;align-items:center;gap:10px;min-width:min(245px,62vw);max-width:100%;padding:2px 0}.kchat-voice-audio{display:none}.kchat-voice-play{width:42px;height:42px;flex:0 0 42px;border:0;border-radius:50%;background:#003f66;color:#fff;display:grid;place-items:center}.voice-message-row:not(.mine) .kchat-voice-play{background:#101820}.kchat-voice-play svg{width:23px;height:23px;fill:currentColor}.kchat-voice-track{flex:1;min-width:0}.kchat-voice-wave{height:34px;display:flex;align-items:center;justify-content:space-between;gap:2px;overflow:hidden}.kchat-voice-wave i{display:block;flex:1;max-width:4px;min-width:2px;border-radius:4px;background:#b9d7e5;opacity:.78}.voice-message-row.mine .kchat-voice-wave i{background:#bcecff}.kchat-voice-wave i.played{background:#00b7ff;opacity:1}.kchat-voice-details{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#d4dce2;font:12px Arial,sans-serif}.kchat-voice-duration,.kchat-voice-time{font:12px Arial,sans-serif;color:#d4dce2}.message-row.voice-message-row .message-meta{font-size:11px}
@@ -7452,6 +7454,8 @@ let chatVoiceGestureActive=false;
 let chatVoicePaused=false;
 let chatVoiceAutoSend=false;
 let chatVoicePermissionPending=false;
+let chatVoicePointerDownAt=0;
+let chatVoiceTapRequested=false;
 const chatVoiceMaxMs=120000;
 function chatVoiceFormatTime(ms){
     const seconds=Math.floor(ms/1000);
@@ -7480,6 +7484,8 @@ function resetChatVoiceMessage(){
     chatVoicePaused=false;
     chatVoiceAutoSend=false;
     chatVoicePermissionPending=false;
+    chatVoicePointerDownAt=0;
+    chatVoiceTapRequested=false;
     if(chatVoiceTimer){clearInterval(chatVoiceTimer);chatVoiceTimer=null;}
     if(chatVoiceRecorder){
         chatVoiceRecorder.onstop=null;
@@ -7533,7 +7539,7 @@ async function beginChatVoiceRecording(){
     chatVoicePermissionPending=true;
     try{
         const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-        if(requestId!==chatVoiceRequestId||!chatVoiceGestureActive){
+        if(requestId!==chatVoiceRequestId||(!chatVoiceGestureActive&&!chatVoiceTapRequested)){
             stream.getTracks().forEach(track=>track.stop());return false;
         }
         chatVoicePermissionPending=false;
@@ -7572,6 +7578,11 @@ async function beginChatVoiceRecording(){
         chatVoiceStartedAt=Date.now();
         $("chatVoiceRecordIndicator").classList.add("recording");
         chatVoiceTimer=setInterval(updateChatVoiceTimer,200);
+        if(chatVoiceTapRequested){
+            chatVoiceTapRequested=false;
+            chatVoiceLocked=true;
+            showLockedChatVoicePanel();
+        }
         return true;
     }catch(error){
         chatVoicePermissionPending=false;
@@ -7611,6 +7622,8 @@ function handleChatVoicePointerDown(event){
     chatVoicePointerId=event.pointerId;
     chatVoiceStartX=event.clientX;
     chatVoiceStartY=event.clientY;
+    chatVoicePointerDownAt=Date.now();
+    chatVoiceTapRequested=false;
     try{$("voiceMessageButton").setPointerCapture(event.pointerId);}catch{}
     $("voiceMessageButton").classList.add("voice-recording-active");
     $("chatVoiceMessageModal").classList.add("voice-holding");
@@ -7631,10 +7644,25 @@ function handleChatVoicePointerMove(event){
 }
 function handleChatVoicePointerUp(event){
     if(!chatVoiceGestureActive||event.pointerId!==chatVoicePointerId)return;
+    const quickTap=(Date.now()-chatVoicePointerDownAt)<280;
     chatVoiceGestureActive=false;
     $("voiceMessageButton").classList.remove("voice-recording-active");
     if(chatVoiceLocked)return;
-    if(chatVoicePermissionPending){chatVoiceRequestId++;chatVoicePermissionPending=false;return;}
+    if(chatVoicePermissionPending){
+        if(quickTap){
+            chatVoiceTapRequested=true;
+            $("chatVoiceMessageHint").textContent="Starting microphone…";
+            return;
+        }
+        chatVoiceRequestId++;
+        chatVoicePermissionPending=false;
+        return;
+    }
+    if(quickTap&&chatVoiceRecorder){
+        chatVoiceLocked=true;
+        showLockedChatVoicePanel();
+        return;
+    }
     stopChatVoiceRecording(true);
 }
 async function sendChatVoiceMessageNow(){
