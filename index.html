@@ -7529,7 +7529,7 @@ function resetChatVoiceMessage(){
     $("discardChatVoiceMessage").disabled=false;
     $("discardChatVoiceMessage").textContent="Delete";
     $("chatVoiceMessageModal").classList.add("hidden");
-    $("chatVoiceMessageModal").classList.remove("voice-locked","voice-holding");
+    $("chatVoiceMessageModal").classList.remove("voice-locked","voice-holding","voice-tap-active");
     $("chatScreen").classList.remove("voice-recording-active");
 }
 function closeChatVoiceMessage(){
@@ -7540,10 +7540,11 @@ function showTapChatVoicePanel(){
     modal.classList.remove("voice-holding","voice-locked");
     modal.classList.add("voice-tap-active");
     modal.classList.remove("hidden");
-    $("chatVoiceMessageState").textContent="Recording";
-    $("chatVoiceMessageHint").textContent="Recording continues. Pause, delete or send when ready.";
-    $("chatVoiceRecordButton").disabled=false;
-    $("sendChatVoiceMessage").disabled=false;
+    const ready=!!chatVoiceRecorder&&(chatVoiceRecorder.state==="recording"||chatVoiceRecorder.state==="paused");
+    $("chatVoiceMessageState").textContent=ready?"Recording":"Starting recording…";
+    $("chatVoiceMessageHint").textContent=ready?"Recording continues. Pause, delete or send when ready.":"Connecting to your microphone…";
+    $("chatVoiceRecordButton").disabled=!ready;
+    $("sendChatVoiceMessage").disabled=!ready;
 }
 function showLockedChatVoicePanel(){
     const modal=$("chatVoiceMessageModal");
@@ -7665,6 +7666,7 @@ function handleChatVoicePointerDown(event){
     try{$("voiceMessageButton").setPointerCapture(event.pointerId);}catch{}
     $("voiceMessageButton").classList.add("voice-recording-active");
     $("chatScreen").classList.add("voice-recording-active");
+    showTapChatVoicePanel();
     // Recording begins immediately; the lock instruction is revealed only
     // after the user has deliberately held the microphone.
     beginChatVoiceRecording().then(started=>{
