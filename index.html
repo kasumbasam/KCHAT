@@ -869,7 +869,7 @@ hr {
 .status-viewer-content{width:100%;height:100%;display:flex;align-items:center;justify-content:center;white-space:pre-wrap;text-align:center;overflow:hidden}
 .status-viewer-content img,.status-viewer-content video{max-width:100%;max-height:100%;object-fit:contain}
 .status-viewer-content .status-viewer-text{font-size:clamp(25px,6vw,42px);line-height:1.35;padding:28px;overflow-wrap:anywhere}
-.status-viewer-side{position:absolute;top:0;bottom:0;width:30%;z-index:1;border:0;background:transparent}
+.status-viewer-side{position:absolute;top:0;bottom:0;width:30%;z-index:1;border:0;background:transparent}.status-viewer-side,.status-viewer-stage{-webkit-tap-highlight-color:transparent;touch-action:manipulation;outline:none}.status-viewer-side:focus,.status-viewer-side:focus-visible,.status-viewer-side:active{outline:none!important;box-shadow:none!important;background:transparent!important}
 .status-viewer-side.previous{left:0}
 .status-viewer-side.next{right:0}
 .viewed-by-button{border:0;background:transparent;color:#fff;padding:7px 12px;border-radius:18px;font-size:15px}.viewed-by-button[hidden]{display:none!important}.viewed-by-button:hover{background:#ffffff18}
@@ -4897,7 +4897,7 @@ function emitStatusLikeBurst(){
 $("viewerLikeButton").addEventListener("click",async event=>{
  event.stopPropagation();const item=statusViewerItems[statusViewerIndex];if(!item||item.is_mine)return;
  const button=$("viewerLikeButton");if(button.dataset.liked==="true")return;button.disabled=true;
- try{await apiRequest("/api/statuses/"+encodeURIComponent(item.id)+"/like",{method:"POST"});button.dataset.liked="true";button.classList.add("liked");button.setAttribute("aria-label","Status liked");emitStatusLikeBurst();}
+ emitStatusLikeBurst();button.dataset.liked="true";button.classList.add("liked");button.setAttribute("aria-label","Status liked");try{await apiRequest("/api/statuses/"+encodeURIComponent(item.id)+"/like",{method:"POST"});}
  catch(error){alert(error.message||"Could not like this status.");}
  finally{button.disabled=false;}
 });
@@ -4931,22 +4931,28 @@ $("closeStatusViewer").addEventListener("click",closeStatusViewer);
 // Tap the left side to go back and the right side to advance.
 // Holding anywhere on the story pauses its timer, progress and media playback.
 const statusViewerStage=$("statusViewerStage");
+let statusViewerPressStartedAt=0;
 statusViewerStage.addEventListener("pointerdown",event=>{
     if(event.button!==undefined&&event.button!==0)return;
+    statusViewerPressStartedAt=Date.now();
     statusViewerSuppressClick=false;
     pauseStatusViewer();
 });
 statusViewerStage.addEventListener("pointerup",()=>{
-    if(statusViewerPaused){
+    const heldFor=Date.now()-statusViewerPressStartedAt;
+    if(statusViewerPaused)resumeStatusViewer();
+    if(heldFor>180){
         statusViewerSuppressClick=true;
-        resumeStatusViewer();
         setTimeout(()=>{statusViewerSuppressClick=false;},250);
     }
+    statusViewerPressStartedAt=0;
 });
 statusViewerStage.addEventListener("pointercancel",()=>{
+    statusViewerPressStartedAt=0;
     if(statusViewerPaused)resumeStatusViewer();
 });
 statusViewerStage.addEventListener("pointerleave",()=>{
+    statusViewerPressStartedAt=0;
     if(statusViewerPaused)resumeStatusViewer();
 });
 statusViewerStage.addEventListener("click",event=>{
