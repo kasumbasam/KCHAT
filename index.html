@@ -4928,33 +4928,33 @@ function moveStatusViewer(direction) {
     renderStatusViewer();
 }
 $("closeStatusViewer").addEventListener("click",closeStatusViewer);
-// Tap the left side to go back and the right side to advance.
-// Holding anywhere on the story pauses its timer, progress and media playback.
+// Hold anywhere on the status viewer to pause; release to resume.
+// Capture the pointer on the full viewer so finger movement cannot cancel the hold.
 const statusViewerStage=$("statusViewerStage");
+const statusViewerSurface=$("statusViewer");
 let statusViewerPressStartedAt=0;
-statusViewerStage.addEventListener("pointerdown",event=>{
+statusViewerSurface.addEventListener("pointerdown",event=>{
     if(event.button!==undefined&&event.button!==0)return;
+    if(event.target instanceof Element && event.target.closest("#closeStatusViewer,#viewerLikeButton,#viewedByButton"))return;
     statusViewerPressStartedAt=Date.now();
     statusViewerSuppressClick=false;
+    try{statusViewerSurface.setPointerCapture(event.pointerId);}catch{}
     pauseStatusViewer();
-});
-statusViewerStage.addEventListener("pointerup",()=>{
+},true);
+statusViewerSurface.addEventListener("pointerup",event=>{
+    if(!statusViewerPressStartedAt)return;
     const heldFor=Date.now()-statusViewerPressStartedAt;
+    statusViewerPressStartedAt=0;
     if(statusViewerPaused)resumeStatusViewer();
     if(heldFor>180){
         statusViewerSuppressClick=true;
-        setTimeout(()=>{statusViewerSuppressClick=false;},250);
+        setTimeout(()=>{statusViewerSuppressClick=false;},300);
     }
-    statusViewerPressStartedAt=0;
-});
-statusViewerStage.addEventListener("pointercancel",()=>{
-    statusViewerPressStartedAt=0;
-    if(statusViewerPaused)resumeStatusViewer();
-});
-statusViewerStage.addEventListener("pointerleave",()=>{
+},true);
+statusViewerSurface.addEventListener("pointercancel",()=>{
     statusViewerPressStartedAt=0;
     if(statusViewerPaused)resumeStatusViewer();
-});
+},true);
 statusViewerStage.addEventListener("click",event=>{
     if(statusViewerSuppressClick)return;
     const rect=statusViewerStage.getBoundingClientRect();
