@@ -7473,7 +7473,6 @@ let chatVoicePermissionPending=false;
 let chatVoiceTapMode=false;
 let chatVoiceHoldTimer=null;
 let chatVoiceHoldTriggered=false;
-let chatVoicePointerCancelled=false;
 const chatVoiceMaxMs=120000;
 function chatVoiceFormatTime(ms){
     const seconds=Math.floor(ms/1000);
@@ -7499,7 +7498,6 @@ function resetChatVoiceMessage(){
     if(chatVoiceHoldTimer){clearTimeout(chatVoiceHoldTimer);chatVoiceHoldTimer=null;}
     chatVoiceTapMode=false;
     chatVoiceHoldTriggered=false;
-    chatVoicePointerCancelled=false;
     chatVoiceGestureActive=false;
     chatVoicePointerId=null;
     chatVoiceLocked=false;
@@ -7573,7 +7571,7 @@ async function beginChatVoiceRecording(){
     chatVoicePermissionPending=true;
     try{
         const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-        if(requestId!==chatVoiceRequestId||(!chatVoiceGestureActive&&!chatVoiceTapMode&&!chatVoiceAutoSend&&!chatVoiceLocked)){
+        if(requestId!==chatVoiceRequestId||(!chatVoiceGestureActive&&!chatVoiceTapMode&&!chatVoiceAutoSend)){
             stream.getTracks().forEach(track=>track.stop());return false;
         }
         chatVoicePermissionPending=false;
@@ -7627,8 +7625,7 @@ async function beginChatVoiceRecording(){
         chatVoiceStartedAt=Date.now();
         $("chatVoiceRecordIndicator").classList.add("recording");
         chatVoiceTimer=setInterval(updateChatVoiceTimer,200);
-        if(chatVoiceLocked)showLockedChatVoicePanel();
-        else if(chatVoiceTapMode)showTapChatVoicePanel();
+        if(chatVoiceTapMode)showTapChatVoicePanel();
         if(chatVoiceAutoSend&&!chatVoiceLocked)stopChatVoiceRecording(true);
         return true;
     }catch(error){
@@ -7650,10 +7647,9 @@ function cancelChatVoiceRecording(){
     resetChatVoiceMessage();
 }
 function lockChatVoiceRecording(){
-    if(!chatVoiceGestureActive||chatVoiceLocked)return;
+    if(!chatVoiceGestureActive||chatVoiceLocked||!chatVoiceRecorder)return;
     chatVoiceLocked=true;
-    chatVoiceTapMode=false;
-    if(chatVoiceRecorder&&(chatVoiceRecorder.state==="recording"||chatVoiceRecorder.state==="paused"))showLockedChatVoicePanel();
+    showLockedChatVoicePanel();
 }
 function handleChatVoicePointerDown(event){
     if(event.button!==undefined&&event.button!==0)return;
@@ -7689,7 +7685,7 @@ function handleChatVoicePointerDown(event){
         modal.classList.remove("hidden");
         $("chatVoiceMessageState").textContent="Recording…";
         $("chatVoiceMessageHint").textContent="Swipe up to lock 🔒 • Slide left to cancel";
-    },600);
+    },350);
 }
 function handleChatVoicePointerMove(event){
     if(!chatVoiceGestureActive||event.pointerId!==chatVoicePointerId||chatVoiceLocked)return;
@@ -7701,21 +7697,7 @@ function handleChatVoicePointerMove(event){
         $("voiceMessageButton").classList.remove("voice-recording-active");
         return;
     }
-    if(dy<=-75){
-        chatVoiceHoldTriggered=true;
-        if(chatVoiceHoldTimer){clearTimeout(chatVoiceHoldTimer);chatVoiceHoldTimer=null;}
-        lockChatVoiceRecording();
-        return;
-    }
-}
-function handleChatVoicePointerCancel(event){
-    if(!chatVoiceGestureActive||event.pointerId!==chatVoicePointerId)return;
-    chatVoiceGestureActive=false;
-    if(chatVoiceHoldTimer){clearTimeout(chatVoiceHoldTimer);chatVoiceHoldTimer=null;}
-    $("voiceMessageButton").classList.remove("voice-recording-active");
-    // A cancelled pointer is never treated as a release-to-send gesture.
-    if(chatVoiceLocked)return;
-    cancelChatVoiceRecording();
+    if(dy<=-75&&chatVoiceHoldTriggered){lockChatVoiceRecording();return;}
 }
 function handleChatVoicePointerUp(event){
     if(!chatVoiceGestureActive||event.pointerId!==chatVoicePointerId)return;
@@ -7781,7 +7763,7 @@ async function sendChatVoiceMessageNow(){
 $("voiceMessageButton").addEventListener("pointerdown",handleChatVoicePointerDown);
 $("voiceMessageButton").addEventListener("pointermove",handleChatVoicePointerMove);
 $("voiceMessageButton").addEventListener("pointerup",handleChatVoicePointerUp);
-$("voiceMessageButton").addEventListener("pointercancel",handleChatVoicePointerCancel);
+$("voiceMessageButton").addEventListener("pointercancel",handleChatVoicePointerUp);
 $("chatVoiceRecordButton").addEventListener("click",()=>{
     if(!chatVoiceRecorder)return;
     if(chatVoiceRecorder.state==="recording"){
