@@ -617,6 +617,8 @@ hr {
     line-height:1.4;
 }
 .kchat-audio-message{display:flex;align-items:center;gap:8px;min-width:min(250px,65vw);max-width:100%;padding:3px 0}
+.voice-message-row{align-items:flex-end;gap:7px}.voice-message-row.mine{flex-direction:row-reverse}.voice-message-avatar{width:34px;height:34px;flex:0 0 34px;border-radius:50%;overflow:hidden;background:#183743;border:1px solid var(--accent);display:grid;place-items:center;color:var(--accent);font:700 14px Arial,sans-serif}.voice-message-avatar img{width:100%;height:100%;object-fit:cover}.voice-message-row .message-bubble{max-width:min(78%,460px);padding:9px 11px}.voice-message-row.mine .message-bubble{background:#075477;border:1px solid #079bd4}.voice-message-row:not(.mine) .message-bubble{background:#20252c;border:1px solid #343b44}.kchat-audio-message{display:flex;align-items:center;gap:10px;min-width:min(245px,62vw);max-width:100%;padding:2px 0}.kchat-voice-audio{display:none}.kchat-voice-play{width:42px;height:42px;flex:0 0 42px;border:0;border-radius:50%;background:#003f66;color:#fff;display:grid;place-items:center}.voice-message-row:not(.mine) .kchat-voice-play{background:#101820}.kchat-voice-play svg{width:23px;height:23px;fill:currentColor}.kchat-voice-track{flex:1;min-width:0}.kchat-voice-wave{height:34px;display:flex;align-items:center;justify-content:space-between;gap:2px;overflow:hidden}.kchat-voice-wave i{display:block;flex:1;max-width:4px;min-width:2px;border-radius:4px;background:#b9d7e5;opacity:.78}.voice-message-row.mine .kchat-voice-wave i{background:#bcecff}.kchat-voice-wave i.played{background:#00b7ff;opacity:1}.kchat-voice-details{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#d4dce2;font:12px Arial,sans-serif}.kchat-voice-duration,.kchat-voice-time{font:12px Arial,sans-serif;color:#d4dce2}.message-row.voice-message-row .message-meta{font-size:11px}
+
 .kchat-audio-message audio{width:100%;max-width:280px;height:40px}
 .chat-voice-message-card{width:min(430px,calc(100vw - 28px));background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 18px 55px #0008}
 #chatVoiceMessageModal.voice-holding{align-items:flex-end;justify-content:center;padding:0 12px max(10px,env(safe-area-inset-bottom));background:transparent;pointer-events:none}
@@ -6156,6 +6158,34 @@ function decodeReplyText(value) {
     } catch { return null; }
 }
 
+const voiceMessageAvatarCache = new Map();
+async function loadVoiceMessageAvatars(area) {
+    const avatarNodes = Array.from(area.querySelectorAll("[data-voice-avatar]"));
+    const names = [...new Set(avatarNodes.map(node => node.dataset.voiceAvatar).filter(Boolean))];
+    await Promise.all(names.map(async username => {
+        const key = username.toLowerCase();
+        try {
+            if (!voiceMessageAvatarCache.has(key)) {
+                const pending = key === String(currentUser || "").toLowerCase()
+                    ? Promise.resolve({ profile_picture: currentProfile?.profile_picture || "" })
+                    : apiRequest("/api/profile/" + encodeURIComponent(username));
+                voiceMessageAvatarCache.set(key, pending);
+            }
+            const profile = await voiceMessageAvatarCache.get(key);
+            if (profile?.profile_picture) {
+                avatarNodes.filter(node => node.dataset.voiceAvatar.toLowerCase() === key).forEach(node => {
+                    const image = document.createElement("img");
+                    image.src = profile.profile_picture;
+                    image.alt = username + " profile";
+                    node.replaceChildren(image);
+                });
+            }
+        } catch (error) {
+            console.warn("Could not load voice-message profile picture for " + username, error);
+        }
+    }));
+}
+
 function renderMessages() {
     const area = $("messagesArea");
     closeMessageActionMenu();
@@ -6179,7 +6209,7 @@ function renderMessages() {
         const messageContent = isImage
             ? `<img class="message-image" src="${escapeHTML(message.text)}" alt="Photo sent in KCHAT" loading="lazy">`
             : isAudio
-                ? `<div class="kchat-audio-message"><span aria-hidden="true">🎤</span><audio controls preload="metadata" src="${escapeHTML(message.text)}" aria-label="Voice message from ${escapeHTML(sender)}"></audio></div>`
+                ? `<div class="kchat-audio-message"><audio class="kchat-voice-audio" preload="metadata" src="${escapeHTML(message.text)}" aria-label="Voice message from ${escapeHTML(sender)}"></audio><button class="kchat-voice-play" type="button" aria-label="Play voice message"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button><div class="kchat-voice-track"><div class="kchat-voice-wave">${[12,20,28,16,34,23,14,30,38,19,27,15,33,22,12,29,37,18,25,14,31,21,13,27].map(h=>`<i style="height:${h}px"></i>`).join("")}</div><div class="kchat-voice-details"><span class="kchat-voice-duration">0:00</span><span class="kchat-voice-time">${time}</span></div></div></div>`
                 : decodedReply
                     ? `<div class="message-reply-quote"><strong>${escapeHTML(decodedReply.reply.sender || "Contact")}</strong><span>${escapeHTML(decodedReply.reply.text || "Message")}</span></div><div class="message-text">${escapeHTML(decodedReply.text)}</div>`
                     : `<div class="message-text">${escapeHTML(message.text || "")}</div>`;
@@ -6200,7 +6230,8 @@ function renderMessages() {
             : `<div class="message-meta"><span>${time}</span>${receiptMarkup}${message.edited ? '<span class="message-edited-label">edited</span>' : ''}${message.pinned_by_me ? '<span class="message-pinned-label">pinned</span>' : ''}</div>`;
 
         return `
-            <div class="message-row ${mine ? "mine" : ""}">
+            <div class="message-row ${mine ? "mine" : ""} ${isAudio ? "voice-message-row" : ""}">
+                ${isAudio ? `<div class="voice-message-avatar" data-voice-avatar="${escapeHTML(sender)}" aria-label="${escapeHTML(sender)} profile picture">${escapeHTML(sender.charAt(0).toUpperCase())}</div>` : ""}
                 <div class="message-bubble" data-message-id="${escapeHTML(message.id || "")}" tabindex="0" aria-label="Hold or right-click for message options">
                     ${messageContent}
                     ${revokedLabel}
@@ -6209,6 +6240,47 @@ function renderMessages() {
         `;
     }).join("");
 
+    loadVoiceMessageAvatars(area);
+    area.querySelectorAll(".kchat-audio-message").forEach(player => {
+        const audio = player.querySelector(".kchat-voice-audio");
+        const button = player.querySelector(".kchat-voice-play");
+        const duration = player.querySelector(".kchat-voice-duration");
+        const bars = Array.from(player.querySelectorAll(".kchat-voice-wave i"));
+        const formatTime = value => {
+            if (!Number.isFinite(value)) return "0:00";
+            const seconds = Math.max(0, Math.floor(value));
+            return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
+        };
+        const update = () => {
+            const ratio = audio.duration ? audio.currentTime / audio.duration : 0;
+            bars.forEach((bar, index) => bar.classList.toggle("played", index < Math.round(ratio * bars.length)));
+            duration.textContent = audio.duration ? formatTime(audio.currentTime || audio.duration) : "0:00";
+        };
+        audio.addEventListener("loadedmetadata", () => { duration.textContent = formatTime(audio.duration); }, { once: true });
+        audio.addEventListener("timeupdate", update);
+        audio.addEventListener("ended", () => {
+            button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+            update();
+        });
+        button.addEventListener("click", async () => {
+            if (audio.paused) {
+                document.querySelectorAll(".kchat-voice-audio").forEach(other => {
+                    if (other !== audio) {
+                        other.pause();
+                        const otherButton = other.parentElement.querySelector(".kchat-voice-play");
+                        if (otherButton) otherButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+                    }
+                });
+                try {
+                    await audio.play();
+                    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM14 5h4v14h-4z"/></svg>';
+                } catch (error) { console.warn("Voice message playback failed:", error); }
+            } else {
+                audio.pause();
+                button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+            }
+        });
+    });
     area.querySelectorAll("[data-message-id]").forEach(bubble => {
         const id = bubble.dataset.messageId;
         let swipeStart = null;
