@@ -27,6 +27,30 @@ app = FastAPI()
 DATABASE_URL = os.environ.get("DATABASE_URL")
 connected_users = {}
 
+# Passwords are verified with PBKDF2 at 310,000 iterations, so an unbounded
+# input would turn every login attempt into a CPU-cost multiplier. The cap is
+# far above any real password and is measured in Unicode characters, not
+# bytes, so non-Latin passphrases are never rejected for their encoding.
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_MAX_LENGTH = 1024
+
+
+def password_length_error(password, label="Password"):
+    """Return an error message when a password is outside the allowed length.
+
+    Returns None when the password is acceptable. Character count is used
+    (not byte length) so multibyte and emoji passwords behave as users expect.
+    """
+    length = len(password)
+
+    if length < PASSWORD_MIN_LENGTH:
+        return f"{label} must contain at least {PASSWORD_MIN_LENGTH} characters."
+
+    if length > PASSWORD_MAX_LENGTH:
+        return f"{label} must be at most {PASSWORD_MAX_LENGTH} characters."
+
+    return None
+
 
 # ---------------- SECURITY EVENT LOGGING ----------------
 #
@@ -1590,10 +1614,10 @@ async def register(request: Request):
                 "error": "Username must be between 3 and 30 characters."
             }, status_code=400)
 
-        if len(password) < 8:
-            return JSONResponse({
-                "error": "Password must contain at least 8 characters."
-            }, status_code=400)
+        length_error = password_length_error(password, "Password")
+
+        if length_error:
+            return JSONResponse({"error": length_error}, status_code=400)
 
         if not validate_picture(picture):
             return JSONResponse({
@@ -1684,6 +1708,13 @@ async def login(request: Request):
         if not login_value or not password:
             return JSONResponse({
                 "error": "Enter your phone number and password."
+            }, status_code=400)
+
+        # Rejected before the lookup and before PBKDF2, so an oversized
+        # password cannot be used to burn CPU on every attempt.
+        if len(password) > PASSWORD_MAX_LENGTH:
+            return JSONResponse({
+                "error": f"Password must be at most {PASSWORD_MAX_LENGTH} characters."
             }, status_code=400)
 
         normalized_key = phone_key(login_value)
@@ -1791,10 +1822,10 @@ async def reset_password(request: Request):
                 "error": "Enter your registered phone number, recovery code and new password."
             }, status_code=400)
 
-        if len(new_password) < 8:
-            return JSONResponse({
-                "error": "Your new password must contain at least 8 characters."
-            }, status_code=400)
+        length_error = password_length_error(new_password, "Your new password")
+
+        if length_error:
+            return JSONResponse({"error": length_error}, status_code=400)
 
         supplied_hash = hashlib.sha256(recovery_code.encode("utf-8")).hexdigest()
 
@@ -2039,6 +2070,14 @@ async def delete_account(request: Request):
         if not password:
             return JSONResponse({
                 "error": "Enter your current password to delete your account."
+            }, status_code=400)
+
+        # Rejected before the credentials lookup and before PBKDF2. The
+        # minimum length is deliberately not enforced here: this is a
+        # verification of an existing password, not a new one.
+        if len(password) > PASSWORD_MAX_LENGTH:
+            return JSONResponse({
+                "error": f"Password must be at most {PASSWORD_MAX_LENGTH} characters."
             }, status_code=400)
 
         # Ensure every account-owned settings table exists before cleanup.
@@ -2591,7 +2630,12 @@ async def get_inbox(request: Request, include_hidden: bool = False):
                 "about": (
                     "" if restricted else peer_profile.get("about", "")
                 ),
-                "phone_number": peer_profile.get("phone_number"),
+                # A blocked peer's number must never reach the inbox, in either
+                # blocking direction. `restricted` is symmetric via
+                # users_blocked(), matching how picture and about are hidden.
+                "phone_number": (
+                    None if restricted else peer_profile.get("phone_number")
+                ),
                 "is_saved_contact": key in saved_contact_names,
                 "last_message": (
                     "📷 Photo"
