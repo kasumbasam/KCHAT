@@ -1,0 +1,20 @@
+# Python build and cache artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+
+# Local test evidence (JSON reports and screenshots stay out of the repo)
+test-results/
+
+# FreeCode workspace artifacts
+.freecode/
+.freecode-source-ready
+
+# Local archives
+*.zip

@@ -6,8 +6,11 @@ import base64
 import re
 import json
 import asyncio
+import logging
+import sys
 import urllib.request
 import urllib.error
+from datetime import datetime, timezone
 
 from openai import AsyncOpenAI
 
@@ -15,12 +18,155 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import (
+    FileResponse, JSONResponse, Response, StreamingResponse
+)
 from starlette.websockets import WebSocketState
 
 app = FastAPI()
 DATABASE_URL = os.environ.get("DATABASE_URL")
 connected_users = {}
+
+
+# ---------------- SECURITY EVENT LOGGING ----------------
+#
+# Structured, single-line JSON so the platform log can be filtered by event
+# name. Secrets are never passed in: callers supply identifiers only, and the
+# redaction helper strips anything that looks like a credential if a caller
+# ever passes a raw payload by mistake.
+
+security_logger = logging.getLogger("kchat.security")
+
+if not security_logger.handlers:
+    _security_handler = logging.StreamHandler(sys.stdout)
+    _security_handler.setFormatter(logging.Formatter("%(message)s"))
+    security_logger.addHandler(_security_handler)
+    security_logger.setLevel(logging.INFO)
+    # The app's own root logger must not double-print these lines.
+    security_logger.propagate = False
+
+# Values that must never reach a log line, whatever the caller passes.
+_SENSITIVE_KEY_PATTERN = re.compile(
+    r"(pass(word)?|token|secret|recovery|hash|authorization|cookie|api[_-]?key)",
+    re.IGNORECASE
+)
+
+_PHONE_PATTERN = re.compile(r"\+?\d{7,15}")
+
+
+def mask_phone(value):
+    """Keep a country/carrier prefix and the last two digits only."""
+    if not value:
+        return None
+
+    text = str(value).strip()
+
+    digits = re.sub(r"\D", "", text)
+
+    if len(digits) < 4:
+        return "***"
+
+    return "***" + digits[-2:]
+
+
+def mask_identifier(value):
+    """Shorten a username/identifier so logs are useful but not a directory."""
+    if not value:
+        return None
+
+    text = str(value).strip()
+
+    if len(text) <= 2:
+        return text[:1] + "*"
+
+    return text[:2] + "*" * min(len(text) - 2, 6)
+
+
+def redact(value, depth=0):
+    """Defensive scrubber for structured log fields.
+
+    Callers normally pass only safe identifiers. This exists so that a future
+    caller cannot accidentally log a password or token by passing a dict.
+    """
+    if depth > 4:
+        return "<truncated>"
+
+    if isinstance(value, dict):
+        cleaned = {}
+
+        for key, item in list(value.items())[:40]:
+            if _SENSITIVE_KEY_PATTERN.search(str(key)):
+                cleaned[str(key)] = "<redacted>"
+            else:
+                cleaned[str(key)] = redact(item, depth + 1)
+
+        return cleaned
+
+    if isinstance(value, (list, tuple)):
+        return [redact(item, depth + 1) for item in value[:40]]
+
+    if isinstance(value, str):
+        if _PHONE_PATTERN.fullmatch(value.strip()):
+            return mask_phone(value)
+
+        return value[:200]
+
+    return value
+
+
+def log_security_event(event, level="info", account=None, request=None, **fields):
+    """Write one structured security event.
+
+    Never pass a password, token, recovery code or raw request body to this
+    helper. Only identifiers and outcomes belong here.
+    """
+    payload = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+        "channel": "security",
+        "event": str(event)[:80]
+    }
+
+    if account is not None:
+        try:
+            payload["account"] = mask_identifier(account.get("username"))
+            payload["account_id"] = account.get("id")
+        except AttributeError:
+            payload["account"] = mask_identifier(account)
+
+    if request is not None:
+        try:
+            client = request.client.host if request.client else None
+        except Exception:
+            client = None
+
+        if client:
+            # IPv6-safe truncation; never a full address in a shared log.
+            payload["client"] = client[:45]
+
+        user_agent = None
+
+        try:
+            user_agent = request.headers.get("user-agent")
+        except Exception:
+            user_agent = None
+
+        if user_agent:
+            payload["ua"] = str(user_agent)[:120]
+
+    for key, value in list(fields.items())[:25]:
+        if _SENSITIVE_KEY_PATTERN.search(key):
+            payload[key] = "<redacted>"
+        else:
+            payload[key] = redact(value)
+
+    try:
+        line = json.dumps(payload, ensure_ascii=False, default=str)
+    except Exception:
+        line = json.dumps({"channel": "security", "event": "log_encode_error"})
+
+    getattr(security_logger, level.lower(), security_logger.info)(line)
+
+    return payload
 
 
 # ---------------- DATABASE ----------------
@@ -308,6 +454,180 @@ def init_db():
             ON ai_memories(owner_id, created_at DESC)
         """)
 
+        # ---------------- PHASE 0: FOUNDATIONS (ADDITIVE ONLY) ----------------
+
+        # Account-level preferences. Device-local values (theme, font, DND,
+        # story duration) previously lived only in localStorage; this table
+        # lets the same account carry them across devices. Nothing reads this
+        # table for enforcement yet - Phase 0 only stores and returns it.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                owner_id BIGINT PRIMARY KEY
+                    REFERENCES accounts(id) ON DELETE CASCADE,
+                theme TEXT NOT NULL DEFAULT '',
+                font TEXT NOT NULL DEFAULT '',
+                dnd_mode BOOLEAN NOT NULL DEFAULT FALSE,
+                story_expiry_hours INTEGER NOT NULL DEFAULT 24,
+                language TEXT NOT NULL DEFAULT '',
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+
+        # Session metadata for a future device list. All three columns are
+        # nullable with no default rewrite, so existing rows and existing
+        # sessions keep working untouched.
+        conn.execute("""
+            ALTER TABLE sessions
+            ADD COLUMN IF NOT EXISTS label TEXT
+        """)
+
+        conn.execute("""
+            ALTER TABLE sessions
+            ADD COLUMN IF NOT EXISTS user_agent TEXT
+        """)
+
+        conn.execute("""
+            ALTER TABLE sessions
+            ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ
+        """)
+
+
+# ---------------- SECURITY HEADERS (PHASE 0) ----------------
+#
+# The Content-Security-Policy is deliberately REPORT-ONLY: nothing is blocked
+# yet, browsers simply report what an enforced policy would have blocked. That
+# report tells us which existing inline script/style use has to be removed
+# before Phase 4 can enforce it.
+
+# Inline scripts, inline styles, inline event handlers and the Google Fonts
+# stylesheet are all part of the page today, so the report-only policy has to
+# allow them - otherwise every report would be noise we already know about.
+# The value of the reports is everything ELSE that fires.
+CSP_REPORT_ONLY_DIRECTIVES = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob:",
+    "media-src 'self' data: blob:",
+    "connect-src 'self' https: wss:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "report-uri /api/csp-report"
+]
+
+CSP_REPORT_ONLY_HEADER = "; ".join(CSP_REPORT_ONLY_DIRECTIVES)
+
+
+# Browser CSP reports can be large; keep only what is useful and never store
+# the full URL (it can contain a session query string on the WebSocket).
+CSP_REPORT_MAX_BYTES = 32 * 1024
+
+
+def _csp_report_summary(payload):
+    """Reduce a CSP report body to the few fields needed to fix the policy."""
+    entry = {}
+
+    if isinstance(payload, list) and payload:
+        payload = payload[0]
+
+    if isinstance(payload, dict):
+        entry = payload.get("body") or payload.get("csp-report") or payload
+
+    if not isinstance(entry, dict):
+        return {}
+
+    def text(key, limit=200):
+        value = entry.get(key)
+
+        return str(value)[:limit] if value is not None else ""
+
+    return {
+        "directive": text("effective-directive") or text("violated-directive"),
+        "blocked": text("blocked-uri"),
+        "document_uri": text("document-uri", 120),
+        "source_file": text("source-file", 120),
+        "line": entry.get("line-number"),
+        "disposition": text("disposition")
+    }
+
+
+@app.post("/api/csp-report")
+async def csp_report(request: Request):
+    """Collect report-only CSP violations.
+
+    Browsers POST these without credentials and without our authorization
+    header, so this endpoint cannot require a session. It is bounded in size,
+    never returns an error to the browser, and strips anything sensitive.
+    """
+    try:
+        raw = await request.body()
+    except Exception:
+        return Response(status_code=204)
+
+    if not raw:
+        return Response(status_code=204)
+
+    if len(raw) > CSP_REPORT_MAX_BYTES:
+        log_security_event(
+            "csp.report_too_large",
+            level="warning",
+            bytes=len(raw)
+        )
+        return Response(status_code=204)
+
+    summary = {}
+
+    try:
+        summary = _csp_report_summary(json.loads(raw.decode("utf-8", "replace")))
+    except Exception:
+        summary = {}
+
+    if summary:
+        log_security_event("csp.violation", level="info", **summary)
+
+    return Response(status_code=204)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "geolocation=(), microphone=(self), camera=(self), payment=()"
+    )
+    response.headers.setdefault(
+        "Cross-Origin-Opener-Policy", "same-origin"
+    )
+
+    # Report-only during Phase 0. Phase 4 switches this to an enforcing
+    # Content-Security-Policy header once the reports are clean.
+    response.headers.setdefault(
+        "Content-Security-Policy-Report-Only", CSP_REPORT_ONLY_HEADER
+    )
+
+    # Only promise HSTS on a secure transport, so local http testing is not
+    # pinned to https by the browser.
+    forwarded_proto = request.headers.get("x-forwarded-proto", "")
+    is_https = (
+        request.url.scheme == "https"
+        or forwarded_proto.split(",")[0].strip().lower() == "https"
+    )
+
+    if is_https:
+        response.headers.setdefault(
+            "Strict-Transport-Security",
+            "max-age=31536000; includeSubDomains"
+        )
+
+    return response
+
 
 @app.on_event("startup")
 async def startup():
@@ -403,14 +723,88 @@ def token_hash(token):
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def create_session(account_id):
+def session_label_from_user_agent(user_agent):
+    """A short human label for a future device list. Never used for auth."""
+    text = str(user_agent or "").strip()
+
+    if not text:
+        return None
+
+    browser = None
+
+    for name, marker in (
+        ("Edge", "Edg/"),
+        ("Opera", "OPR/"),
+        ("Chrome", "Chrome/"),
+        ("Firefox", "Firefox/"),
+        ("Safari", "Safari/"),
+        ("KCHAT browser", "Mozilla/")
+    ):
+        if marker in text:
+            browser = name
+            break
+
+    platform = None
+
+    for name, marker in (
+        ("Android", "Android"),
+        ("iPhone", "iPhone"),
+        ("iPad", "iPad"),
+        ("Windows", "Windows"),
+        ("macOS", "Macintosh"),
+        ("Linux", "Linux")
+    ):
+        if marker in text:
+            platform = name
+            break
+
+    parts = [part for part in (browser, platform) if part]
+
+    return " · ".join(parts)[:120] if parts else "Unknown device"
+
+
+def create_session(account_id, request=None):
+    """Create a session.
+
+    Phase 0 adds optional device metadata (label, user_agent, last_seen_at).
+    Token creation, hashing, lifetime and return value are unchanged, so
+    existing sessions and existing clients keep working.
+    """
     token = secrets.token_urlsafe(32)
 
+    user_agent = None
+    label = None
+
+    if request is not None:
+        try:
+            user_agent = str(request.headers.get("user-agent") or "")[:400] or None
+        except Exception:
+            user_agent = None
+
+        label = session_label_from_user_agent(user_agent)
+
     with get_db() as conn:
-        conn.execute("""
-            INSERT INTO sessions (account_id, token_hash, expires_at)
-            VALUES (%s, %s, NOW() + INTERVAL '365 days')
-        """, (account_id, token_hash(token)))
+        try:
+            # A savepoint is required here: a failed statement aborts the whole
+            # transaction, so without one the fallback below could never run.
+            with conn.transaction():
+                conn.execute("""
+                    INSERT INTO sessions (
+                        account_id, token_hash, expires_at,
+                        label, user_agent, last_seen_at
+                    )
+                    VALUES (%s, %s, NOW() + INTERVAL '365 days', %s, %s, NOW())
+                """, (account_id, token_hash(token), label, user_agent))
+        except Exception as error:
+            # Never let optional device metadata break sign-in. If the
+            # metadata columns are missing for any reason, record the session
+            # exactly as before Phase 0.
+            print("Session metadata insert failed, using base insert:", error)
+
+            conn.execute("""
+                INSERT INTO sessions (account_id, token_hash, expires_at)
+                VALUES (%s, %s, NOW() + INTERVAL '365 days')
+            """, (account_id, token_hash(token)))
 
     return token
 
@@ -464,9 +858,16 @@ def auth_response(payload, token):
 async def logout_session(request: Request):
     authorization = request.headers.get("Authorization", "")
     token = authorization.replace("Bearer ", "", 1) or request.cookies.get("kchat_session", "")
+    account = get_account_from_token(token) if token else None
     if token:
         with get_db() as conn:
             conn.execute("DELETE FROM sessions WHERE token_hash = %s", (token_hash(token),))
+    log_security_event(
+        "auth.logout",
+        account=account,
+        request=request,
+        revoked=bool(token)
+    )
     response = JSONResponse({"success": True})
     response.delete_cookie("kchat_session", path="/", secure=True, httponly=True, samesite="lax")
     return response
@@ -484,6 +885,233 @@ async def get_current_session(request: Request):
         "phone_number": account["phone_number"]
     }
 
+
+
+# ---------------- ACCOUNT PREFERENCES (PHASE 0) ----------------
+#
+# Storage only in this phase. The client does not read these yet, and no
+# enforcement path depends on them, so nothing about the current experience
+# changes. Validation is deliberately strict about shape and length so the
+# table cannot be used to store arbitrary blobs.
+
+PREFERENCE_DEFAULTS = {
+    "theme": "",
+    "font": "",
+    "dnd_mode": False,
+    "story_expiry_hours": 24,
+    "language": ""
+}
+
+ALLOWED_STORY_EXPIRY_HOURS = (12, 24, 48)
+
+# Short, display-only tokens. Empty string means "not set on the server yet",
+# which lets the client keep using its device-local value for now.
+PREFERENCE_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9._-]{0,40}$")
+
+# A short BCP-47 tag: language, optional script, optional region. Bounded in
+# both shape and total length so a client cannot store an arbitrary string.
+LANGUAGE_PATTERN = re.compile(
+    r"^[A-Za-z]{2,3}(-[A-Za-z]{4})?(-([A-Za-z]{2}|[0-9]{3}))?$"
+)
+LANGUAGE_MAX_LENGTH = 16
+
+
+def ensure_preferences_table():
+    """Create user_preferences for databases initialised before Phase 0."""
+    with get_db() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                owner_id BIGINT PRIMARY KEY
+                    REFERENCES accounts(id) ON DELETE CASCADE,
+                theme TEXT NOT NULL DEFAULT '',
+                font TEXT NOT NULL DEFAULT '',
+                dnd_mode BOOLEAN NOT NULL DEFAULT FALSE,
+                story_expiry_hours INTEGER NOT NULL DEFAULT 24,
+                language TEXT NOT NULL DEFAULT '',
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+
+
+def get_user_preferences(owner_id):
+    ensure_preferences_table()
+
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT theme, font, dnd_mode, story_expiry_hours, language, updated_at
+            FROM user_preferences
+            WHERE owner_id = %s
+        """, (owner_id,)).fetchone()
+
+    settings = dict(PREFERENCE_DEFAULTS)
+    settings["updated_at"] = None
+
+    if row:
+        settings["theme"] = row["theme"] or ""
+        settings["font"] = row["font"] or ""
+        settings["dnd_mode"] = bool(row["dnd_mode"])
+        settings["story_expiry_hours"] = int(row["story_expiry_hours"] or 24)
+        settings["language"] = row["language"] or ""
+        settings["updated_at"] = (
+            row["updated_at"].isoformat() if row["updated_at"] else None
+        )
+
+    return settings
+
+
+@app.get("/api/preferences")
+async def get_preferences(request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    try:
+        return {
+            "success": True,
+            "preferences": get_user_preferences(account["id"])
+        }
+
+    except Exception as error:
+        print("Load preferences error:", error)
+
+        return JSONResponse(
+            {"error": "Could not load your preferences."},
+            status_code=500
+        )
+
+
+@app.put("/api/preferences")
+async def update_preferences(request: Request):
+    account = get_account_from_request(request)
+
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid preferences."}, status_code=400)
+
+    if not isinstance(data, dict):
+        return JSONResponse({"error": "Invalid preferences."}, status_code=400)
+
+    # Start from what is already stored so a partial update never resets
+    # fields the client did not send.
+    settings = get_user_preferences(account["id"])
+
+    if "theme" in data:
+        theme = data["theme"]
+
+        if not isinstance(theme, str) or not PREFERENCE_TOKEN_PATTERN.fullmatch(theme):
+            return JSONResponse(
+                {"error": "Choose a valid theme."}, status_code=400
+            )
+
+        settings["theme"] = theme
+
+    if "font" in data:
+        font = data["font"]
+
+        if not isinstance(font, str) or not PREFERENCE_TOKEN_PATTERN.fullmatch(font):
+            return JSONResponse(
+                {"error": "Choose a valid font."}, status_code=400
+            )
+
+        settings["font"] = font
+
+    if "dnd_mode" in data:
+        if not isinstance(data["dnd_mode"], bool):
+            return JSONResponse(
+                {"error": "dnd_mode must be true or false."}, status_code=400
+            )
+
+        settings["dnd_mode"] = data["dnd_mode"]
+
+    if "story_expiry_hours" in data:
+        value = data["story_expiry_hours"]
+
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or value not in ALLOWED_STORY_EXPIRY_HOURS
+        ):
+            return JSONResponse(
+                {"error": "Choose a story duration of 12, 24, or 48 hours."},
+                status_code=400
+            )
+
+        settings["story_expiry_hours"] = value
+
+    if "language" in data:
+        language = data["language"]
+
+        # Empty string means "not set", which is the default for existing
+        # accounts. Any other value must be a short BCP-47 tag.
+        valid_language = (
+            isinstance(language, str)
+            and len(language) <= LANGUAGE_MAX_LENGTH
+            and (
+                language == ""
+                or bool(LANGUAGE_PATTERN.fullmatch(language))
+            )
+        )
+
+        if not valid_language:
+            return JSONResponse(
+                {"error": "Choose a valid language code."}, status_code=400
+            )
+
+        settings["language"] = language
+
+    try:
+        ensure_preferences_table()
+
+        with get_db() as conn:
+            conn.execute("""
+                INSERT INTO user_preferences (
+                    owner_id, theme, font, dnd_mode,
+                    story_expiry_hours, language, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                ON CONFLICT (owner_id) DO UPDATE SET
+                    theme = EXCLUDED.theme,
+                    font = EXCLUDED.font,
+                    dnd_mode = EXCLUDED.dnd_mode,
+                    story_expiry_hours = EXCLUDED.story_expiry_hours,
+                    language = EXCLUDED.language,
+                    updated_at = NOW()
+            """, (
+                account["id"],
+                settings["theme"],
+                settings["font"],
+                settings["dnd_mode"],
+                settings["story_expiry_hours"],
+                settings["language"]
+            ))
+
+    except Exception as error:
+        print("Save preferences error:", error)
+
+        return JSONResponse(
+            {"error": "Could not save your preferences."},
+            status_code=500
+        )
+
+    saved = get_user_preferences(account["id"])
+
+    log_security_event(
+        "preferences.updated",
+        account=account,
+        request=request,
+        fields=sorted(
+            key for key in (
+                "theme", "font", "dnd_mode", "story_expiry_hours", "language"
+            ) if key in data
+        )
+    )
+
+    return {"success": True, "preferences": saved}
 
 
 # ---------------- KCHAT AI (OPENAI) ----------------
@@ -1007,7 +1635,13 @@ async def register(request: Request):
                 picture
             )).fetchone()
 
-        token = create_session(account["id"])
+        token = create_session(account["id"], request)
+
+        log_security_event(
+            "auth.register_success",
+            account=account,
+            request=request
+        )
 
         return auth_response({
             "success": True,
@@ -1017,6 +1651,12 @@ async def register(request: Request):
         }, token)
 
     except psycopg.errors.UniqueViolation:
+        log_security_event(
+            "auth.register_conflict",
+            level="warning",
+            request=request
+        )
+
         return JSONResponse({
             "error": "That phone number or username is already registered."
         }, status_code=409)
@@ -1067,11 +1707,26 @@ async def login(request: Request):
             password,
             account["password_hash"]
         ):
+            log_security_event(
+                "auth.login_failed",
+                level="warning",
+                request=request,
+                identifier=mask_identifier(login_value) if not re.fullmatch(
+                    r"\+?[\d\s()\-]+", login_value
+                ) else mask_phone(login_value)
+            )
+
             return JSONResponse({
                 "error": "Incorrect phone number or password."
             }, status_code=401)
 
-        token = create_session(account["id"])
+        token = create_session(account["id"], request)
+
+        log_security_event(
+            "auth.login_success",
+            account=account,
+            request=request
+        )
 
         return auth_response({
             "success": True,
