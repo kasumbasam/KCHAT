@@ -2396,7 +2396,7 @@ async def revoke_private_message(message_id: str, request: Request):
         if not message or message["type"] != "private":
             return JSONResponse({"error": "Message not found."}, status_code=404)
 
-        if message["username"].lower() != account["username"].lower():
+        if not is_message_sender(message, account):
             return JSONResponse({
                 "error": "You can only delete messages you sent."
             }, status_code=403)
@@ -2412,13 +2412,17 @@ async def revoke_private_message(message_id: str, request: Request):
             WHERE id = %s
         """, (message_id,))
 
-        recipient = conn.execute("""
+        # G3: resolve the real counterparty. The recipient is the other
+        # participant, never the sender, and a missing name resolves to None.
+        counterparty_name = message_counterparty(message, account)
+
+        counterparty = conn.execute("""
             SELECT id FROM accounts WHERE username_key = %s
-        """, (message["recipient"].lower(),)).fetchone()
+        """, (counterparty_name,)).fetchone() if counterparty_name else None
 
     recipient_privacy = (
-        get_privacy_settings(recipient["id"])
-        if recipient else {}
+        get_privacy_settings(counterparty["id"])
+        if counterparty else {}
     )
     retained = recipient_privacy.get("anti_revoke", True)
     event = {
@@ -2428,7 +2432,9 @@ async def revoke_private_message(message_id: str, request: Request):
         "retained": retained
     }
 
-    for websocket in connected_sockets_for(message["recipient"]):
+    # G3: notify the counterparty only. Never fall back to notifying the
+    # sender, and skip delivery entirely when the counterparty is unknown.
+    for websocket in (connected_sockets_for(counterparty_name) if counterparty_name else []):
         try:
             await websocket.send_json(event)
         except Exception as error:
@@ -2455,11 +2461,7 @@ async def hide_message_for_me(message_id: str, request: Request):
         """, (message_id,)).fetchone()
         if not message or message["type"] != "private":
             return JSONResponse({"error": "Message not found."}, status_code=404)
-        participant = account["username"].lower()
-        if participant not in {
-            (message["username"] or "").lower(),
-            (message["recipient"] or "").lower()
-        }:
+        if not is_message_participant(message, account):
             return JSONResponse({"error": "You cannot remove this message."}, status_code=403)
         conn.execute("""
             INSERT INTO message_hidden (owner_id, message_id)
@@ -2490,11 +2492,7 @@ async def pin_message_for_me(message_id: str, request: Request):
         """, (message_id,)).fetchone()
         if not message or message["type"] != "private":
             return JSONResponse({"error": "Message not found."}, status_code=404)
-        participant = account["username"].lower()
-        if participant not in {
-            (message["username"] or "").lower(),
-            (message["recipient"] or "").lower()
-        }:
+        if not is_message_participant(message, account):
             return JSONResponse({"error": "You cannot pin this message."}, status_code=403)
 
         if pinned:
@@ -2533,7 +2531,7 @@ async def edit_private_message(message_id: str, request: Request):
             """, (message_id,)).fetchone()
             if not message or message["type"] != "private":
                 return JSONResponse({"error": "Message not found."}, status_code=404)
-            if message["username"].lower() != account["username"].lower():
+            if not is_message_sender(message, account):
                 return JSONResponse({"error": "You can only edit messages you sent."}, status_code=403)
             if message["revoked_at"]:
                 return JSONResponse({"error": "A deleted message cannot be edited."}, status_code=409)
@@ -2551,7 +2549,10 @@ async def edit_private_message(message_id: str, request: Request):
             "text": new_text,
             "edited": True
         }
-        for websocket in connected_sockets_for(message["recipient"]):
+        # G3: notify the counterparty only, and never crash on a missing name.
+        counterparty_name = message_counterparty(message, account)
+
+        for websocket in (connected_sockets_for(counterparty_name) if counterparty_name else []):
             try:
                 await websocket.send_json(event)
             except Exception as error:
@@ -2874,6 +2875,106 @@ def find_users(room, username):
 
 def private_pair(user1, user2):
     return sorted([user1.lower(), user2.lower()])
+
+
+def message_participants(message):
+    """Return the distinct participant names stored on a private message.
+
+    Names are compared case-insensitively and NULLs are dropped, so a row with
+    a missing sender or recipient can never match an unrelated account.
+    """
+    names = []
+
+    for value in (message.get("username"), message.get("recipient")):
+        if not value:
+            continue
+        lowered = str(value).strip().lower()
+        if lowered and lowered not in names:
+            names.append(lowered)
+
+    return names
+
+
+def message_counterparty(message, account):
+    """Return the other participant's stored name, or None when unknown.
+
+    The sender is always the stored author, so the counterparty of a sent
+    message is its recipient. For a message the account received, the
+    counterparty is the author. Never falls back to the sender's own name.
+    """
+    me = str(account.get("username") or "").strip().lower()
+    author = str(message.get("username") or "").strip().lower()
+    recipient = str(message.get("recipient") or "").strip().lower()
+
+    if not me:
+        return None
+
+    if author == me:
+        other = recipient or None
+    else:
+        other = author or None
+
+    if not other or other == me:
+        return None
+
+    return other
+
+
+def is_message_sender(message, account):
+    """True when this account authored the message (revoke/edit rules)."""
+    me = str(account.get("username") or "").strip().lower()
+    author = str(message.get("username") or "").strip().lower()
+    return bool(me and author and author == me)
+
+
+def is_message_participant(message, account):
+    """True when this account is the sender or recipient (hide/pin rules)."""
+    me = str(account.get("username") or "").strip().lower()
+    return bool(me and me in message_participants(message))
+
+
+def authorize_room(account, room):
+    """Return (canonical_room, None) when this account may join the room,
+    or (None, 4403) when the room is foreign, unknown or a storage key.
+
+    Legitimate socket rooms are only:
+      * the caller's own personal room (their username), and
+      * a group room the caller is a member of.
+    Private conversation names ("private:a:b") are message storage keys and
+    are never a socket room, so they are rejected here.
+    """
+    name = str(room or "").strip()[:40]
+
+    if not name:
+        return None, 4403
+
+    # Personal room: compared case-insensitively and canonicalized to the
+    # stored username so "Alice" and "alice" cannot split into two rooms.
+    if name.lower() == account["username"].lower():
+        return account["username"], None
+
+    # Group room: same membership rule the handler already applied.
+    if name.startswith("group_"):
+        group_id_text = name[6:]
+
+        if not group_id_text.isdigit():
+            return None, 4403
+
+        with get_db() as conn:
+            membership = conn.execute("""
+                SELECT account_id
+                FROM group_members
+                WHERE group_id = %s AND account_id = %s
+            """, (int(group_id_text), account["id"])).fetchone()
+
+        if not membership:
+            return None, 4403
+
+        return name, None
+
+    # Everything else, including "private:" storage keys and the old
+    # "general" fallback, is not a room this account may join.
+    return None, 4403
 
 
 def users_blocked(user1_id, user2_id):
@@ -3280,27 +3381,12 @@ async def chat(websocket: WebSocket, room: str):
         return
 
     username = account["username"]
-    room = room.strip()[:40] or "general"
 
-    if room.startswith("group_"):
-        group_id_text = room[6:]
+    room, rejection = authorize_room(account, room)
 
-        if not group_id_text.isdigit():
-            await websocket.close(code=4403)
-            return
-
-        group_id = int(group_id_text)
-
-        with get_db() as conn:
-            membership = conn.execute("""
-                SELECT account_id
-                FROM group_members
-                WHERE group_id = %s AND account_id = %s
-            """, (group_id, account["id"])).fetchone()
-
-        if not membership:
-            await websocket.close(code=4403)
-            return
+    if rejection is not None:
+        await websocket.close(code=rejection)
+        return
 
     connected_users.setdefault(room, [])
 
@@ -3331,6 +3417,12 @@ async def chat(websocket: WebSocket, room: str):
         })
 
     await send_online_users(room)
+
+    # G2: per-connection budget for live "chat" frames. Normal conversation
+    # never reaches this; a scripted flood is dropped instead of hitting the
+    # database on every frame. Capacity 20 frames, refilled 10 per second.
+    chat_bucket_tokens = 20.0
+    chat_bucket_stamp = asyncio.get_running_loop().time()
 
     try:
         await deliver_pending_messages(room, username, websocket)
@@ -3405,10 +3497,41 @@ async def chat(websocket: WebSocket, room: str):
                         print("Typing notification error:", error)
 
             elif message_type == "chat":
-                message = str(data.get("text", "")).strip()
+                # G2: validate the frame before it reaches the database.
+                raw_text = data.get("text")
+
+                if not isinstance(raw_text, str):
+                    continue
+
+                message = raw_text.strip()
 
                 if not message:
                     continue
+
+                # Same limit as ordinary text messaging; never truncated,
+                # always rejected so nothing is silently altered.
+                if len(message) > 10000:
+                    await websocket.send_json({
+                        "type": "system",
+                        "text": "Messages cannot exceed 10,000 characters."
+                    })
+                    continue
+
+                now = asyncio.get_running_loop().time()
+                chat_bucket_tokens = min(
+                    20.0,
+                    chat_bucket_tokens + (now - chat_bucket_stamp) * 10.0
+                )
+                chat_bucket_stamp = now
+
+                if chat_bucket_tokens < 1.0:
+                    await websocket.send_json({
+                        "type": "system",
+                        "text": "You are sending messages too quickly. Please slow down."
+                    })
+                    continue
+
+                chat_bucket_tokens -= 1.0
 
                 item = {
                     "id": uuid.uuid4().hex,
@@ -3675,6 +3798,224 @@ def ensure_status_interactions_table():
         """)
 
 
+def ensure_status_tags_table():
+    """Create the table linking a story, the tagged account and the tagger."""
+    with get_db() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS status_tags (
+                status_id TEXT NOT NULL
+                    REFERENCES status_updates(id) ON DELETE CASCADE,
+                tagged_id BIGINT NOT NULL
+                    REFERENCES accounts(id) ON DELETE CASCADE,
+                tagger_id BIGINT NOT NULL
+                    REFERENCES accounts(id) ON DELETE CASCADE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (status_id, tagged_id)
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS status_tags_tagged_idx
+            ON status_tags(tagged_id, created_at DESC)
+        """)
+
+
+def story_contact_ok(viewer_id, owner_id):
+    """True when the viewer saved the owner as a contact.
+
+    KCHAT contacts are one-way rows, so this deliberately checks only the
+    viewer -> owner direction and never requires a mutual relationship.
+    """
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT 1 FROM contacts
+            WHERE owner_id = %s AND contact_id = %s
+            LIMIT 1
+        """, (viewer_id, owner_id)).fetchone()
+    return bool(row)
+
+
+def story_access(owner_id, account, privacy=None):
+    """Single source of truth for story authorization.
+
+    Returns (allowed, reason) where reason explains a denial:
+      "owner"    the account owns the story (always allowed)
+      "blocked"  either account blocked the other
+      "contact"  the viewer has not saved the owner as a contact
+      "excluded" the viewer is in the owner's "except" list
+      "allowed"  the viewer is not in the owner's "only share with" list
+      "friends"  the viewer is not in the owner's close-friends list
+      "ok"       permitted
+
+    Every story endpoint must use this helper so the rules cannot drift.
+    """
+    if str(owner_id) == str(account["id"]):
+        return True, "owner"
+
+    # Blocking applies in both directions, matching the rest of KCHAT.
+    if users_blocked(owner_id, account["id"]):
+        return False, "blocked"
+
+    # The contact relationship keeps its existing one-way direction.
+    if not story_contact_ok(account["id"], owner_id):
+        return False, "contact"
+
+    if privacy is None:
+        privacy = get_privacy_settings(owner_id)
+
+    audience = privacy.get("status_audience", "all_contacts")
+    viewer_name = str(account["username"]).lower()
+
+    if audience == "my_contacts_except":
+        excluded = {str(name).lower() for name in privacy.get("status_excluded", [])}
+        if viewer_name in excluded:
+            return False, "excluded"
+    elif audience == "only_share_with":
+        allowed = {str(name).lower() for name in privacy.get("status_allowed", [])}
+        if viewer_name not in allowed:
+            return False, "allowed"
+    elif audience == "close_friends":
+        friends = {str(name).lower() for name in privacy.get("status_close_friends", [])}
+        if viewer_name not in friends:
+            return False, "friends"
+
+    return True, "ok"
+
+
+def story_denial(reason):
+    """Map an authorization reason to the message shown to a viewer."""
+    if reason == "blocked":
+        return "This story is not available."
+    if reason == "contact":
+        return "You cannot view this story."
+    if reason == "excluded":
+        return "This story is not shared with you."
+    if reason == "allowed":
+        return "This story is not shared with you."
+    if reason == "friends":
+        return "This story is only shared with close friends."
+    return "You cannot view this story."
+
+
+def status_tags_for(status_ids):
+    """Return {status_id: [usernames]} for the given stories."""
+    if not status_ids:
+        return {}
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT t.status_id, a.username
+            FROM status_tags t JOIN accounts a ON a.id = t.tagged_id
+            WHERE t.status_id = ANY(%s)
+            ORDER BY t.created_at ASC
+        """, (list(status_ids),)).fetchall()
+    result = {}
+    for row in rows:
+        result.setdefault(str(row["status_id"]), []).append(row["username"])
+    return result
+
+
+def resolve_status_tags(raw_tags, owner_account):
+    """Validate requested tags for a new story.
+
+    Returns (resolved, error_response). `resolved` is a list of
+    (account_id, username) pairs that were genuinely saved. A tag is skipped
+    when it names the tagger or when either side has blocked the other, so a
+    story can still be published without silently faking a tag.
+    """
+    if raw_tags is None:
+        return [], None
+    if not isinstance(raw_tags, list):
+        return None, JSONResponse(
+            {"error": "Story tags must be a list of usernames."},
+            status_code=400
+        )
+    if len(raw_tags) > 50:
+        return None, JSONResponse(
+            {"error": "You can tag up to 50 people in one story."},
+            status_code=400
+        )
+
+    names = []
+    for item in raw_tags:
+        if isinstance(item, dict):
+            item = item.get("name") or item.get("username") or ""
+        if not isinstance(item, str):
+            return None, JSONResponse(
+                {"error": "Story tags must be usernames."},
+                status_code=400
+            )
+        name = item.strip().lstrip("@")[:30]
+        if not name:
+            continue
+        if name.lower() not in names:
+            names.append(name.lower())
+
+    if not names:
+        return [], None
+
+    resolved = []
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT id, username FROM accounts
+            WHERE username_key = ANY(%s)
+        """, (names,)).fetchall()
+        found = {str(row["username"]).lower(): row for row in rows}
+
+        missing = [name for name in names if name not in found]
+        if missing:
+            return None, JSONResponse({
+                "error": "These accounts do not exist: " +
+                         ", ".join("@" + name for name in missing)
+            }, status_code=400)
+
+        for name in names:
+            row = found[name]
+            # Never tag yourself.
+            if str(row["id"]) == str(owner_account["id"]):
+                continue
+            # A tag must not cross a block in either direction.
+            if users_blocked(row["id"], owner_account["id"]):
+                continue
+            resolved.append((row["id"], row["username"]))
+
+    return resolved, None
+
+
+async def notify_story_tag(tagger_account, tagged_row, status_id):
+    """Notify a tagged account through KCHAT's existing private-message path."""
+    tagged_id, tagged_username = tagged_row
+    room = "private:" + ":".join(
+        private_pair(tagger_account["username"], tagged_username)
+    )
+    item = {
+        "id": uuid.uuid4().hex,
+        "type": "private",
+        "username": tagger_account["username"],
+        "to": tagged_username,
+        "text": "You were tagged in a story.",
+        "status": "sent"
+    }
+    item = save_message(item, room)
+
+    delivered = False
+    for target_socket in connected_sockets_for(tagged_username):
+        try:
+            delivery_item = dict(item)
+            delivery_item["status"] = "delivered"
+            await target_socket.send_json(delivery_item)
+            delivered = True
+        except Exception as error:
+            print("Story tag notification error:", error)
+
+    if delivered:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE messages SET status = 'delivered' WHERE id = %s",
+                (item["id"],)
+            )
+
+    return delivered
+
+
 @app.get("/api/statuses/{status_id}/interactions")
 async def get_status_interactions(status_id: str, request: Request):
     account = get_account_from_request(request)
@@ -3688,6 +4029,15 @@ async def get_status_interactions(status_id: str, request: Request):
             if not status:
                 return JSONResponse({"error": "Status not found or expired."}, status_code=404)
             is_owner = str(status["owner_id"]) == str(account["id"])
+        if not is_owner:
+            # Batch 1: the interactions panel is owners-only. Non-owners get
+            # the same shared authorization answer as every other story read.
+            allowed, reason = story_access(status["owner_id"], account)
+            if not allowed:
+                return JSONResponse(
+                    {"error": story_denial(reason)}, status_code=403
+                )
+        with get_db() as conn:
             replies = conn.execute("""
                 SELECT a.username, r.message, r.created_at
                 FROM status_replies r JOIN accounts a ON a.id=r.sender_id
@@ -3735,11 +4085,13 @@ async def reply_to_status(status_id: str, request: Request):
         with get_db() as conn:
             status=conn.execute("SELECT id,owner_id FROM status_updates WHERE id=%s AND expires_at>NOW()",(status_id,)).fetchone()
             if not status:return JSONResponse({"error":"Status not found or expired."},status_code=404)
-            if str(status["owner_id"])!=str(account["id"]):
-                contact=conn.execute("SELECT 1 FROM contacts WHERE owner_id=%s AND contact_id=%s",(account["id"],status["owner_id"])).fetchone()
-                if not contact:return JSONResponse({"error":"You cannot reply to this status."},status_code=403)
+        # Batch 1: replying requires exactly the same access as viewing.
+        allowed, reason = story_access(status["owner_id"], account)
+        if not allowed:
+            return JSONResponse({"error": story_denial(reason)}, status_code=403)
+        with get_db() as conn:
             conn.execute("INSERT INTO status_replies(status_id,sender_id,message) VALUES(%s,%s,%s)",(status_id,account["id"],message))
-        return {"success":True}
+        return {"success":True,"status_id":status_id}
     except Exception as error:
         print("Status reply error:",error)
         return JSONResponse({"error":"Could not send status reply."},status_code=500)
@@ -3755,6 +4107,11 @@ async def like_status(status_id: str, request: Request):
             status=conn.execute("SELECT id,owner_id FROM status_updates WHERE id=%s AND expires_at>NOW()",(status_id,)).fetchone()
             if not status:return JSONResponse({"error":"Status not found or expired."},status_code=404)
             if str(status["owner_id"])==str(account["id"]):return JSONResponse({"error":"You cannot like your own status."},status_code=400)
+        # Batch 1: liking requires exactly the same access as viewing.
+        allowed, reason = story_access(status["owner_id"], account)
+        if not allowed:
+            return JSONResponse({"error": story_denial(reason)}, status_code=403)
+        with get_db() as conn:
             conn.execute("INSERT INTO status_likes(status_id,user_id) VALUES(%s,%s) ON CONFLICT DO NOTHING",(status_id,account["id"]))
         return {"success":True,"liked":True}
     except Exception as error:
@@ -3772,8 +4129,17 @@ async def reshare_status(status_id: str, request: Request):
             status=conn.execute("SELECT id,owner_id FROM status_updates WHERE id=%s AND expires_at>NOW()",(status_id,)).fetchone()
             if not status:return JSONResponse({"error":"Status not found or expired."},status_code=404)
             if str(status["owner_id"])==str(account["id"]):return JSONResponse({"error":"You cannot reshare your own status."},status_code=400)
-            contact=conn.execute("SELECT 1 FROM contacts WHERE owner_id=%s AND contact_id=%s",(account["id"],status["owner_id"])).fetchone()
-            if not contact:return JSONResponse({"error":"You cannot reshare this status."},status_code=403)
+        # Batch 1: resharing requires view access plus the owner's sharing flag.
+        allowed, reason = story_access(status["owner_id"], account)
+        if not allowed:
+            return JSONResponse({"error": story_denial(reason)}, status_code=403)
+        owner_privacy = get_privacy_settings(status["owner_id"])
+        if owner_privacy.get("allow_status_sharing", True) is not True:
+            return JSONResponse(
+                {"error": "This person has turned off story sharing."},
+                status_code=403
+            )
+        with get_db() as conn:
             conn.execute("INSERT INTO status_reshares(status_id,user_id) VALUES(%s,%s) ON CONFLICT(status_id,user_id) DO UPDATE SET created_at=NOW()",(status_id,account["id"]))
         return {"success":True}
     except Exception as error:
@@ -3828,17 +4194,10 @@ async def get_statuses(request: Request):
             # statuses. Usernames can change in case or spelling.
             is_mine = str(row["owner_id"]) == str(account["id"])
             if not is_mine:
-                owner_privacy = get_privacy_settings(row["owner_id"])
-                audience = owner_privacy.get("status_audience", "all_contacts")
-                excluded = {str(name).lower() for name in owner_privacy.get("status_excluded", [])}
-                allowed = {str(name).lower() for name in owner_privacy.get("status_allowed", [])}
-                viewer_name = account["username"].lower()
-                close_friends = {str(name).lower() for name in owner_privacy.get("status_close_friends", [])}
-                if audience == "my_contacts_except" and viewer_name in excluded:
-                    continue
-                if audience == "only_share_with" and viewer_name not in allowed:
-                    continue
-                if audience == "close_friends" and viewer_name not in close_friends:
+                # Batch 1: one shared helper decides every story read, so the
+                # list can no longer disagree with media, view, reply or like.
+                allowed, _reason = story_access(row["owner_id"], account)
+                if not allowed:
                     continue
             visible_rows.append(row)
 
@@ -3873,6 +4232,9 @@ async def get_statuses(request: Request):
                     "viewed_at": viewer["viewed_at"].isoformat()
                 })
 
+        # Batch 1: include who each story tagged.
+        tags_by_status = status_tags_for(all_visible_status_ids)
+
         return {
             "success": True,
             "statuses": [{
@@ -3886,6 +4248,7 @@ async def get_statuses(request: Request):
                 "expires_at": row["expires_at"].isoformat(),
                 "is_mine": str(row["owner_id"]) == str(account["id"]),
                 "is_viewed_by_me": str(row["id"]) in viewed_status_ids,
+                "tags": tags_by_status.get(str(row["id"]), []),
                 "view_count": len(viewers_by_status.get(str(row["id"]), []))
                     if str(row["owner_id"]) == str(account["id"]) else None,
                 "viewers": viewers_by_status.get(str(row["id"]), [])
@@ -3913,17 +4276,13 @@ async def get_status_media(status_id: str, request: Request):
                 return JSONResponse({"error": "Story media not found or expired."}, status_code=404)
             is_owner = str(row["owner_id"]) == str(account["id"])
             if not is_owner:
-                contact = conn.execute("SELECT 1 FROM contacts WHERE owner_id = %s AND contact_id = %s", (account["id"], row["owner_id"])).fetchone()
-                if not contact:
-                    return JSONResponse({"error": "You cannot view this story."}, status_code=403)
-                privacy = get_privacy_settings(row["owner_id"])
-                audience = privacy.get("status_audience", "all_contacts")
-                excluded = {str(name).lower() for name in privacy.get("status_excluded", [])}
-                allowed = {str(name).lower() for name in privacy.get("status_allowed", [])}
-                viewer_name = str(account["username"]).lower()
-                close_friends = {str(name).lower() for name in privacy.get("status_close_friends", [])}
-                if (audience == "my_contacts_except" and viewer_name in excluded) or (audience == "only_share_with" and viewer_name not in allowed) or (audience == "close_friends" and viewer_name not in close_friends):
-                    return JSONResponse({"error": "You cannot view this story."}, status_code=403)
+                # Batch 1: media bytes go through the same shared rules as the
+                # list, so a hidden story cannot be fetched directly.
+                allowed, reason = story_access(row["owner_id"], account)
+                if not allowed:
+                    return JSONResponse(
+                        {"error": story_denial(reason)}, status_code=403
+                    )
             media_data = row["media_data"]
         header, encoded = media_data.split(",", 1)
         mime_type = header[5:].split(";", 1)[0] if header.startswith("data:") else "application/octet-stream"
@@ -3948,6 +4307,13 @@ async def record_status_view(status_id: str, request: Request):
             if not status:
                 return JSONResponse({"error": "Status not found or expired."}, status_code=404)
             if str(status["owner_id"]) != str(account["id"]):
+                # Batch 1: a view may only be recorded by someone allowed to
+                # see the story. The owner's own view is still not recorded.
+                allowed, reason = story_access(status["owner_id"], account)
+                if not allowed:
+                    return JSONResponse(
+                        {"error": story_denial(reason)}, status_code=403
+                    )
                 conn.execute("""
                     INSERT INTO status_views (status_id, viewer_id)
                     VALUES (%s, %s)
@@ -3994,7 +4360,19 @@ async def create_status(request: Request):
         if not text_value and not media_data:
             return JSONResponse({"error": "Write something or choose a photo/video."}, status_code=400)
 
+        # The base story table must exist before the tags table, because
+        # status_tags declares a foreign key to status_updates.
         ensure_status_table()
+
+        # Batch 1: validate tags before anything is written, so a story is
+        # never reported as tagged when the tag was not actually saved.
+        ensure_status_tags_table()
+        resolved_tags, tag_error = resolve_status_tags(
+            data.get("tags"), account
+        )
+        if tag_error is not None:
+            return tag_error
+
         status_id = uuid.uuid4().hex
         with get_db() as conn:
             row = conn.execute("""
@@ -4003,6 +4381,18 @@ async def create_status(request: Request):
                 VALUES (%s, %s, %s, %s, %s, %s, NOW() + (%s * INTERVAL '1 hour'))
                 RETURNING created_at, expires_at
             """, (status_id, account["id"], text_value, media_data, media_type, background, expires_in_hours)).fetchone()
+            for tagged_id, _tagged_username in resolved_tags:
+                conn.execute("""
+                    INSERT INTO status_tags (status_id, tagged_id, tagger_id)
+                    VALUES (%s, %s, %s) ON CONFLICT DO NOTHING
+                """, (status_id, tagged_id, account["id"]))
+
+        # Notify each tagged account through the existing private-message path.
+        for tagged in resolved_tags:
+            try:
+                await notify_story_tag(account, tagged, status_id)
+            except Exception as error:
+                print("Story tag notification error:", error)
 
         return {
             "success": True,
@@ -4016,7 +4406,8 @@ async def create_status(request: Request):
                 "background": background,
                 "created_at": row["created_at"].isoformat(),
                 "expires_at": row["expires_at"].isoformat(),
-                "is_mine": True
+                "is_mine": True,
+                "tags": [username for _id, username in resolved_tags]
             }
         }
     except Exception as error:

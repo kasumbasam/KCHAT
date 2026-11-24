@@ -1397,6 +1397,10 @@ hr {
 .status-mention-list{max-height:150px;overflow:auto;background:#202a30;border-radius:10px;margin-top:5px}
 .status-mention-list button{display:block;width:100%;padding:9px;text-align:left;background:none;color:white;border:0}
 .status-upload-label{font-size:12px;color:#00e5ff;margin-top:5px}
+.status-tag-chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.status-tag-chips.hidden{display:none}
+.status-tag-chip{border:1px solid #00e5ff55;border-radius:999px;background:#00e5ff1a;color:#bff6ff;font:600 12px Arial,sans-serif;padding:4px 10px;cursor:pointer}
+.status-tag-chip:active{background:#00e5ff33}
 .status-editor-canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
 .status-editor-top{display:flex;justify-content:space-between;align-items:center}
 
@@ -1502,8 +1506,7 @@ hr {
  #textStatusModal .text-status-top-tools button{width:38px!important;height:38px!important;min-width:38px!important}
 }
 
-.status-sticker-overlay{position:absolute;z-index:30;transform:translate(-50%,-50%);display:inline-flex;align-items:center;justify-content:center;min-width:54px;min-height:48px;padding:8px 12px;border-radius:16px;background:linear-gradient(135deg,#063B46,#00B8D9);box-shadow:0 3px 12px #0008;color:#fff;font:clamp(34px,9vw,64px) Arial,sans-serif;line-height:1;cursor:grab;touch-action:none;user-select:none}
-.status-sticker-overlay.is-selected{outline:1.5px solid #ffffff;outline-offset:7px;border-radius:3px;cursor:move}
+.status-sticker-overlay{position:absolute;z-index:30;transform:translate(-50%,-50%);display:inline-flex;align-items:center;justify-content:center;min-width:54px;min-height:48px;padding:8px 12px;border-radius:16px;background:linear-gradient(135deg,#063B46,#00B8D9);box-shadow:0 3px 12px #0008;color:#fff;font:clamp(34px,9vw,64px) Arial,sans-serif;line-height:1;cursor:grab;touch-action:none;user-select:none}.status-sticker-overlay.is-selected{outline:1.5px solid #ffffff;outline-offset:7px;border-radius:3px;cursor:move}
 .status-sticker-overlay .sticker-resize-handle,.status-media-text-overlay .sticker-resize-handle{position:absolute;width:13px;height:13px;min-width:13px;min-height:13px;padding:0;margin:0;border:1.5px solid #202326;border-radius:2px;background:#fff;box-shadow:0 1px 4px #000b;z-index:12;touch-action:none;cursor:nwse-resize;box-sizing:border-box}
 .status-sticker-overlay .sticker-resize-handle.nw,.status-media-text-overlay .sticker-resize-handle.nw{left:-14px;top:-14px;cursor:nwse-resize}
 .status-sticker-overlay .sticker-resize-handle.ne,.status-media-text-overlay .sticker-resize-handle.ne{right:-14px;top:-14px;cursor:nesw-resize}
@@ -2628,7 +2631,7 @@ html, body {
   <div class="status-editor-adjustments"><label>Pen colour <select id="statusDrawColor"><option value="#ffffff">White</option><option value="#ff3b30">Red</option><option value="#ffcc00">Yellow</option><option value="#00D9FF">Cyan</option><option value="#0a84ff">Blue</option><option value="#ff2d55">Pink</option><option value="#bf5af2">Purple</option><option value="#111111">Black</option></select></label><label>Pen size <select id="statusPenSize"><option value="3">Small</option><option value="7" selected>Medium</option><option value="13">Large</option></select></label><input id="anotherStatusFile" type="file" accept="image/*,video/*" multiple class="hidden"></div>
   <div class="status-mention-composer status-editor-caption"><textarea id="mediaStatusCaption" rows="2" maxlength="700" placeholder="Add a caption…"></textarea><button type="button" class="status-at-button" id="mediaStatusAtButton" aria-label="Mention a person or group">@</button></div>
   <div class="status-editor-bottom"><div class="status-editor-bottom-left"><button type="button" id="statusFileShortcut" aria-label="Add file" title="Add another photo or video"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div><button type="button" id="saveMediaStatus" aria-label="Share status" title="Share"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button></div>
-  <div id="statusMentionList" class="status-mention-list hidden"></div><div id="statusUploadProgress" class="status-upload-label"></div>
+  <div id="statusMentionList" class="status-mention-list hidden"></div><div id="statusTagChips" class="status-tag-chips hidden" aria-label="Tagged people"></div><div id="statusUploadProgress" class="status-upload-label"></div>
   <select id="statusFilter" class="hidden" aria-label="Status filter"><option value="none">None</option><option value="saturate(1.65) contrast(1.08)">Pop</option><option value="grayscale(1)">B&amp;W</option><option value="saturate(1.12) hue-rotate(12deg)">Cool</option><option value="contrast(1.28) saturate(.78)">Chrome</option><option value="sepia(.22) contrast(1.12) saturate(.82)">Film</option></select>
  </div>
 </div>
@@ -5212,20 +5215,21 @@ function setupStatusMentionComposer(inputId,boxId,buttonId){
     let targetsPromise=null;
     async function refresh(){
         const before=input.value.slice(0,input.selectionStart);
-        const match=before.match(/@([\\w .-]*)$/);
+        const match=before.match(/@([\w .-]*)$/);
         if(!match){hide(box);return;}
         targetsPromise=targetsPromise||getStatusMentionTargets();
         const targets=await targetsPromise;
         if(input!==document.activeElement)return;
-        const current=input.value.slice(0,input.selectionStart).match(/@([\\w .-]*)$/);
+        const current=input.value.slice(0,input.selectionStart).match(/@([\w .-]*)$/);
         if(!current){hide(box);return;}
         const list=statusMentionMatches(current[1].trim(),targets);
         box.innerHTML=list.map(item=>'<button type="button" data-mention-kind="'+item.kind+'" data-mention-name="'+escapeHTML(item.name)+'"><strong>@'+escapeHTML(item.name)+'</strong><small>'+(item.kind==="group"?"Group mention":"Private contact")+'</small></button>').join("")||'<button type="button" disabled>No matching people or groups</button>';
         show(box);
         box.querySelectorAll("[data-mention-name]").forEach(btn=>btn.onclick=()=>{
-            const cursor=input.selectionStart,active=input.value.slice(0,cursor).match(/@([\\w .-]*)$/);
+            const cursor=input.selectionStart,active=input.value.slice(0,cursor).match(/@([\w .-]*)$/);
             if(!active)return;
-            if(inputId==="mediaStatusCaption"){window.kchatStatusMentions=window.kchatStatusMentions||[];const item={kind:btn.dataset.mentionKind,name:btn.dataset.mentionName};if(!window.kchatStatusMentions.some(x=>x.kind===item.kind&&x.name===item.name))window.kchatStatusMentions.push(item);input.value=input.value.replace(/@([\\w .-]*)$/,"").trimEnd();hide(box);$("statusUploadProgress").textContent="Selected mention: "+item.name;return;}
+            // Only real people can be tagged on a story; groups are not taggable.
+            if(btn.dataset.mentionKind==="person")addStatusTag(btn.dataset.mentionName);
             const token="@"+btn.dataset.mentionName;
             input.value=input.value.slice(0,cursor-active[0].length)+token+" "+input.value.slice(cursor);
             input.focus();const next=cursor-active[0].length+token.length+1;input.setSelectionRange(next,next);hide(box);
@@ -5242,11 +5246,48 @@ function setupStatusMentionComposer(inputId,boxId,buttonId){
 }
 setupStatusMentionComposer("mediaStatusCaption","statusMentionList","mediaStatusAtButton");
 setupStatusMentionComposer("textStatusInput","textStatusMentionList","textStatusAtButton");
+// Batch 1: story tags are collected only while creating or editing a story.
+let statusEditorTags=[];
+function renderStatusTagChips(){
+    const box=$("statusTagChips");
+    if(!box)return;
+    box.replaceChildren();
+    box.classList.toggle("hidden",!statusEditorTags.length);
+    statusEditorTags.forEach(name=>{
+        const chip=document.createElement("button");
+        chip.type="button";chip.className="status-tag-chip";
+        chip.textContent="@"+name+" ×";
+        chip.setAttribute("aria-label","Remove tag "+name);
+        chip.addEventListener("click",()=>{
+            statusEditorTags=statusEditorTags.filter(item=>item.toLowerCase()!==name.toLowerCase());
+            renderStatusTagChips();
+        });
+        box.appendChild(chip);
+    });
+}
+function addStatusTag(name){
+    const clean=String(name||"").trim().replace(/^@/,"");
+    if(!clean)return;
+    if(clean.toLowerCase()===(currentUser||"").toLowerCase()){
+        $("statusUploadProgress").textContent="You cannot tag yourself.";
+        return;
+    }
+    if(statusEditorTags.some(item=>item.toLowerCase()===clean.toLowerCase()))return;
+    statusEditorTags.push(clean);
+    renderStatusTagChips();
+    $("statusUploadProgress").textContent="Tagged @"+clean;
+}
+function resetStatusTags(){
+    statusEditorTags=[];
+    renderStatusTagChips();
+}
+function statusTagPayload(){return statusEditorTags.slice();}
+resetStatusTags();
 let statusEditorStrokes=[];let statusEditorCurrentStroke=null;
 function redrawStatusEditorCanvas(){if(!statusEditorCanvas||!statusEditorCtx)return;statusEditorCtx.clearRect(0,0,statusEditorCanvas.width,statusEditorCanvas.height);for(const stroke of statusEditorStrokes){if(!stroke.points.length)continue;statusEditorCtx.beginPath();statusEditorCtx.strokeStyle=stroke.color;statusEditorCtx.lineWidth=stroke.size;statusEditorCtx.lineCap="round";statusEditorCtx.lineJoin="round";statusEditorCtx.moveTo(stroke.points[0].x,stroke.points[0].y);for(const point of stroke.points.slice(1))statusEditorCtx.lineTo(point.x,point.y);if(stroke.points.length===1){statusEditorCtx.lineTo(stroke.points[0].x+.1,stroke.points[0].y+.1);}statusEditorCtx.stroke();}}
 function setupStatusEditorPreview(file,index=statusEditorIndex){const box=$("statusEditorPreview");box.replaceChildren();statusEditorIndex=index;statusEditorCanvas=null;statusEditorStrokes=[];statusEditorCurrentStroke=null;let media;if(file.type.startsWith("video/")){media=document.createElement("video");media.controls=true;media.playsInline=true;media.src=URL.createObjectURL(file);}else{media=document.createElement("img");media.src=URL.createObjectURL(file);media.style.filter=$("statusFilter").value;}box.appendChild(media);const canvas=document.createElement("canvas");canvas.className="status-editor-canvas";canvas.width=box.clientWidth||500;canvas.height=box.clientHeight||350;box.appendChild(canvas);statusEditorCanvas=canvas;statusEditorCtx=canvas.getContext("2d");canvas.style.pointerEvents=statusEditorDraw?"auto":"none";canvas.onpointerdown=e=>{if(!statusEditorDraw)return;canvas.setPointerCapture(e.pointerId);const r=canvas.getBoundingClientRect();statusEditorCurrentStroke={color:$("statusDrawColor").value,size:Number($("statusPenSize").value),points:[{x:e.clientX-r.left,y:e.clientY-r.top}]};statusEditorStrokes.push(statusEditorCurrentStroke);redrawStatusEditorCanvas();};canvas.onpointermove=e=>{if(!statusEditorDraw||!statusEditorCurrentStroke||!e.buttons)return;const r=canvas.getBoundingClientRect();statusEditorCurrentStroke.points.push({x:e.clientX-r.left,y:e.clientY-r.top});redrawStatusEditorCanvas();};canvas.onpointerup=()=>{statusEditorCurrentStroke=null;};canvas.onpointercancel=()=>{statusEditorCurrentStroke=null;};let counter=box.querySelector(".status-media-counter");if(!counter){counter=document.createElement("div");counter.className="status-media-counter";box.appendChild(counter);}counter.textContent=(index+1)+" / "+statusEditorFiles.length;counter.style.display=statusEditorFiles.length>1?"block":"none";}
-function openMediaStatusEditor(files,editing=null){statusEditorFiles=Array.from(files||[]);statusEditorIndex=0;statusEditorEditingId=editing?.id||null;$("mediaStatusCaption").value=editing?.text||"";if(statusEditorFiles.length)setupStatusEditorPreview(statusEditorFiles[0],0);else if(editing?.media_data){const blob=fetch(editing.media_data).then(r=>r.blob()).then(b=>{const f=new File([b],editing.media_type==="video"?"status.mp4":"status.jpg",{type:b.type});statusEditorFiles=[f];setupStatusEditorPreview(f,0);});}else $("statusEditorPreview").textContent="Written status";$("statusUploadProgress").textContent="";show($("mediaStatusEditor"));}
-$("discardStatusEdit").onclick=()=>{hide($("mediaStatusEditor"));statusEditorFiles=[];statusEditorEditingId=null;};
+function openMediaStatusEditor(files,editing=null){statusEditorFiles=Array.from(files||[]);statusEditorIndex=0;statusEditorEditingId=editing?.id||null;resetStatusTags();$("mediaStatusCaption").value=editing?.text||"";if(statusEditorFiles.length)setupStatusEditorPreview(statusEditorFiles[0],0);else if(editing?.media_data){const blob=fetch(editing.media_data).then(r=>r.blob()).then(b=>{const f=new File([b],editing.media_type==="video"?"status.mp4":"status.jpg",{type:b.type});statusEditorFiles=[f];setupStatusEditorPreview(f,0);});}else $("statusEditorPreview").textContent="Written status";$("statusUploadProgress").textContent="";show($("mediaStatusEditor"));}
+$("discardStatusEdit").onclick=()=>{hide($("mediaStatusEditor"));statusEditorFiles=[];statusEditorEditingId=null;resetStatusTags();};
 
 $("anotherStatusFile").onchange=e=>{statusEditorFiles.push(...Array.from(e.target.files||[]));e.target.value="";if(statusEditorFiles.length)setupStatusEditorPreview(statusEditorFiles[statusEditorIndex]||statusEditorFiles[0],Math.min(statusEditorIndex,statusEditorFiles.length-1));$("statusUploadProgress").textContent=statusEditorFiles.length+" item(s) selected";};
 $("statusFilter").onchange=()=>{const media=$("statusEditorPreview").querySelector("img,video");if(media)media.style.setProperty("filter",$("statusFilter").value==="none"?"none":$("statusFilter").value,"important");};
@@ -5371,13 +5412,13 @@ $("statusCropApply").onclick=()=>{
  $("statusCropControls").classList.add("hidden");
  $("statusCropButton").classList.remove("active");
 };
-$("saveMediaStatus").onclick=async()=>{const caption=$("mediaStatusCaption").value.trim();try{if(statusEditorEditingId){await apiRequest("/api/statuses/"+encodeURIComponent(statusEditorEditingId),{method:"PUT",body:JSON.stringify({text:caption})});}else if(!statusEditorFiles.length){if(!caption){alert("Write something first.");return;}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:caption,expires_in_hours:getStatusExpiryHours()})});}else{$("myStatusCard").classList.add("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","0%");for(let i=0;i<statusEditorFiles.length;i++){const f=statusEditorFiles[i];$("myStatusCard").style.setProperty("--upload-progress",Math.round(i/statusEditorFiles.length*100)+"%");if(f.size>5*1024*1024)throw new Error(f.name+" is larger than 5 MB.");$("statusUploadProgress").textContent="Uploading "+(i+1)+" of "+statusEditorFiles.length+"…";let data;if(f.type.startsWith("image/")&&($("statusFilter").value!=="none"||statusEditorCrop||statusEditorStrokes.length||$("statusEditorPreview").querySelector(".status-media-text-overlay,.status-sticker-overlay"))){const image=new Image();const objectUrl=URL.createObjectURL(f);await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error("Could not process "+f.name));image.src=objectUrl;});const sourceWidth=image.naturalWidth,sourceHeight=image.naturalHeight,canvas=document.createElement("canvas");if(statusEditorCrop){const side=Math.min(sourceWidth,sourceHeight);canvas.width=side;canvas.height=side;}else{canvas.width=sourceWidth;canvas.height=sourceHeight;}const context=canvas.getContext("2d");context.filter=$("statusFilter").value;if(statusEditorCrop){const side=Math.min(sourceWidth,sourceHeight);context.drawImage(image,(sourceWidth-side)/2,(sourceHeight-side)/2,side,side,0,0,side,side);}else{context.drawImage(image,0,0);}if(statusEditorCanvas&&statusEditorDraw){context.filter="none";context.drawImage(statusEditorCanvas,0,0,canvas.width,canvas.height);}
+$("saveMediaStatus").onclick=async()=>{const caption=$("mediaStatusCaption").value.trim();try{if(statusEditorEditingId){await apiRequest("/api/statuses/"+encodeURIComponent(statusEditorEditingId),{method:"PUT",body:JSON.stringify({text:caption})});}else if(!statusEditorFiles.length){if(!caption){alert("Write something first.");return;}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:caption,expires_in_hours:getStatusExpiryHours(),tags:statusTagPayload()})});}else{$("myStatusCard").classList.add("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","0%");for(let i=0;i<statusEditorFiles.length;i++){const f=statusEditorFiles[i];$("myStatusCard").style.setProperty("--upload-progress",Math.round(i/statusEditorFiles.length*100)+"%");if(f.size>5*1024*1024)throw new Error(f.name+" is larger than 5 MB.");$("statusUploadProgress").textContent="Uploading "+(i+1)+" of "+statusEditorFiles.length+"…";let data;if(f.type.startsWith("image/")&&($("statusFilter").value!=="none"||statusEditorCrop||statusEditorStrokes.length||$("statusEditorPreview").querySelector(".status-media-text-overlay,.status-sticker-overlay"))){const image=new Image();const objectUrl=URL.createObjectURL(f);await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error("Could not process "+f.name));image.src=objectUrl;});const sourceWidth=image.naturalWidth,sourceHeight=image.naturalHeight,canvas=document.createElement("canvas");if(statusEditorCrop){const side=Math.min(sourceWidth,sourceHeight);canvas.width=side;canvas.height=side;}else{canvas.width=sourceWidth;canvas.height=sourceHeight;}const context=canvas.getContext("2d");context.filter=$("statusFilter").value;if(statusEditorCrop){const side=Math.min(sourceWidth,sourceHeight);context.drawImage(image,(sourceWidth-side)/2,(sourceHeight-side)/2,side,side,0,0,side,side);}else{context.drawImage(image,0,0);}if(statusEditorCanvas&&statusEditorDraw){context.filter="none";context.drawImage(statusEditorCanvas,0,0,canvas.width,canvas.height);}
 const previewBox=$("statusEditorPreview"),previewRect=previewBox.getBoundingClientRect();
 previewBox.querySelectorAll(".status-media-text-overlay,.status-sticker-overlay").forEach(sticker=>{
  const r=sticker.getBoundingClientRect(),x=(r.left+r.width/2-previewRect.left)*canvas.width/previewRect.width,y=(r.top+r.height/2-previewRect.top)*canvas.height/previewRect.height;
  context.save();context.filter="none";const scaleX=canvas.width/previewRect.width,scaleY=canvas.height/previewRect.height,padX=sticker.classList.contains("status-sticker-overlay")?12*scaleX:14*scaleX,padY=sticker.classList.contains("status-sticker-overlay")?8*scaleY:9*scaleY,bg=context.createLinearGradient(x-r.width*scaleX/2,y-r.height*scaleY/2,x+r.width*scaleX/2,y+r.height*scaleY/2);bg.addColorStop(0,"#063B46");bg.addColorStop(1,"#00B8D9");const left=x-r.width*scaleX/2,top=y-r.height*scaleY/2,w=r.width*scaleX,h=r.height*scaleY,rad=(sticker.classList.contains("status-sticker-overlay")?16:10)*scaleX;context.beginPath();context.roundRect(left,top,w,h,rad);context.fillStyle=bg;context.fill();context.textAlign="center";context.textBaseline="middle";const fontSize=parseFloat(getComputedStyle(sticker).fontSize)||28;context.font=(sticker.classList.contains("status-media-text-overlay")?"bold ":"")+(fontSize*scaleY)+"px Arial";context.fillStyle="#ffffff";const content=Array.from(sticker.childNodes).filter(node=>node.nodeType===Node.TEXT_NODE).map(node=>node.textContent).join("").trim()||sticker.textContent.trim();context.fillText(content,x,y);context.restore();
 });
-data=canvas.toDataURL("image/jpeg",.92);URL.revokeObjectURL(objectUrl);}else{data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error("Could not read "+f.name));r.readAsDataURL(f);});}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:i===0?caption:"",media_data:data,media_type:f.type.startsWith("video/")?"video":"image",expires_in_hours:getStatusExpiryHours()})});}}$("myStatusCard").classList.remove("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","100%");hide($("mediaStatusEditor"));statusEditorFiles=[];statusEditorEditingId=null;await loadStatuses();const mine=(window.kchatStatuses||[]).filter(x=>x.is_mine);renderStatusStories();openStatusViewer(mine,0);}catch(error){$("myStatusCard").classList.remove("is-uploading");alert(error.message||"Could not share status.");$("statusUploadProgress").textContent="Upload failed — "+(error.message||"Try again.");}};
+data=canvas.toDataURL("image/jpeg",.92);URL.revokeObjectURL(objectUrl);}else{data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error("Could not read "+f.name));r.readAsDataURL(f);});}await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:i===0?caption:"",media_data:data,media_type:f.type.startsWith("video/")?"video":"image",expires_in_hours:getStatusExpiryHours(),tags:statusTagPayload()})});}}$("myStatusCard").classList.remove("is-uploading");$("myStatusCard").style.setProperty("--upload-progress","100%");hide($("mediaStatusEditor"));statusEditorFiles=[];statusEditorEditingId=null;await loadStatuses();const mine=(window.kchatStatuses||[]).filter(x=>x.is_mine);renderStatusStories();openStatusViewer(mine,0);}catch(error){$("myStatusCard").classList.remove("is-uploading");alert(error.message||"Could not share status.");$("statusUploadProgress").textContent="Upload failed — "+(error.message||"Try again.");}};
 $("editMyStatusButton").onclick=()=>{const item=statusViewerItems[statusViewerIndex];if(!item?.is_mine)return;closeStatusViewer();openMediaStatusEditor([],item);};
 
 function showJustCreatedStatus(status){
@@ -5392,7 +5433,8 @@ function showJustCreatedStatus(status){
 function buildStoryRingGradient(items){
     const count=Math.max(1,items.length),step=100/count,gap=Math.min(2,step*.16);
     const slices=items.map((item,index)=>{
-        const color=item.is_viewed_by_me?"#68757b":"#20c878";
+        // Batch 1: unread rings are KCHAT cyan, viewed rings stay grey.
+        const color=item.is_viewed_by_me?"#68757B":"#00E5FF";
         return color+" "+(index*step+gap/2)+"% "+((index+1)*step-gap/2)+"%";
     });
     return "conic-gradient(from -90deg,"+slices.join(",")+")";
@@ -5445,7 +5487,10 @@ function renderStatusStories(){
         const item=items[0],pic=item.profile_picture?'<img src="'+escapeHTML(item.profile_picture)+'" alt="">':escapeHTML((username||"?").charAt(0).toUpperCase());
         const time=item.created_at?new Date(item.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"";
         const ring=buildStoryRingGradient(items);
-        return '<button class="status-story-card" type="button" data-status-id="'+escapeHTML(item.id)+'"><span class="status-ring" style="background:'+ring+'"><span class="status-story-avatar">'+pic+'</span></span><span class="status-story-count">'+items.length+'</span><span class="status-story-copy"><span class="status-story-name">'+escapeHTML(username)+'</span><span class="status-story-time">'+escapeHTML(time)+' · '+items.length+' update'+(items.length===1?"":"s")+'</span></span></button>';
+        // Batch 1: the badge counts unread stories only.
+        const unread=items.filter(entry=>!entry.is_viewed_by_me).length;
+        const badge=unread?'<span class="status-story-count">'+unread+'</span>':'';
+        return '<button class="status-story-card" type="button" data-status-id="'+escapeHTML(item.id)+'"><span class="status-ring" style="background:'+ring+'"><span class="status-story-avatar">'+pic+'</span></span>'+badge+'<span class="status-story-copy"><span class="status-story-name">'+escapeHTML(username)+'</span><span class="status-story-time">'+escapeHTML(time)+' · '+items.length+' update'+(items.length===1?"":"s")+'</span></span></button>';
     }).join(""):'<div class="status-empty-card">No recent stories</div>';
     $("otherStatusStories").querySelectorAll("[data-status-id]").forEach(card=>card.addEventListener("click",()=>{
         const selected=statuses.find(status=>String(status.id)===String(card.dataset.statusId));if(!selected)return;
@@ -5462,7 +5507,7 @@ $("publishTextStatus").addEventListener("click",async()=>{
     const button=$("publishTextStatus");button.disabled=true;
     try{
         const background=textStatusBackgrounds[textStatusBackgroundIndex];
-        const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:value,background,expires_in_hours:getStatusExpiryHours()})});
+        const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({text:value,background,expires_in_hours:getStatusExpiryHours(),tags:statusTagPayload()})});
         $("textStatusInput").value="";
         hide($("textStatusModal"));
         showJustCreatedStatus(result.status);
@@ -5496,7 +5541,7 @@ $("voiceStatusRecord").addEventListener("click",async()=>{
  voiceStatusRecorder.start();voiceStatusStarted=Date.now();$("voiceStatusHint").textContent="Recording… tap the microphone to finish (30-second maximum)";voiceStatusClock=setInterval(()=>{const sec=Math.floor((Date.now()-voiceStatusStarted)/1000);$("voiceStatusTimer").textContent="00:"+String(Math.min(30,sec)).padStart(2,"0");if(sec>=30&&voiceStatusRecorder&&voiceStatusRecorder.state==="recording")voiceStatusRecorder.stop();},250);
  }catch(error){alert("Microphone access was denied or unavailable. Allow microphone access and try again.");}
 });
-$("shareVoiceStatus").addEventListener("click",async()=>{if(!voiceStatusBlob)return;const button=$("shareVoiceStatus");button.disabled=true;button.textContent="Uploading…";try{if(voiceStatusBlob.size>5*1024*1024)throw new Error("Recording too large. Please record a shorter voice status.");const reader=new FileReader();const data=await new Promise((resolve,reject)=>{reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Could not read recording."));reader.readAsDataURL(voiceStatusBlob);});const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({media_data:data,media_type:"audio",text:"",expires_in_hours:getStatusExpiryHours()})});hide($("voiceStatusModal"));hide($("textStatusModal"));resetVoiceStatus();showJustCreatedStatus(result.status);}catch(error){alert(error.message||"Could not share voice status.");button.disabled=false;button.textContent="Share voice status";}});
+$("shareVoiceStatus").addEventListener("click",async()=>{if(!voiceStatusBlob)return;const button=$("shareVoiceStatus");button.disabled=true;button.textContent="Uploading…";try{if(voiceStatusBlob.size>5*1024*1024)throw new Error("Recording too large. Please record a shorter voice status.");const reader=new FileReader();const data=await new Promise((resolve,reject)=>{reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Could not read recording."));reader.readAsDataURL(voiceStatusBlob);});const result=await apiRequest("/api/statuses",{method:"POST",body:JSON.stringify({media_data:data,media_type:"audio",text:"",expires_in_hours:getStatusExpiryHours(),tags:statusTagPayload()})});hide($("voiceStatusModal"));hide($("textStatusModal"));resetVoiceStatus();showJustCreatedStatus(result.status);}catch(error){alert(error.message||"Could not share voice status.");button.disabled=false;button.textContent="Share voice status";}});
 
 $("statusFileInput").addEventListener("change",event=>{const files=Array.from(event.target.files||[]);event.target.value="";if(!files.length)return;const invalid=files.find(f=>!f.type.startsWith("image/")&&!f.type.startsWith("video/"));if(invalid){alert("Choose images or videos only.");return;}hide($("textStatusModal"));openMediaStatusEditor(files);});
 $("exploreChannelsButton").addEventListener("click",loadChannels);
