@@ -3751,6 +3751,12 @@ def ensure_status_table():
             CREATE INDEX IF NOT EXISTS status_views_status_idx
             ON status_views(status_id, viewed_at DESC)
         """)
+        # Additive and nullable: existing rows keep rendering exactly as
+        # before, and no data is rewritten.
+        conn.execute("""
+            ALTER TABLE status_updates
+            ADD COLUMN IF NOT EXISTS text_style TEXT
+        """)
 
 
 def get_status_view_details(status_id):
@@ -3881,6 +3887,106 @@ def story_access(owner_id, account, privacy=None):
     return True, "ok"
 
 
+def story_access_many(owner_ids, account):
+    """Batch version of story_access for a single list request.
+
+    Opening one database connection per rule per story made the Updates screen
+    open four connections for every contact story. This resolves the same
+    rules for many owners using three queries and returns {owner_id: (allowed,
+    reason)} with exactly the answers story_access would give.
+
+    story_access stays the single source of truth; this only shares its
+    queries. Any change to the rules must be made in both places, which the
+    parity test in the test suite enforces.
+    """
+    unique_ids = []
+    seen = set()
+    for owner_id in owner_ids:
+        key = str(owner_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_ids.append(owner_id)
+
+    if not unique_ids:
+        return {}
+
+    viewer_id = account["id"]
+    blocked_ids = set()
+    contact_ids = set()
+    privacy_rows = {}
+
+    with get_db() as conn:
+        # Blocking applies in both directions, matching story_access.
+        blocked_rows = conn.execute("""
+            SELECT owner_id, blocked_id FROM blocked_users
+            WHERE (owner_id = %s AND blocked_id = ANY(%s))
+               OR (blocked_id = %s AND owner_id = ANY(%s))
+        """, (viewer_id, unique_ids, viewer_id, unique_ids)).fetchall()
+        for row in blocked_rows:
+            if str(row["owner_id"]) == str(viewer_id):
+                blocked_ids.add(str(row["blocked_id"]))
+            else:
+                blocked_ids.add(str(row["owner_id"]))
+
+        # Contacts are one-way rows, checked in the viewer -> owner direction.
+        contact_rows = conn.execute("""
+            SELECT contact_id FROM contacts
+            WHERE owner_id = %s AND contact_id = ANY(%s)
+        """, (viewer_id, unique_ids)).fetchall()
+        contact_ids = {str(row["contact_id"]) for row in contact_rows}
+
+        # The privacy table may not exist yet on a fresh database.
+        try:
+            privacy_result = conn.execute("""
+                SELECT owner_id, settings FROM user_privacy
+                WHERE owner_id = ANY(%s)
+            """, (unique_ids,)).fetchall()
+            for row in privacy_result:
+                privacy_rows[str(row["owner_id"])] = row["settings"]
+        except Exception:
+            privacy_rows = {}
+
+    viewer_name = str(account["username"]).lower()
+    answers = {}
+    for owner_id in unique_ids:
+        key = str(owner_id)
+        if key == str(viewer_id):
+            answers[key] = (True, "owner")
+            continue
+        if key in blocked_ids:
+            answers[key] = (False, "blocked")
+            continue
+        if key not in contact_ids:
+            answers[key] = (False, "contact")
+            continue
+
+        settings = dict(DEFAULT_PRIVACY_SETTINGS)
+        raw = privacy_rows.get(key)
+        if raw:
+            try:
+                saved = json.loads(raw) if isinstance(raw, str) else raw
+                if isinstance(saved, dict):
+                    settings.update(saved)
+            except Exception:
+                pass
+
+        audience = settings.get("status_audience", "all_contacts")
+        if audience == "my_contacts_except":
+            excluded = {str(n).lower() for n in settings.get("status_excluded", [])}
+            answers[key] = (False, "excluded") if viewer_name in excluded else (True, "ok")
+        elif audience == "only_share_with":
+            allowed = {str(n).lower() for n in settings.get("status_allowed", [])}
+            answers[key] = (True, "ok") if viewer_name in allowed else (False, "allowed")
+        elif audience == "close_friends":
+            friends = {str(n).lower() for n in settings.get("status_close_friends", [])}
+            answers[key] = (True, "ok") if viewer_name in friends else (False, "friends")
+        else:
+            answers[key] = (True, "ok")
+
+    return answers
+
+
 def story_denial(reason):
     """Map an authorization reason to the message shown to a viewer."""
     if reason == "blocked":
@@ -3894,6 +4000,108 @@ def story_denial(reason):
     if reason == "friends":
         return "This story is only shared with close friends."
     return "You cannot view this story."
+
+
+def story_audience_accounts(owner_account):
+    """Return accounts currently allowed to see the owner's stories.
+
+    Reuses story_access for every candidate, so the invitation list can never
+    disagree with what the story endpoints will actually allow. Candidates are
+    anyone connected to the owner in either contact direction: story_access
+    checks the viewer -> owner relationship, so limiting candidates to the
+    owner's own contact rows would miss viewers who saved the owner.
+    """
+    owner_id = owner_account["id"]
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT DISTINCT a.id, a.username
+            FROM accounts a
+            JOIN contacts c ON c.owner_id = a.id
+            WHERE c.contact_id = %s AND a.id <> %s
+        """, (owner_id, owner_id)).fetchall()
+
+    allowed = []
+    for row in rows:
+        account = {"id": row["id"], "username": row["username"]}
+        try:
+            permitted, _reason = story_access(owner_id, account)
+        except Exception as error:
+            print("Story audience check error:", error)
+            continue
+        if permitted:
+            allowed.append(row["username"])
+    return allowed
+
+
+async def broadcast_story_posted(owner_account, status_id):
+    """Tell allowed contacts that a new story exists.
+
+    The event carries no story content - only that something changed - so each
+    client reloads the list through the normal authorization path. Recipients
+    are filtered through story_access first, which means blocking, contact and
+    audience rules all apply to the notification exactly as they do to reads.
+    """
+    recipients = story_audience_accounts(owner_account)
+    if not recipients:
+        return 0
+
+    payload = {
+        "type": "story_posted",
+        "username": owner_account["username"],
+        "status_id": status_id
+    }
+
+    delivered_to = set()
+    for username in recipients:
+        for target_socket in connected_sockets_for(username):
+            try:
+                await target_socket.send_json(payload)
+                delivered_to.add(username.lower())
+            except Exception as error:
+                print("Story posted broadcast error:", error)
+    return len(delivered_to)
+
+
+def normalize_status_text_style(raw):
+    """Validate a story's text style, returning JSON text or None.
+
+    Only known fonts, alignments and hex colours are accepted, so the value
+    stored is safe to hand to a viewer without escaping CSS.
+    """
+    if not raw:
+        return None
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            return None
+    if not isinstance(raw, dict):
+        return None
+
+    fonts = {"sans", "serif", "mono", "rounded"}
+    aligns = {"left", "center", "right"}
+    style = {
+        "font": raw.get("font") if raw.get("font") in fonts else "sans",
+        "bold": raw.get("bold") is True,
+        "italic": raw.get("italic") is True,
+        "align": raw.get("align") if raw.get("align") in aligns else "center",
+    }
+    colour = str(raw.get("color") or "").strip()
+    style["color"] = colour if re.fullmatch(r"#[0-9A-Fa-f]{6}", colour) else "#FFFFFF"
+    return json.dumps(style, separators=(",", ":"))
+
+
+def parse_status_text_style(raw):
+    """Turn a stored text_style value into a dict, or None when unset."""
+    if not raw:
+        return None
+    if isinstance(raw, dict):
+        return raw
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 def status_tags_for(status_ids):
@@ -4053,6 +4261,9 @@ async def get_status_interactions(status_id: str, request: Request):
                 JOIN accounts a ON a.id=r.user_id WHERE r.status_id=%s
                 ORDER BY r.created_at DESC
             """, (status_id,)).fetchall()
+            mine_row = conn.execute("""
+                SELECT 1 FROM status_likes WHERE status_id=%s AND user_id=%s
+            """, (status_id, account["id"])).fetchone()
         viewers = get_status_view_details(status_id)["viewers"] if is_owner else []
         return {
             "success": True, "is_owner": is_owner,
@@ -4062,7 +4273,10 @@ async def get_status_interactions(status_id: str, request: Request):
             "reply_count": len(replies) if is_owner else None,
             "likes": [{"username":x["username"],"created_at":x["created_at"].isoformat()} for x in likes] if is_owner else [],
             "like_count": len(likes) if is_owner else None,
-            "liked_by_me": any(str(x["username"]).lower()==str(account["username"]).lower() for x in likes),
+            # Read the viewer's own row. The previous expression searched the
+            # owner-only list, which is empty for non-owners, so a viewer who
+            # had liked a story was always shown "♡ Like".
+            "liked_by_me": bool(mine_row),
             "reshares": [{"username":x["username"],"created_at":x["created_at"].isoformat()} for x in shares] if is_owner else [],
             "reshare_count": len(shares) if is_owner else None
         }
@@ -4097,6 +4311,59 @@ async def reply_to_status(status_id: str, request: Request):
         return JSONResponse({"error":"Could not send status reply."},status_code=500)
 
 
+async def notify_story_like(liker_account, owner_row, status_id):
+    """Tell the owner about a new like through the private-message path.
+
+    Mirrors notify_story_tag so a like arrives in the same inbox the rest of
+    KCHAT already uses, and is delivered live when the owner is connected.
+    """
+    owner_id, owner_username = owner_row
+    if str(owner_id) == str(liker_account["id"]):
+        return False
+
+    room = "private:" + ":".join(
+        private_pair(liker_account["username"], owner_username)
+    )
+    item = {
+        "id": uuid.uuid4().hex,
+        "type": "private",
+        "username": liker_account["username"],
+        "to": owner_username,
+        "text": "Liked your story.",
+        "status": "sent"
+    }
+    item = save_message(item, room)
+
+    delivered = False
+    for target_socket in connected_sockets_for(owner_username):
+        try:
+            delivery_item = dict(item)
+            delivery_item["status"] = "delivered"
+            await target_socket.send_json(delivery_item)
+            delivered = True
+        except Exception as error:
+            print("Story like notification error:", error)
+
+    if delivered:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE messages SET status = 'delivered' WHERE id = %s",
+                (item["id"],)
+            )
+    return delivered
+
+
+def status_like_state(status_id, account):
+    """Return (liked_by_me, like_count) using the same read authorization."""
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT COUNT(*) AS total,
+                   COUNT(*) FILTER (WHERE user_id = %s) AS mine
+            FROM status_likes WHERE status_id = %s
+        """, (account["id"], status_id)).fetchone()
+    return bool(row and row["mine"]), int(row["total"] or 0) if row else 0
+
+
 @app.post("/api/statuses/{status_id}/like")
 async def like_status(status_id: str, request: Request):
     account=get_account_from_request(request)
@@ -4107,16 +4374,83 @@ async def like_status(status_id: str, request: Request):
             status=conn.execute("SELECT id,owner_id FROM status_updates WHERE id=%s AND expires_at>NOW()",(status_id,)).fetchone()
             if not status:return JSONResponse({"error":"Status not found or expired."},status_code=404)
             if str(status["owner_id"])==str(account["id"]):return JSONResponse({"error":"You cannot like your own status."},status_code=400)
+            owner_row = conn.execute(
+                "SELECT id, username FROM accounts WHERE id=%s",
+                (status["owner_id"],)
+            ).fetchone()
         # Batch 1: liking requires exactly the same access as viewing.
         allowed, reason = story_access(status["owner_id"], account)
         if not allowed:
             return JSONResponse({"error": story_denial(reason)}, status_code=403)
+
+        # The primary key on (status_id, user_id) makes a second like a no-op,
+        # so the same account can never like a story twice.
         with get_db() as conn:
-            conn.execute("INSERT INTO status_likes(status_id,user_id) VALUES(%s,%s) ON CONFLICT DO NOTHING",(status_id,account["id"]))
-        return {"success":True,"liked":True}
+            inserted = conn.execute("""
+                INSERT INTO status_likes(status_id,user_id) VALUES(%s,%s)
+                ON CONFLICT (status_id,user_id) DO NOTHING
+                RETURNING status_id
+            """, (status_id, account["id"])).fetchone()
+
+        liked_by_me, like_count = status_like_state(status_id, account)
+
+        # Only notify on a genuinely new like, so un-liking and re-liking the
+        # same story cannot spam the owner.
+        if inserted and owner_row:
+            try:
+                await notify_story_like(account, (owner_row["id"], owner_row["username"]), status_id)
+            except Exception as error:
+                print("Story like notification error:", error)
+
+        return {
+            "success": True,
+            "liked": True,
+            "liked_by_me": liked_by_me,
+            "like_count": like_count,
+            "already_liked": not bool(inserted)
+        }
     except Exception as error:
         print("Status like error:",error)
         return JSONResponse({"error":"Could not like status."},status_code=500)
+
+
+@app.delete("/api/statuses/{status_id}/like")
+async def unlike_status(status_id: str, request: Request):
+    """Remove this account's like. Removing twice is harmless."""
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+    try:
+        ensure_status_table(); ensure_status_interactions_table()
+        with get_db() as conn:
+            status = conn.execute(
+                "SELECT id, owner_id FROM status_updates WHERE id=%s AND expires_at>NOW()",
+                (status_id,)
+            ).fetchone()
+            if not status:
+                return JSONResponse({"error": "Status not found or expired."}, status_code=404)
+        # Same rules as liking: you can only remove your like from a story
+        # you are allowed to see.
+        allowed, reason = story_access(status["owner_id"], account)
+        if not allowed:
+            return JSONResponse({"error": story_denial(reason)}, status_code=403)
+
+        with get_db() as conn:
+            conn.execute(
+                "DELETE FROM status_likes WHERE status_id=%s AND user_id=%s",
+                (status_id, account["id"])
+            )
+
+        liked_by_me, like_count = status_like_state(status_id, account)
+        return {
+            "success": True,
+            "liked": False,
+            "liked_by_me": liked_by_me,
+            "like_count": like_count
+        }
+    except Exception as error:
+        print("Status unlike error:", error)
+        return JSONResponse({"error": "Could not remove like."}, status_code=500)
 
 
 @app.post("/api/statuses/{status_id}/reshare")
@@ -4155,13 +4489,16 @@ async def get_statuses(request: Request):
 
     try:
         ensure_status_table()
+        # The like counts below read status_likes, which lives in the
+        # interactions group, so it must exist before the query runs.
+        ensure_status_interactions_table()
         # Load the owner's statuses independently from contact statuses.
         # This guarantees that My status still loads even if the contacts
         # lookup encounters a problem.
         with get_db() as conn:
             own_rows = conn.execute("""
                 SELECT s.id, s.owner_id, a.username, a.profile_picture, s.text,
-                       s.media_type, s.background, s.created_at, s.expires_at
+                       s.media_type, s.background, s.text_style, s.created_at, s.expires_at
                 FROM status_updates s
                 JOIN accounts a ON a.id = s.owner_id
                 WHERE s.owner_id = %s AND s.expires_at > NOW()
@@ -4173,7 +4510,7 @@ async def get_statuses(request: Request):
             with get_db() as conn:
                 contact_rows = conn.execute("""
                     SELECT s.id, s.owner_id, a.username, a.profile_picture, s.text,
-                           s.media_type, s.background, s.created_at, s.expires_at
+                           s.media_type, s.background, s.text_style, s.created_at, s.expires_at
                     FROM status_updates s
                     JOIN accounts a ON a.id = s.owner_id
                     JOIN contacts c ON c.contact_id = s.owner_id
@@ -4188,15 +4525,26 @@ async def get_statuses(request: Request):
         rows = list(own_rows) + list(contact_rows)
         rows.sort(key=lambda row: row["created_at"], reverse=True)
 
+        # Resolve every contact story's access in three queries instead of
+        # four connections per story. The rules are unchanged - results are
+        # identical to calling story_access for each row.
+        contact_owner_ids = [
+            row["owner_id"] for row in rows
+            if str(row["owner_id"]) != str(account["id"])
+        ]
+        access_by_owner = story_access_many(contact_owner_ids, account)
+
         visible_rows = []
         for row in rows:
             # Use the immutable account ID to identify the viewer's own
             # statuses. Usernames can change in case or spelling.
             is_mine = str(row["owner_id"]) == str(account["id"])
             if not is_mine:
-                # Batch 1: one shared helper decides every story read, so the
+                # Batch 1: one shared rule set decides every story read, so the
                 # list can no longer disagree with media, view, reply or like.
-                allowed, _reason = story_access(row["owner_id"], account)
+                allowed, _reason = access_by_owner.get(
+                    str(row["owner_id"]), (False, "contact")
+                )
                 if not allowed:
                     continue
             visible_rows.append(row)
@@ -4235,6 +4583,30 @@ async def get_statuses(request: Request):
         # Batch 1: include who each story tagged.
         tags_by_status = status_tags_for(all_visible_status_ids)
 
+        # Story likes: the viewer's own like state plus, for their own
+        # stories, who liked them. One query serves both so the Updates
+        # screen and the heart stay correct without extra round trips.
+        liked_status_ids = set()
+        likers_by_status = {str(status_id): [] for status_id in own_status_ids}
+        if all_visible_status_ids:
+            with get_db() as conn:
+                like_rows = conn.execute("""
+                    SELECT l.status_id, l.user_id, a.username, a.profile_picture,
+                           l.created_at
+                    FROM status_likes l
+                    JOIN accounts a ON a.id = l.user_id
+                    WHERE l.status_id = ANY(%s)
+                    ORDER BY l.created_at DESC
+                """, (all_visible_status_ids,)).fetchall()
+            for like in like_rows:
+                if str(like["user_id"]) == str(account["id"]):
+                    liked_status_ids.add(str(like["status_id"]))
+                likers_by_status.setdefault(str(like["status_id"]), []).append({
+                    "username": like["username"],
+                    "profile_picture": like["profile_picture"],
+                    "created_at": like["created_at"].isoformat()
+                })
+
         return {
             "success": True,
             "statuses": [{
@@ -4244,11 +4616,17 @@ async def get_statuses(request: Request):
                 "text": row["text"],
                 "media_type": row["media_type"],
                 "background": row["background"] or "#546E7A",
+                "text_style": parse_status_text_style(row["text_style"]),
                 "created_at": row["created_at"].isoformat(),
                 "expires_at": row["expires_at"].isoformat(),
                 "is_mine": str(row["owner_id"]) == str(account["id"]),
                 "is_viewed_by_me": str(row["id"]) in viewed_status_ids,
                 "tags": tags_by_status.get(str(row["id"]), []),
+                "liked_by_me": str(row["id"]) in liked_status_ids,
+                "like_count": len(likers_by_status.get(str(row["id"]), []))
+                    if str(row["owner_id"]) == str(account["id"]) else None,
+                "likes": likers_by_status.get(str(row["id"]), [])
+                    if str(row["owner_id"]) == str(account["id"]) else [],
                 "view_count": len(viewers_by_status.get(str(row["id"]), []))
                     if str(row["owner_id"]) == str(account["id"]) else None,
                 "viewers": viewers_by_status.get(str(row["id"]), [])
@@ -4348,6 +4726,10 @@ async def create_status(request: Request):
         if not re.fullmatch(r"#[0-9A-Fa-f]{6}", background):
             background = "#546E7A"
 
+        # Optional text styling for stories. Validated strictly so a viewer
+        # can never be handed CSS from an untrusted client.
+        text_style = normalize_status_text_style(data.get("text_style"))
+
         if media_data is not None:
             if not isinstance(media_data, str) or len(media_data) > 7_000_000:
                 return JSONResponse({"error": "Media is too large. Choose a smaller file."}, status_code=413)
@@ -4377,10 +4759,10 @@ async def create_status(request: Request):
         with get_db() as conn:
             row = conn.execute("""
                 INSERT INTO status_updates
-                    (id, owner_id, text, media_data, media_type, background, expires_at)
-                VALUES (%s, %s, %s, %s, %s, %s, NOW() + (%s * INTERVAL '1 hour'))
+                    (id, owner_id, text, media_data, media_type, background, text_style, expires_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, NOW() + (%s * INTERVAL '1 hour'))
                 RETURNING created_at, expires_at
-            """, (status_id, account["id"], text_value, media_data, media_type, background, expires_in_hours)).fetchone()
+            """, (status_id, account["id"], text_value, media_data, media_type, background, text_style, expires_in_hours)).fetchone()
             for tagged_id, _tagged_username in resolved_tags:
                 conn.execute("""
                     INSERT INTO status_tags (status_id, tagged_id, tagger_id)
@@ -4394,6 +4776,15 @@ async def create_status(request: Request):
             except Exception as error:
                 print("Story tag notification error:", error)
 
+        # Tell contacts who are online that a new story exists, so Recent
+        # updates fills in without them reopening the Updates screen. This
+        # sends no story content - each client re-reads the list through the
+        # normal authorization path.
+        try:
+            await broadcast_story_posted(account, status_id)
+        except Exception as error:
+            print("Story posted broadcast error:", error)
+
         return {
             "success": True,
             "message": "Status shared.",
@@ -4404,6 +4795,7 @@ async def create_status(request: Request):
                 "media_data": media_data,
                 "media_type": media_type,
                 "background": background,
+                "text_style": parse_status_text_style(text_style),
                 "created_at": row["created_at"].isoformat(),
                 "expires_at": row["expires_at"].isoformat(),
                 "is_mine": True,
@@ -4429,15 +4821,20 @@ async def update_status(status_id: str, request: Request):
         if not re.fullmatch(r"#[0-9A-Fa-f]{6}", background):
             background = "#546E7A"
         ensure_status_table()
+        # Keep the stored style unless the edit supplies a new one.
+        text_style = normalize_status_text_style(data.get("text_style")) if "text_style" in data else None
         with get_db() as conn:
             row = conn.execute("""
-                UPDATE status_updates SET text = %s, background = %s
+                UPDATE status_updates
+                SET text = %s, background = %s,
+                    text_style = COALESCE(%s, text_style)
                 WHERE id = %s AND owner_id = %s AND expires_at > NOW()
-                RETURNING id, text, created_at, expires_at, media_data, media_type, background
-            """, (text_value, background, status_id, account["id"])).fetchone()
+                RETURNING id, text, created_at, expires_at, media_data, media_type,
+                          background, text_style
+            """, (text_value, background, text_style, status_id, account["id"])).fetchone()
         if not row:
             return JSONResponse({"error": "Status not found or expired."}, status_code=404)
-        return {"success": True, "status": {"id": row["id"], "username": account["username"], "text": row["text"], "media_data": row["media_data"], "media_type": row["media_type"], "background": row["background"] or "#546E7A", "created_at": row["created_at"].isoformat(), "expires_at": row["expires_at"].isoformat(), "is_mine": True}}
+        return {"success": True, "status": {"id": row["id"], "username": account["username"], "text": row["text"], "media_data": row["media_data"], "media_type": row["media_type"], "background": row["background"] or "#546E7A", "text_style": parse_status_text_style(row["text_style"]), "created_at": row["created_at"].isoformat(), "expires_at": row["expires_at"].isoformat(), "is_mine": True}}
     except Exception as error:
         print("Update status error:", error)
         return JSONResponse({"error": "Could not update this status."}, status_code=500)
