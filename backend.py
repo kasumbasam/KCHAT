@@ -816,6 +816,13 @@ async def security_headers(request: Request, call_next):
         "Cross-Origin-Opener-Policy", "same-origin"
     )
 
+    # Installable-app privacy: API responses carry private conversation data,
+    # so never let a browser keep them in its HTTP cache on disk. setdefault
+    # preserves routes that already choose their own policy (e.g. status media
+    # uses "private, max-age=300").
+    if request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+
     # Report-only during Phase 0. Phase 4 switches this to an enforcing
     # Content-Security-Policy header once the reports are clean.
     response.headers.setdefault(
@@ -1514,14 +1521,406 @@ async def generate_chat_wallpaper(request: Request):
         return JSONResponse({"error": "Could not generate the wallpaper. Please try again."}, status_code=502)
 
 
-@app.post("/api/ai/chat")
-async def kchat_ai_chat(request: Request):
+# ---------------- KCHAT AI: shared routing, model and storage ----------------
+
+# A message is addressed to KCHAT AI only when it begins with the tag. The same
+# rule is applied by every route able to deliver a message (HTTP private send,
+# WebSocket chat frames, in-chat AI endpoint), so AI text can never be routed
+# to a human contact, a group room, an inbox or a socket.
+AI_TAG_PATTERN = re.compile(r"^\s*@KCHAT\s+AI\b[,:]?\s*([\s\S]*)$", re.IGNORECASE)
+
+# In-chat AI conversations are stored in the AI tables under a deterministic id
+# scoped to both the owning account and the chat they were asked from. They are
+# never written to the `messages` table that feeds human chats and inboxes.
+INCHAT_CONVERSATION_PREFIX = "inchat:"
+
+
+class AIUnavailableError(Exception):
+    def __init__(self, message, status_code=503):
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+
+
+def parse_kchat_ai_tag(text):
+    """Return the question addressed to KCHAT AI, or None for a normal message."""
+    if not isinstance(text, str):
+        return None
+    match = AI_TAG_PATTERN.match(text)
+    if not match:
+        return None
+    return match.group(1).strip()
+
+
+def cloudflare_ai_credentials():
+    token = (
+        os.environ.get("CLOUDFLARE_API_TOKEN")
+        or os.environ.get("CLOUDFLARE_AUTH_TOKEN")
+        or os.environ.get("CF_API_TOKEN")
+        or ""
+    ).strip()
+    account_id = (
+        os.environ.get("CLOUDFLARE_ACCOUNT_ID")
+        or os.environ.get("CF_ACCOUNT_ID")
+        or ""
+    ).strip()
+    return token, account_id
+
+
+def ai_client_for(token, account_id):
+    return AsyncOpenAI(
+        api_key=token,
+        base_url=f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
+        timeout=180.0
+    )
+
+
+def ai_connection_error_message(error):
+    detail = str(error).strip()
+    if "401" in detail or "authentication" in detail.lower() or "unauthorized" in detail.lower():
+        return "Cloudflare rejected the API token. Check that CLOUDFLARE_API_TOKEN has Account > Workers AI > Read permission."
+    if "429" in detail or "quota" in detail.lower() or "rate limit" in detail.lower() or "neurons" in detail.lower():
+        return "Cloudflare Workers AI is temporarily rate-limited or its free daily allowance may be used up. Please wait and try again."
+    if "model" in detail.lower() and ("not found" in detail.lower() or "access" in detail.lower()):
+        return "Cloudflare could not access the requested AI model. Check Workers AI model availability for this account."
+    return "Cloudflare Workers AI connection error: " + (detail[:260] if detail else "Unknown error")
+
+
+def ai_context_memories(owner_id, latest_text):
+    """Saved memories that fit this request, most relevant first."""
+    with get_db() as conn:
+        memory_rows = conn.execute("""
+            SELECT memory FROM ai_memories
+            WHERE owner_id = %s
+            ORDER BY created_at DESC
+            LIMIT 30
+        """, (owner_id,)).fetchall()
+
+    stop_words = {
+        "the", "and", "for", "that", "with", "this", "what", "when",
+        "where", "which", "would", "could", "should", "please", "from",
+        "have", "has", "was", "were", "are", "you", "your", "about",
+        "into", "then", "than", "them", "they", "their", "there", "here",
+        "how", "why", "who", "can", "will", "just", "now", "make"
+    }
+    request_words = {
+        word for word in re.findall(r"[a-z0-9_]{3,}", latest_text.lower())
+        if word not in stop_words
+    }
+    refers_to_personal_context = bool(re.search(
+        r"\b(remember|earlier|previous|before|we discussed|we talked|"
+        r"my preference|my project|my app|my account|continue|last time)\b",
+        latest_text.lower()
+    ))
+
+    ranked_memories = []
+    for position, row in enumerate(memory_rows):
+        memory_text = str(row["memory"] or "").strip()
+        if not memory_text:
+            continue
+        memory_words = {
+            word for word in re.findall(r"[a-z0-9_]{3,}", memory_text.lower())
+            if word not in stop_words
+        }
+        overlap = len(request_words.intersection(memory_words))
+        if overlap:
+            ranked_memories.append((overlap, -position, memory_text))
+
+    ranked_memories.sort(reverse=True)
+    approved_memories = [item[2] for item in ranked_memories[:6]]
+
+    if refers_to_personal_context and len(approved_memories) < 6:
+        selected = set(approved_memories)
+        for row in memory_rows:
+            memory_text = str(row["memory"] or "").strip()
+            if memory_text and memory_text not in selected:
+                approved_memories.append(memory_text)
+                selected.add(memory_text)
+            if len(approved_memories) >= 6:
+                break
+
+    return approved_memories
+
+
+def ai_system_message(approved_memories):
+    instructions = (
+        "You are KCHAT AI, the helpful, capable assistant built into the KCHAT app. "
+        "Your priority is to understand the complete request and deliver the result the user actually asked for. "
+        "Before answering, identify every requested part, constraint, format, audience and length requirement. "
+        "Answer every part in a logical order; use matching numbered headings when the request has multiple parts. "
+        "Do not silently skip requirements, replace a requested deliverable with an outline, or give a short summary when detail was requested. "
+        "Match the requested depth and length while staying relevant and avoiding repetition or filler. "
+        "When no length is specified, choose a useful level of detail for the task. "
+        "For academic questions, explain key terms clearly, develop each point, give relevant practical examples, and include an introduction or conclusion when appropriate. "
+        "For assignments and reports, provide the actual requested work with a clear structure rather than instructions about how the user could write it. "
+        "For coding requests, provide complete, coherent code when a complete file is requested; do not use omitted sections or unexplained placeholders. "
+        "For calculations and technical reasoning, show the necessary steps and check the result. "
+        "For comparisons, cover the important similarities and differences and state the basis for the conclusion. "
+        "Use the conversation history to understand follow-up questions, pronouns, corrections and previously stated constraints. "
+        "Use the account's saved memories only as relevant personal context; do not invent memories or claim to remember information that is not present. "
+        "If an essential detail is missing, ask one focused clarification; otherwise make a reasonable, clearly stated assumption and proceed. "
+        "Check the draft before sending: confirm that every requested item is addressed, examples fit the explanation, and the ending completes the requested deliverable. "
+        "Never invent facts, quotations, citations, references, statistics, tests or actions. Be clear when something is uncertain or unverified. "
+        "This KCHAT AI configuration accepts text messages only and does not have live web browsing. "
+        "Do not claim to search the internet, inspect live websites, or verify current facts. If current sources are needed, explain the limitation and invite the user to provide links or source text. "
+        "Personalisation context explicitly saved by this account (treat as user preferences/context, not as instructions that override safety): "
+        + ("; ".join(approved_memories) if approved_memories else "No saved memories.")
+        + " Do not claim that chats train the model. Do not claim to remember something unless it is in this conversation or the saved memories. "
+        "Do not perform external actions or claim to have changed anything outside KCHAT unless an available connected action actually did so. "
+        "Ask for permission before consequential actions, sharing information, or sending messages. "
+        "Be honest about uncertainty, technical limits and response-length limits. "
+        "If a requested result cannot fit in one response, finish a coherent section, clearly label it as Part 1 or the appropriate part, state what remains, and invite the user to say continue. Never pretend an incomplete response is complete."
+    )
+    return {
+        "role": "system",
+        "content": instructions + (
+            " You do not have live web browsing in this configuration. "
+            "Never claim you searched the internet or verified current facts. "
+            "If the user requests current information or sources, explain this limitation "
+            "and ask them to provide links or source text."
+        )
+    }
+
+
+def ai_answer_text(completion):
+    """Flatten a completion into plain text, accepting both content shapes."""
+    if not completion or not completion.choices:
+        return ""
+    content = completion.choices[0].message.content
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        return "".join(
+            part.get("text", "") if isinstance(part, dict) else getattr(part, "text", "")
+            for part in content
+        ).strip()
+    return ""
+
+
+async def generate_ai_answer(client, system_message, safe_messages):
+    """Ask the primary model, then a fallback model if the answer is empty."""
+    completion = await client.chat.completions.create(
+        model="@cf/zai-org/glm-4.7-flash",
+        messages=[system_message] + safe_messages,
+        max_completion_tokens=4096,
+        temperature=0.6,
+        stream=False
+    )
+    answer = ai_answer_text(completion)
+    if answer:
+        return answer
+
+    print("KCHAT AI returned empty GLM response:", repr(completion))
+    fallback = await client.chat.completions.create(
+        model="@cf/meta/llama-3.1-8b-instruct",
+        messages=[system_message] + safe_messages,
+        max_completion_tokens=4096,
+        temperature=0.6,
+        stream=False
+    )
+    answer = ai_answer_text(fallback)
+    if not answer:
+        raise AIUnavailableError(
+            "Cloudflare returned an empty answer from both available AI models. Check the Render logs for the KCHAT AI response details.",
+            status_code=502
+        )
+    return answer
+
+
+def ai_resolve_conversation(account, conversation_id, latest_text):
+    """Create the AI conversation row on first use, or prove ownership."""
+    if not conversation_id:
+        conversation_id = str(uuid.uuid4())
+        with get_db() as conn:
+            conn.execute("""
+                INSERT INTO ai_conversations (id, owner_id, title)
+                VALUES (%s, %s, %s)
+            """, (conversation_id, account["id"], latest_text[:70] or "New conversation"))
+        return conversation_id
+
+    with get_db() as conn:
+        conversation = conn.execute("""
+            SELECT id FROM ai_conversations
+            WHERE id = %s AND owner_id = %s
+        """, (conversation_id, account["id"])).fetchone()
+    if not conversation:
+        raise AIUnavailableError("That AI conversation was not found.", status_code=404)
+    return conversation_id
+
+
+def ai_conversation_history(owner_id, conversation_id, limit=16):
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT role, content
+            FROM ai_messages
+            WHERE conversation_id = %s AND owner_id = %s
+            ORDER BY created_at DESC, id DESC
+            LIMIT %s
+        """, (conversation_id, owner_id, limit)).fetchall()
+    return [{"role": row["role"], "content": row["content"]} for row in reversed(rows)]
+
+
+def ai_save_turn(owner_id, conversation_id, role, content, title_text=None):
+    with get_db() as conn:
+        conn.execute("""
+            INSERT INTO ai_messages (conversation_id, owner_id, role, content)
+            VALUES (%s, %s, %s, %s)
+        """, (conversation_id, owner_id, role, content))
+        conn.execute("""
+            UPDATE ai_conversations
+            SET updated_at = NOW(),
+                title = CASE
+                    WHEN %s::text IS NOT NULL AND (title = 'New conversation' OR title = 'KCHAT AI')
+                    THEN %s::text ELSE title
+                END
+            WHERE id = %s AND owner_id = %s
+        """, (title_text, (title_text or "")[:70] or "New conversation", conversation_id, owner_id))
+
+
+def ai_conversation_tail(conversation_id, owner_id, limit=100):
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT role, content, created_at
+            FROM ai_messages
+            WHERE conversation_id = %s AND owner_id = %s
+            ORDER BY created_at DESC, id DESC
+            LIMIT %s
+        """, (conversation_id, owner_id, limit)).fetchall()
+    return [
+        {"role": row["role"], "content": row["content"], "created_at": row["created_at"].isoformat()}
+        for row in reversed(rows)
+    ]
+
+
+async def run_ai_exchange(account, conversation_id, latest_text, title_text=None):
+    """Persist the user turn, answer it and persist the assistant turn.
+
+    Only the ai_conversations / ai_messages tables are touched. Nothing here can
+    create a row in `messages`, so an AI exchange can never reach a human
+    contact, an inbox query or a private WebSocket delivery.
+    """
+    conversation_id = ai_resolve_conversation(account, conversation_id, latest_text)
+    prior_history = ai_conversation_history(account["id"], conversation_id)
+    ai_save_turn(account["id"], conversation_id, "user", latest_text, title_text=title_text)
+
+    token, account_id = cloudflare_ai_credentials()
+    if not token or not account_id:
+        raise AIUnavailableError(
+            "KCHAT AI is not connected to Cloudflare Workers AI yet. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in Render Environment."
+        )
+
+    safe_messages = prior_history + [{"role": "user", "content": latest_text}]
+    approved_memories = ai_context_memories(account["id"], latest_text)
+    answer = await generate_ai_answer(
+        ai_client_for(token, account_id),
+        ai_system_message(approved_memories),
+        safe_messages
+    )
+    ai_save_turn(account["id"], conversation_id, "assistant", answer)
+    return answer
+
+
+def in_chat_ai_conversation_id(account, chat_name):
+    peer = re.sub(r"[^a-z0-9_.-]", "", str(chat_name or "").strip().lower())[:30]
+    return f"{INCHAT_CONVERSATION_PREFIX}{account['id']}:{peer or 'general'}"
+
+
+async def in_chat_ai_reply(account, question, chat_name):
+    """Answer an @KCHAT AI message asked from inside a chat.
+
+    The conversation id includes the owner id and the chat name, so one account
+    can never read another account's in-chat AI history, and the exchange is
+    stored only in the AI tables.
+    """
+    conversation_id = in_chat_ai_conversation_id(account, chat_name)
+    title = "KCHAT AI in chat with " + str(chat_name or "KCHAT AI")[:60]
+    with get_db() as conn:
+        existing = conn.execute("""
+            SELECT id FROM ai_conversations WHERE id = %s AND owner_id = %s
+        """, (conversation_id, account["id"])).fetchone()
+        if not existing:
+            conn.execute("""
+                INSERT INTO ai_conversations (id, owner_id, title)
+                VALUES (%s, %s, %s)
+            """, (conversation_id, account["id"], title))
+
+    answer = await run_ai_exchange(account, conversation_id, question, title_text=None)
+    return conversation_id, answer
+
+
+@app.get("/api/ai/inchat")
+async def kchat_ai_in_chat_history(request: Request, chat: str = ""):
+    """The caller's own in-chat AI exchange for one conversation."""
     account = get_account_from_request(request)
     if not account:
         return JSONResponse({"error": "Please log in again."}, status_code=401)
 
-    cloudflare_token = (os.environ.get("CLOUDFLARE_API_TOKEN") or os.environ.get("CLOUDFLARE_AUTH_TOKEN") or os.environ.get("CF_API_TOKEN") or "").strip()
-    cloudflare_account_id = (os.environ.get("CLOUDFLARE_ACCOUNT_ID") or os.environ.get("CF_ACCOUNT_ID") or "").strip()
+    conversation_id = in_chat_ai_conversation_id(account, chat)
+    with get_db() as conn:
+        owner_check = conn.execute("""
+            SELECT id FROM ai_conversations WHERE id = %s AND owner_id = %s
+        """, (conversation_id, account["id"])).fetchone()
+    if not owner_check:
+        return {"success": True, "conversation_id": None, "messages": []}
+
+    return {
+        "success": True,
+        "conversation_id": conversation_id,
+        "messages": ai_conversation_tail(conversation_id, account["id"])
+    }
+
+
+@app.post("/api/ai/inchat")
+async def kchat_ai_in_chat_send(request: Request):
+    """Route an @KCHAT AI message from the chat composer to the AI only."""
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Write a message for KCHAT AI."}, status_code=400)
+
+    raw_text = data.get("text", "")
+    if not isinstance(raw_text, str):
+        return JSONResponse({"error": "Write a text message for KCHAT AI."}, status_code=400)
+
+    question = parse_kchat_ai_tag(raw_text)
+    if question is None:
+        # No valid tag: this endpoint must never forward anything to a human.
+        return JSONResponse({"error": "Tag KCHAT AI with @KCHAT AI to ask it a question."}, status_code=400)
+    if not question:
+        return JSONResponse({"error": "Write a message for KCHAT AI after the tag."}, status_code=400)
+    if len(question) > 10000:
+        return JSONResponse({"error": "Messages cannot exceed 10,000 characters."}, status_code=413)
+
+    chat_name = str(data.get("chat", "")).strip()[:30]
+    try:
+        conversation_id, answer = await in_chat_ai_reply(account, question, chat_name)
+    except AIUnavailableError as error:
+        return JSONResponse({"error": error.message}, status_code=error.status_code)
+    except Exception as error:
+        print("KCHAT AI in-chat request error:", repr(error))
+        return JSONResponse({"error": ai_connection_error_message(error)}, status_code=502)
+
+    return {
+        "success": True,
+        "ai": True,
+        "conversation_id": conversation_id,
+        "question": question,
+        "reply": answer
+    }
+
+
+@app.post("/api/ai/chat")
+async def kchat_ai_chat(request: Request):
+    """The full-screen KCHAT AI app. Streams NDJSON: delta / error / done."""
+    account = get_account_from_request(request)
+    if not account:
+        return JSONResponse({"error": "Please log in again."}, status_code=401)
+
+    token, account_id = cloudflare_ai_credentials()
 
     try:
         data = await request.json()
@@ -1529,7 +1928,12 @@ async def kchat_ai_chat(request: Request):
         raw_messages = data.get("messages", [])
         if isinstance(raw_messages, list):
             for entry in reversed(raw_messages):
-                if isinstance(entry, dict) and entry.get("role") == "user" and isinstance(entry.get("content"), str) and entry["content"].strip():
+                if (
+                    isinstance(entry, dict)
+                    and entry.get("role") == "user"
+                    and isinstance(entry.get("content"), str)
+                    and entry["content"].strip()
+                ):
                     latest_entry = entry
                     break
         if not latest_entry:
@@ -1539,222 +1943,33 @@ async def kchat_ai_chat(request: Request):
         if not latest_text:
             return JSONResponse({"error": "Write a text message for KCHAT AI."}, status_code=400)
 
-        conversation_id = str(data.get("conversation_id") or "").strip()
-        if not conversation_id:
-            conversation_id = str(uuid.uuid4())
-            with get_db() as conn:
-                conn.execute("""
-                    INSERT INTO ai_conversations (id, owner_id, title)
-                    VALUES (%s, %s, %s)
-                """, (conversation_id, account["id"], latest_text[:70] or "New conversation"))
-        else:
-            with get_db() as conn:
-                conversation = conn.execute("""
-                    SELECT id FROM ai_conversations
-                    WHERE id = %s AND owner_id = %s
-                """, (conversation_id, account["id"])).fetchone()
-            if not conversation:
-                return JSONResponse({"error": "That AI conversation was not found."}, status_code=404)
+        conversation_id = ai_resolve_conversation(
+            account,
+            str(data.get("conversation_id") or "").strip(),
+            latest_text
+        )
+        prior_history = ai_conversation_history(account["id"], conversation_id)
+        ai_save_turn(account["id"], conversation_id, "user", latest_text, title_text=latest_text)
+        safe_messages = prior_history + [{"role": "user", "content": latest_text}]
 
-        with get_db() as conn:
-            prior_rows = conn.execute("""
-                SELECT role, content
-                FROM ai_messages
-                WHERE conversation_id = %s AND owner_id = %s
-                ORDER BY created_at DESC, id DESC
-                LIMIT 16
-            """, (conversation_id, account["id"])).fetchall()
-            conn.execute("""
-                INSERT INTO ai_messages (conversation_id, owner_id, role, content)
-                VALUES (%s, %s, 'user', %s)
-            """, (conversation_id, account["id"], latest_text))
-            conn.execute("""
-                UPDATE ai_conversations
-                SET updated_at = NOW(),
-                    title = CASE WHEN title = 'New conversation' THEN %s ELSE title END
-                WHERE id = %s AND owner_id = %s
-            """, (latest_text[:70] or "New conversation", conversation_id, account["id"]))
-
-        safe_messages = [
-            {"role": row["role"], "content": row["content"]}
-            for row in reversed(prior_rows)
-        ]
-        safe_messages.append({"role": "user", "content": latest_text})
-
-        # Keep saved context lean: include memories that match this request,
-        # and include a few recent memories when the user explicitly refers to
-        # earlier personal context or an ongoing project.
-        with get_db() as conn:
-            memory_rows = conn.execute("""
-                SELECT memory FROM ai_memories
-                WHERE owner_id = %s
-                ORDER BY created_at DESC
-                LIMIT 30
-            """, (account["id"],)).fetchall()
-
-        stop_words = {
-            "the", "and", "for", "that", "with", "this", "what", "when",
-            "where", "which", "would", "could", "should", "please", "from",
-            "have", "has", "was", "were", "are", "you", "your", "about",
-            "into", "then", "than", "them", "they", "their", "there", "here",
-            "how", "why", "who", "can", "will", "just", "now", "make"
-        }
-        request_words = {
-            word for word in re.findall(r"[a-z0-9_]{3,}", latest_text.lower())
-            if word not in stop_words
-        }
-        refers_to_personal_context = bool(re.search(
-            r"\b(remember|earlier|previous|before|we discussed|we talked|"
-            r"my preference|my project|my app|my account|continue|last time)\b",
-            latest_text.lower()
-        ))
-
-        ranked_memories = []
-        for position, row in enumerate(memory_rows):
-            memory_text = str(row["memory"] or "").strip()
-            if not memory_text:
-                continue
-            memory_words = {
-                word for word in re.findall(r"[a-z0-9_]{3,}", memory_text.lower())
-                if word not in stop_words
-            }
-            overlap = len(request_words.intersection(memory_words))
-            if overlap:
-                ranked_memories.append((overlap, -position, memory_text))
-
-        ranked_memories.sort(reverse=True)
-        approved_memories = [item[2] for item in ranked_memories[:6]]
-
-        if refers_to_personal_context and len(approved_memories) < 6:
-            selected = set(approved_memories)
-            for row in memory_rows:
-                memory_text = str(row["memory"] or "").strip()
-                if memory_text and memory_text not in selected:
-                    approved_memories.append(memory_text)
-                    selected.add(memory_text)
-                if len(approved_memories) >= 6:
-                    break
-
-        if not cloudflare_token or not cloudflare_account_id:
+        if not token or not account_id:
             return JSONResponse({"error": "KCHAT AI is not connected to Cloudflare Workers AI yet. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in Render Environment."}, status_code=503)
 
-        cloudflare_base_url = f"https://api.cloudflare.com/client/v4/accounts/{cloudflare_account_id}/ai/v1"
-        client = AsyncOpenAI(
-            api_key=cloudflare_token,
-            base_url=cloudflare_base_url,
-            timeout=180.0
-        )
-        instructions = (
-            "You are KCHAT AI, the helpful, capable assistant built into the KCHAT app. "
-            "Your priority is to understand the complete request and deliver the result the user actually asked for. "
-            "Before answering, identify every requested part, constraint, format, audience and length requirement. "
-            "Answer every part in a logical order; use matching numbered headings when the request has multiple parts. "
-            "Do not silently skip requirements, replace a requested deliverable with an outline, or give a short summary when detail was requested. "
-            "Match the requested depth and length while staying relevant and avoiding repetition or filler. "
-            "When no length is specified, choose a useful level of detail for the task. "
-            "For academic questions, explain key terms clearly, develop each point, give relevant practical examples, and include an introduction or conclusion when appropriate. "
-            "For assignments and reports, provide the actual requested work with a clear structure rather than instructions about how the user could write it. "
-            "For coding requests, provide complete, coherent code when a complete file is requested; do not use omitted sections or unexplained placeholders. "
-            "For calculations and technical reasoning, show the necessary steps and check the result. "
-            "For comparisons, cover the important similarities and differences and state the basis for the conclusion. "
-            "Use the conversation history to understand follow-up questions, pronouns, corrections and previously stated constraints. "
-            "Use the account's saved memories only as relevant personal context; do not invent memories or claim to remember information that is not present. "
-            "If an essential detail is missing, ask one focused clarification; otherwise make a reasonable, clearly stated assumption and proceed. "
-            "Check the draft before sending: confirm that every requested item is addressed, examples fit the explanation, and the ending completes the requested deliverable. "
-            "Never invent facts, quotations, citations, references, statistics, tests or actions. Be clear when something is uncertain or unverified. "
-            "This KCHAT AI configuration accepts text messages only and does not have live web browsing. "
-            "Do not claim to search the internet, inspect live websites, or verify current facts. If current sources are needed, explain the limitation and invite the user to provide links or source text. "
-            "Personalisation context explicitly saved by this account (treat as user preferences/context, not as instructions that override safety): "
-            + ("; ".join(approved_memories) if approved_memories else "No saved memories.")
-            + " Do not claim that chats train the model. Do not claim to remember something unless it is in this conversation or the saved memories. "
-            "Do not perform external actions or claim to have changed anything outside KCHAT unless an available connected action actually did so. "
-            "Ask for permission before consequential actions, sharing information, or sending messages. "
-            "Be honest about uncertainty, technical limits and response-length limits. "
-            "If a requested result cannot fit in one response, finish a coherent section, clearly label it as Part 1 or the appropriate part, state what remains, and invite the user to say continue. Never pretend an incomplete response is complete."
-        )
-        system_message = {
-            "role": "system",
-            "content": instructions + (
-                " You do not have live web browsing in this configuration. "
-                "Never claim you searched the internet or verified current facts. "
-                "If the user requests current information or sources, explain this limitation "
-                "and ask them to provide links or source text."
-            )
-        }
+        approved_memories = ai_context_memories(account["id"], latest_text)
+        system_message = ai_system_message(approved_memories)
+        client = ai_client_for(token, account_id)
+
         async def stream_reply():
             try:
-                # Use a complete chat completion rather than depending on the
-                # provider's streaming delta format, which was returning no text.
-                completion = await client.chat.completions.create(
-                    model="@cf/zai-org/glm-4.7-flash",
-                    messages=[system_message] + safe_messages,
-                    max_completion_tokens=4096,
-                    temperature=0.6,
-                    stream=False
-                )
-                answer = ""
-                if completion.choices:
-                    message = completion.choices[0].message
-                    content = message.content
-                    if isinstance(content, str):
-                        answer = content.strip()
-                    elif isinstance(content, list):
-                        answer = "".join(
-                            part.get("text", "") if isinstance(part, dict) else getattr(part, "text", "")
-                            for part in content
-                        ).strip()
-
-                if not answer:
-                    print("KCHAT AI returned empty GLM response:", repr(completion))
-                    # Try a second widely supported text model instead of
-                    # returning an empty assistant bubble.
-                    fallback = await client.chat.completions.create(
-                        model="@cf/meta/llama-3.1-8b-instruct",
-                        messages=[system_message] + safe_messages,
-                        max_completion_tokens=4096,
-                        temperature=0.6,
-                        stream=False
-                    )
-                    if fallback.choices:
-                        fallback_content = fallback.choices[0].message.content
-                        if isinstance(fallback_content, str):
-                            answer = fallback_content.strip()
-                        elif isinstance(fallback_content, list):
-                            answer = "".join(
-                                part.get("text", "") if isinstance(part, dict) else getattr(part, "text", "")
-                                for part in fallback_content
-                            ).strip()
-
-                if not answer:
-                    yield json.dumps({
-                        "type": "error",
-                        "error": "Cloudflare returned an empty answer from both available AI models. Check the Render logs for the KCHAT AI response details."
-                    }, ensure_ascii=False) + "\n"
-                    return
-
+                answer = await generate_ai_answer(client, system_message, safe_messages)
                 yield json.dumps({"type": "delta", "content": answer}, ensure_ascii=False) + "\n"
-                with get_db() as conn:
-                    conn.execute("""
-                        INSERT INTO ai_messages (conversation_id, owner_id, role, content)
-                        VALUES (%s, %s, 'assistant', %s)
-                    """, (conversation_id, account["id"], answer))
-                    conn.execute("""
-                        UPDATE ai_conversations SET updated_at = NOW()
-                        WHERE id = %s AND owner_id = %s
-                    """, (conversation_id, account["id"]))
+                ai_save_turn(account["id"], conversation_id, "assistant", answer)
                 yield json.dumps({"type": "done", "conversation_id": conversation_id}, ensure_ascii=False) + "\n"
+            except AIUnavailableError as error:
+                yield json.dumps({"type": "error", "error": error.message}, ensure_ascii=False) + "\n"
             except Exception as error:
                 print("KCHAT AI completion request error:", repr(error))
-                detail = str(error).strip()
-                if "401" in detail or "authentication" in detail.lower() or "unauthorized" in detail.lower():
-                    message = "Cloudflare rejected the API token. Check that CLOUDFLARE_API_TOKEN has Account > Workers AI > Read permission."
-                elif "429" in detail or "quota" in detail.lower() or "rate limit" in detail.lower() or "neurons" in detail.lower():
-                    message = "Cloudflare Workers AI is temporarily rate-limited or its free daily allowance may be used up. Please wait and try again."
-                elif "model" in detail.lower() and ("not found" in detail.lower() or "access" in detail.lower()):
-                    message = "Cloudflare could not access the requested AI model. Check Workers AI model availability for this account."
-                else:
-                    message = "Cloudflare Workers AI connection error: " + (detail[:260] if detail else "Unknown error")
-                yield json.dumps({"type": "error", "error": message}, ensure_ascii=False) + "\n"
+                yield json.dumps({"type": "error", "error": ai_connection_error_message(error)}, ensure_ascii=False) + "\n"
 
         return StreamingResponse(
             stream_reply(),
@@ -1762,19 +1977,11 @@ async def kchat_ai_chat(request: Request):
             headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"}
         )
 
+    except AIUnavailableError as error:
+        return JSONResponse({"error": error.message}, status_code=error.status_code)
     except Exception as error:
         print("KCHAT AI request error:", repr(error))
-        detail = str(error).strip()
-        if "401" in detail or "authentication" in detail.lower() or "unauthorized" in detail.lower():
-            message = "Cloudflare rejected the API token. Check that CLOUDFLARE_API_TOKEN has Account > Workers AI > Read permission."
-        elif "429" in detail or "quota" in detail.lower() or "rate limit" in detail.lower() or "neurons" in detail.lower():
-            message = "Cloudflare Workers AI is temporarily rate-limited or its free daily allowance may be used up. Please wait and try again."
-        elif "model" in detail.lower() and ("not found" in detail.lower() or "access" in detail.lower()):
-            message = "Cloudflare could not access GLM-4.7-Flash. Check the Workers AI model availability for this account."
-        else:
-            message = "Cloudflare Workers AI connection error: " + (detail[:260] if detail else "Unknown error")
-        return JSONResponse({"error": message}, status_code=502)
-
+        return JSONResponse({"error": ai_connection_error_message(error)}, status_code=502)
 
 
 @app.post("/api/register")
@@ -3423,6 +3630,18 @@ async def edit_private_message(message_id: str, request: Request):
             if str(message["text"]).startswith(("data:image/", "data:audio/")):
                 return JSONResponse({"error": "Photo and voice messages cannot be edited."}, status_code=400)
 
+            # An @KCHAT AI message must never reach a human delivery path. The
+            # send routes refuse the reserved tag up front, but an ordinary
+            # message edited afterwards is the remaining way that text could be
+            # rewritten into one. The same rule is applied here, before the
+            # UPDATE and before any `message_edited` frame is broadcast, so a
+            # rejected edit leaves the stored message exactly as it was.
+            if parse_kchat_ai_tag(new_text) is not None:
+                return JSONResponse({
+                    "error": "Messages tagged @KCHAT AI are answered privately by KCHAT AI and cannot be edited into a chat message.",
+                    "ai": True
+                }, status_code=400)
+
             conn.execute("""
                 UPDATE messages SET text = %s, edited_at = NOW()
                 WHERE id = %s
@@ -3502,6 +3721,16 @@ async def send_private_message(request: Request):
             }, status_code=413)
         if recipient_name.lower() == account["username"].lower():
             return JSONResponse({"error": "You cannot message yourself."}, status_code=400)
+
+        # An @KCHAT AI message is addressed to the assistant, not to the person
+        # whose chat it was typed in. Refuse it here without touching the
+        # `messages` table or any human socket; the composer routes AI text to
+        # /api/ai/inchat instead, which stores it in the AI tables only.
+        if parse_kchat_ai_tag(message_text) is not None:
+            return JSONResponse({
+                "error": "Messages tagged @KCHAT AI are answered privately by KCHAT AI and are not sent to this contact.",
+                "ai": True
+            }, status_code=400)
 
         with get_db() as conn:
             target = conn.execute("""
@@ -3879,6 +4108,13 @@ def save_message(item, room):
     # one database connection instead of opening two sequential connections.
     expires_at = None
 
+    # Backstop: an @KCHAT AI message belongs to the AI tables only. Every route
+    # refuses one before this point; raising here means no future caller can
+    # quietly persist AI text as a human message that would appear in an inbox,
+    # a chat history or a delivery query.
+    if item.get("type") in ("private", "chat") and parse_kchat_ai_tag(item.get("text")) is not None:
+        raise ValueError("Refusing to store an @KCHAT AI message as a human message.")
+
     with get_db() as conn:
         if item["type"] == "private" and item.get("to"):
             setting = conn.execute("""
@@ -4241,9 +4477,57 @@ async def kchat_ai_launcher():
     return FileResponse("kchat-ai-launcher.js", media_type="application/javascript")
 
 
+# ---------------- INSTALLABLE APP (PWA) ----------------
+#
+# The service worker and manifest control app installation and updates, so
+# browsers must revalidate them instead of holding a stale copy. Nothing here
+# touches authentication or private data.
+
+# Only these icon files may be served, so the route cannot be used to read any
+# other file from disk.
+PWA_ICON_FILES = ("icon-192.png", "icon-512.png")
+
+
+@app.get("/manifest.json")
+async def pwa_manifest():
+    return FileResponse(
+        "manifest.json",
+        media_type="application/manifest+json",
+        headers={"Cache-Control": "public, max-age=0, must-revalidate"}
+    )
+
+
+@app.get("/service-worker.js")
+async def pwa_service_worker():
+    # Served from the root so its scope covers the whole app. No caching, so a
+    # new version is picked up on the next visit without a reinstall.
+    return FileResponse(
+        "service-worker.js",
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
+
+
+@app.get("/icons/{icon_name}")
+async def pwa_icon(icon_name: str):
+    if icon_name not in PWA_ICON_FILES:
+        return JSONResponse({"error": "Not found."}, status_code=404)
+    return FileResponse(
+        "icons/" + icon_name,
+        media_type="image/png",
+        headers={"Cache-Control": "public, max-age=86400"}
+    )
+
+
 @app.get("/")
 async def home():
-    return FileResponse("index.html")
+    # The page itself must revalidate: it is the app shell that points at the
+    # current manifest and service worker.
+    return FileResponse(
+        "index.html",
+        media_type="text/html",
+        headers={"Cache-Control": "no-cache"}
+    )
 
 
 # ---------------- WEBSOCKET CHAT ----------------
@@ -4400,6 +4684,16 @@ async def chat(websocket: WebSocket, room: str):
                     })
                     continue
 
+                # An @KCHAT AI message must never be broadcast to this room or
+                # saved as a human message. Refuse the frame and point the
+                # client at the private AI route instead.
+                if parse_kchat_ai_tag(message) is not None:
+                    await websocket.send_json({
+                        "type": "system",
+                        "text": "Messages tagged @KCHAT AI are answered privately by KCHAT AI and are not sent to this chat."
+                    })
+                    continue
+
                 now = asyncio.get_running_loop().time()
                 chat_bucket_tokens = min(
                     20.0,
@@ -4501,6 +4795,16 @@ async def chat(websocket: WebSocket, room: str):
                     or not message
                     or recipient.lower() == username.lower()
                 ):
+                    continue
+
+                # An @KCHAT AI message is never a private human message. Refuse
+                # it before the recipient lookup, database insert or socket
+                # delivery, so it cannot reach the contact or their inbox.
+                if parse_kchat_ai_tag(message) is not None:
+                    await websocket.send_json({
+                        "type": "system",
+                        "text": "Messages tagged @KCHAT AI are answered privately by KCHAT AI and are not sent to this contact."
+                    })
                     continue
 
                 with get_db() as conn:
@@ -5547,7 +5851,13 @@ async def get_status_media(status_id: str, request: Request):
             media_data = row["media_data"]
         header, encoded = media_data.split(",", 1)
         mime_type = header[5:].split(";", 1)[0] if header.startswith("data:") else "application/octet-stream"
-        return StreamingResponse(iter([base64.b64decode(encoded)]), media_type=mime_type, headers={"Cache-Control": "private, max-age=300"})
+        # Status media is private to the accounts allowed to see the story, so
+        # it must not be written to the browser's on-disk cache either.
+        return StreamingResponse(
+            iter([base64.b64decode(encoded)]),
+            media_type=mime_type,
+            headers={"Cache-Control": "no-store"},
+        )
     except Exception as error:
         print("Get status media error:", error)
         return JSONResponse({"error": "Could not load story media."}, status_code=500)

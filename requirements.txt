@@ -1,5 +1,8 @@
-fastapi
-uvicorn[standard]
-psycopg[binary]
-openai
-av
+fastapi==0.165.0
+# The [standard] extra is required: without it uvicorn has no WebSocket
+# implementation, and every /ws connection fails with HTTP 404. Dropping it
+# breaks all realtime messaging.
+uvicorn[standard]==0.54.0
+psycopg[binary]==3.3.9
+openai==3.59.0
+av==18.1.1

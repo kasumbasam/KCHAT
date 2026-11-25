@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>KCHAT - WhatsApp Layout</title>
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KCHAT">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Kalam:wght@300;400;700&family=Patrick+Hand&family=Lora:wght@400;500;700&family=Playfair+Display:wght@400;500;700&family=Pacifico&display=swap" rel="stylesheet">
@@ -585,7 +594,38 @@ hr {
 .message-row {
     display:flex;
     width:100%;
+    align-items:flex-end;
+    gap:6px;
 }
+/* One avatar style for every message type. It is rendered on the incoming
+   side before the bubble and on the outgoing side after it, so the sender's
+   photo always sits on the correct outer edge of the conversation. */
+.message-avatar{width:34px;height:34px;flex:0 0 34px;border-radius:50%;overflow:hidden;background:#183743;border:1px solid var(--accent);display:grid;place-items:center;color:var(--accent);font:700 15px Arial,sans-serif;align-self:flex-start;margin-top:2px}
+.message-avatar img{width:100%;height:100%;object-fit:cover}
+.message-avatar.ai-avatar{background:#04222b}
+.message-avatar.ai-avatar img{border:0;border-radius:50%;object-fit:contain;padding:2px}
+/* Private in-chat AI turns: visually distinct from human messages. */
+.kchat-ai-chat-bubble{background:#072830!important;border:1px solid #00baff55!important;box-shadow:none!important}
+.message-row.mine .kchat-ai-chat-bubble{background:#06303a!important;border-color:#00e5ff66!important}
+.kchat-ai-chat-tag{font:700 9px/1.2 Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#5fd8ff;margin-bottom:3px}
+.ai-message-row .message-bubble{max-width:min(70%,420px)}
+.ai-message-row .message-text{white-space:pre-wrap}
+/* Keep the private AI exchange visually separate from human messages: a blue
+   outline, a tag line and a dashed left edge for assistant answers. */
+.ai-message-row .message-avatar{border-color:#00baff88}
+.ai-message-row:not(.mine) .kchat-ai-chat-bubble{border-left:3px solid #00e5ff}
+.ai-message-row .message-meta{font-size:10px}
+.ai-message-row .kchat-ai-chat-bubble .message-receipt-label{font-size:9px;color:#7fd7f0}
+.kchat-ai-chat-bubble .message-text{font-size:12px!important;line-height:1.35!important}
+/* Composer autocomplete for the @KCHAT AI tag. It sits above the composer so
+   the suggestion never covers the message being typed. */
+.ai-tag-suggestions{position:absolute;left:12px;right:12px;bottom:calc(100% + 6px);z-index:30;display:flex;flex-direction:column;overflow:hidden;border:1px solid #00baff55;border-radius:12px;background:#07222a;box-shadow:0 12px 30px #0009}
+.ai-tag-suggestions.hidden{display:none!important}
+.ai-tag-suggestion{display:flex;align-items:center;gap:9px;width:100%;padding:9px 12px;border:0;background:transparent;color:var(--text);text-align:left;font:14px Arial,sans-serif;cursor:pointer}
+.ai-tag-suggestion:hover,.ai-tag-suggestion.active{background:#0d3947}
+.ai-tag-suggestion img{width:22px;height:22px;flex:0 0 22px;object-fit:contain;border-radius:50%}
+.ai-tag-suggestion strong{font-weight:700;color:#5fd8ff}
+.ai-tag-suggestion small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
 .message-bubble{touch-action:pan-y}
 .message-reply-quote{display:flex;flex-direction:column;gap:3px;margin:0 0 7px;padding:7px 10px;border-left:4px solid var(--accent);border-radius:5px;background:rgba(0,0,0,.16);max-width:100%;text-align:left}
 .message-reply-quote strong{font-size:13px;font-weight:700;color:var(--accent)}
@@ -626,7 +666,11 @@ hr {
     line-height:1.2;
 }
 .kchat-audio-message{display:flex;align-items:center;gap:8px;min-width:min(250px,65vw);max-width:100%;padding:3px 0}
-.voice-message-row{align-items:flex-end;gap:6px}.voice-message-row.mine{flex-direction:row-reverse}.voice-message-avatar{width:34px;height:34px;flex:0 0 34px;border-radius:50%;overflow:hidden;background:#183743;border:1px solid var(--accent);display:grid;place-items:center;color:var(--accent);font:700 15px Arial,sans-serif;align-self:flex-start;margin-top:2px}.voice-message-avatar img{width:100%;height:100%;object-fit:cover}.voice-message-row .message-bubble{max-width:min(60%,310px);padding:4px 6px}.voice-message-row.mine .message-bubble{background:#075477;border:1px solid #079bd4}.voice-message-row:not(.mine) .message-bubble{background:#20252c;border:1px solid #343b44}.kchat-audio-message{display:flex;align-items:center;gap:5px;min-width:min(170px,52vw);max-width:100%;padding:0}.kchat-voice-audio{display:none}.kchat-voice-play{width:26px;height:26px;flex:0 0 26px;border:0;border-radius:50%;background:#003f66;color:#fff;display:grid;place-items:center}.voice-message-row:not(.mine) .kchat-voice-play{background:#101820}.kchat-voice-play svg{width:16px;height:16px;fill:currentColor}.kchat-voice-track{flex:1;min-width:0}.kchat-voice-wave{height:17px;display:flex;align-items:center;justify-content:space-between;gap:2px;overflow:hidden}.kchat-voice-wave i{display:block;flex:1;max-width:4px;min-width:2px;border-radius:4px;background:#b9d7e5;opacity:.78}.voice-message-row.mine .kchat-voice-wave i{background:#bcecff}.kchat-voice-wave i.played{background:#00b7ff;opacity:1}.kchat-voice-details{display:flex;align-items:center;justify-content:space-between;gap:5px;color:#d4dce2;font:10px Arial,sans-serif}.kchat-voice-duration,.kchat-voice-time{font:9px Arial,sans-serif;color:#d4dce2}.kchat-voice-duration{font-size:10px}.kchat-voice-time{color:#8fa3ae}.kchat-voice-unplayable .kchat-voice-play{opacity:.4;cursor:not-allowed}.kchat-voice-unplayable .kchat-voice-wave i{opacity:.25}.kchat-voice-unavailable-note{position:absolute;left:0;right:0;bottom:-14px;font:10px Arial,sans-serif;color:#ff9f9f;white-space:nowrap}.kchat-audio-message{position:relative}.message-row.voice-message-row .message-meta{font-size:10px}
+.voice-message-row{align-items:flex-end;gap:6px}
+/* Outgoing rows keep a normal row direction: reversing the axis would move
+   justify-content:flex-end to the left and push outgoing audio to the wrong
+   side. Ordering (bubble first, avatar last) controls the avatar edge. */
+.voice-message-row.mine{flex-direction:row}.voice-message-avatar{width:34px;height:34px;flex:0 0 34px;border-radius:50%;overflow:hidden;background:#183743;border:1px solid var(--accent);display:grid;place-items:center;color:var(--accent);font:700 15px Arial,sans-serif;align-self:flex-start;margin-top:2px}.voice-message-avatar img{width:100%;height:100%;object-fit:cover}.voice-message-row .message-bubble{max-width:min(60%,310px);padding:4px 6px}.voice-message-row.mine .message-bubble{background:#075477;border:1px solid #079bd4}.voice-message-row:not(.mine) .message-bubble{background:#20252c;border:1px solid #343b44}.kchat-audio-message{display:flex;align-items:center;gap:5px;min-width:min(170px,52vw);max-width:100%;padding:0}.kchat-voice-audio{display:none}.kchat-voice-play{width:26px;height:26px;flex:0 0 26px;border:0;border-radius:50%;background:#003f66;color:#fff;display:grid;place-items:center}.voice-message-row:not(.mine) .kchat-voice-play{background:#101820}.kchat-voice-play svg{width:16px;height:16px;fill:currentColor}.kchat-voice-track{flex:1;min-width:0}.kchat-voice-wave{height:17px;display:flex;align-items:center;justify-content:space-between;gap:2px;overflow:hidden}.kchat-voice-wave i{display:block;flex:1;max-width:4px;min-width:2px;border-radius:4px;background:#b9d7e5;opacity:.78}.voice-message-row.mine .kchat-voice-wave i{background:#bcecff}.kchat-voice-wave i.played{background:#00b7ff;opacity:1}.kchat-voice-details{display:flex;align-items:center;justify-content:space-between;gap:5px;color:#d4dce2;font:10px Arial,sans-serif}.kchat-voice-duration,.kchat-voice-time{font:9px Arial,sans-serif;color:#d4dce2}.kchat-voice-duration{font-size:10px}.kchat-voice-time{color:#8fa3ae}.kchat-voice-unplayable .kchat-voice-play{opacity:.4;cursor:not-allowed}.kchat-voice-unplayable .kchat-voice-wave i{opacity:.25}.kchat-voice-unavailable-note{position:absolute;left:0;right:0;bottom:-14px;font:10px Arial,sans-serif;color:#ff9f9f;white-space:nowrap}.kchat-audio-message{position:relative}.message-row.voice-message-row .message-meta{font-size:10px}
 
 .kchat-audio-message audio{width:100%;max-width:280px;height:40px}
 .chat-voice-message-card{width:min(430px,calc(100vw - 28px));background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 18px 55px #0008}
@@ -1734,8 +1778,6 @@ hr {
 .kchat-ai-ring span{display:block;width:100%;height:100%;border:0;border-radius:50%;background:transparent;overflow:visible}.kchat-ai-ring .kchat-ai-logo-image{padding:1px}
 .kchat-ai-search-ring{width:38px;height:38px}
 .chat-screen{position:relative}
-.kchat-ai-chat-ring{position:absolute;right:20px;bottom:94px;z-index:18;width:54px;height:54px}
-.kchat-ai-chat-ring span{font-size:13px}
 .kchat-ai-mention-button{font:700 18px Arial,sans-serif!important;color:#7b8cff!important}
 .kchat-ai-mention-button:hover{background:#ffffff12!important}
 .kchat-ai-screen{position:fixed;inset:0;z-index:10040;background:#0b141a;color:#e9edef;display:flex;flex-direction:column;min-width:0}
@@ -2318,12 +2360,12 @@ html, body {
                 </section>
                 <div id="messagesArea" class="messages-area"></div>
 
-                <button type="button" id="kchatAiChatFab" class="kchat-ai-ring kchat-ai-chat-ring" aria-label="Open KCHAT AI in this conversation" title="Ask KCHAT AI"><span><img class="kchat-ai-logo-image" src="/kchat-ai-logo.svg" alt="KCHAT AI logo"></span></button>
                 <div id="replyComposerPreview" class="reply-composer-preview hidden">
                     <div class="reply-composer-copy"><strong id="replyComposerName">Replying</strong><span id="replyComposerText"></span></div>
                     <button type="button" id="cancelReplyButton" aria-label="Cancel reply">×</button>
                 </div>
                 <div class="message-composer">
+                    <div id="aiTagSuggestions" class="ai-tag-suggestions hidden" role="listbox" aria-label="KCHAT AI suggestions"></div>
                     <div class="composer-input-shell">
                         <button class="composer-inline-btn emoji-composer-btn" id="emojiButton" type="button" title="Emoji" aria-label="Open emoji picker">☺</button>
                         <button class="composer-inline-btn kchat-ai-mention-button" id="kchatAiMentionButton" type="button" title="Mention KCHAT AI" aria-label="Mention KCHAT AI">@</button>
@@ -3338,6 +3380,15 @@ function readKchatStorage(name) {
 
 function saveKchatSession(token, username) {
     authToken = token || "";
+    const nextUser = String(username || "").trim().toLowerCase();
+    const priorUser = String(currentUser || "").trim().toLowerCase();
+    // Signing in as a different account must never inherit the previous
+    // account's cached conversations, even in memory.
+    if (nextUser && priorUser && nextUser !== priorUser) {
+        clearConversationCache();
+        clearInChatAiCache();
+        messages = [];
+    }
     currentUser = username || "";
     try {
         localStorage.setItem("kchat_token", authToken);
@@ -3367,6 +3418,178 @@ let currentUser = readKchatStorage("kchat_username") || readKchatCookie("kchat_u
 let currentChat = "";
 let contacts = [];
 let messages = [];
+
+/* ---------------------------------------------------------------------------
+   Conversation message cache
+
+   Each entry is keyed by the authenticated account and the conversation, so a
+   message can never be shown to a different signed-in account and two chats
+   cannot overwrite each other's history. A cached conversation paints
+   instantly, then refreshes quietly: existing rows are replaced only once a
+   successful response arrives, so a failed or offline refresh never blanks a
+   conversation the user is reading.
+--------------------------------------------------------------------------- */
+const conversationCache = new Map();
+const conversationCacheLimit = 24;
+const conversationRefreshInFlight = new Set();
+
+function conversationCacheKey(username) {
+    const owner = String(currentUser || "").trim().toLowerCase();
+    const chat = String(username || "").trim().toLowerCase();
+    if (!owner || !chat) return "";
+    return owner + "\u0000" + chat;
+}
+
+function readConversationCache(username) {
+    const key = conversationCacheKey(username);
+    if (!key) return null;
+    const entry = conversationCache.get(key);
+    if (!entry) return null;
+    // Touch the entry so the most recently used conversations stay cached.
+    conversationCache.delete(key);
+    conversationCache.set(key, entry);
+    return entry;
+}
+
+function writeConversationCache(username, nextMessages) {
+    const key = conversationCacheKey(username);
+    if (!key || !Array.isArray(nextMessages)) return;
+    const entry = conversationCache.get(key) || { messages: [], loadedAt: 0, loaded: false };
+    entry.messages = nextMessages;
+    entry.loaded = true;
+    entry.loadedAt = Date.now();
+    conversationCache.delete(key);
+    conversationCache.set(key, entry);
+    while (conversationCache.size > conversationCacheLimit) {
+        conversationCache.delete(conversationCache.keys().next().value);
+    }
+}
+
+function conversationCacheIsLoaded(username) {
+    const key = conversationCacheKey(username);
+    return Boolean(key && conversationCache.get(key)?.loaded);
+}
+
+function clearConversationCache() {
+    conversationCache.clear();
+    conversationRefreshInFlight.clear();
+}
+
+// Keep the cache in step with the live array while a chat is open. Pending
+// optimistically-rendered messages are cached too, so reopening never loses an
+// unsent bubble or its "Not sent" state.
+function rememberOpenConversation() {
+    if (!currentChat || !currentUser) return;
+    writeConversationCache(currentChat, messages.slice());
+}
+
+/* ---------------------------------------------------------------------------
+   In-chat KCHAT AI
+
+   @KCHAT AI messages are answered by the backend on /api/ai/inchat, which
+   stores them only in the AI tables. The browser keeps them in a separate
+   account+chat scoped cache and merges them for display beside the human
+   messages; `messages` itself never holds an AI turn, so a cached human
+   conversation can never contain one.
+--------------------------------------------------------------------------- */
+const inChatAiCache = new Map();
+
+function inChatAiCacheKey(chatName) {
+    const owner = String(currentUser || "").trim().toLowerCase();
+    const chat = String(chatName || "").trim().toLowerCase();
+    if (!owner || !chat) return "";
+    return owner + "\u0000" + chat;
+}
+
+function readInChatAi(chatName) {
+    const key = inChatAiCacheKey(chatName);
+    if (!key) return [];
+    const items = inChatAiCache.get(key);
+    return Array.isArray(items) ? items.slice() : [];
+}
+
+function writeInChatAi(chatName, items) {
+    const key = inChatAiCacheKey(chatName);
+    if (!key) return;
+    inChatAiCache.set(key, items);
+}
+
+function clearInChatAiCache() {
+    inChatAiCache.clear();
+}
+
+async function loadInChatAi(chatName) {
+    const requested = String(chatName || "");
+    if (!requested || !currentUser) return;
+    try {
+        const data = await apiRequest("/api/ai/inchat?chat=" + encodeURIComponent(requested));
+        if (String(currentChat || "").toLowerCase() !== requested.toLowerCase()) return;
+        const turns = Array.isArray(data?.messages) ? data.messages : [];
+        const existing = readInChatAi(requested);
+        // Keep a locally pending turn that the server has not stored yet.
+        const pendingLocal = existing.filter(item => item.pending || item.failed);
+        writeInChatAi(requested, turns.map((turn, index) => ({
+            id: "ai-" + index + "-" + (turn.created_at || ""),
+            ai: true,
+            role: turn.role,
+            username: currentUser,
+            text: turn.content,
+            created_at: turn.created_at
+        })).concat(pendingLocal));
+        if (String(currentChat || "").toLowerCase() === requested.toLowerCase()) renderMessages();
+    } catch (error) {
+        // A failed AI-history refresh leaves any local AI turns untouched.
+        console.warn("KCHAT AI in-chat history could not be refreshed:", error);
+    }
+}
+
+async function sendInChatAiMessage(question, chatName) {
+    const target = String(chatName || currentChat || "");
+    const localTurns = readInChatAi(target);
+    const pendingId = "ai-pending-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+    localTurns.push({
+        id: pendingId,
+        ai: true,
+        role: "user",
+        username: currentUser,
+        text: question,
+        status: "sending",
+        pending: true,
+        created_at: new Date().toISOString()
+    });
+    writeInChatAi(target, localTurns);
+    renderMessages();
+
+    try {
+        const result = await apiRequest("/api/ai/inchat", {
+            method: "POST",
+            body: JSON.stringify({ text: "@KCHAT AI " + question, chat: target })
+        });
+        if (!result || !result.success || typeof result.reply !== "string") {
+            throw new Error((result && result.error) || "KCHAT AI did not answer.");
+        }
+        const updated = readInChatAi(target).filter(item => item.id !== pendingId);
+        updated.push({
+            id: "ai-reply-" + Date.now(),
+            ai: true,
+            role: "assistant",
+            username: currentUser,
+            text: result.reply,
+            created_at: new Date().toISOString()
+        });
+        writeInChatAi(target, updated);
+        if (String(currentChat || "").toLowerCase() === target.toLowerCase()) renderMessages();
+    } catch (error) {
+        const failed = readInChatAi(target).map(item =>
+            item.id === pendingId
+                ? { ...item, pending: false, failed: true, status: "failed" }
+                : item
+        );
+        writeInChatAi(target, failed);
+        if (String(currentChat || "").toLowerCase() === target.toLowerCase()) renderMessages();
+        alert(error.message || "KCHAT AI could not answer. Your question was not sent to the contact.");
+    }
+}
 // Keep receipt events that arrive before the HTTP send response adds the message bubble.
 const pendingDeliveryStatuses = new Map();
 let activeFilter = "all";
@@ -4331,6 +4554,129 @@ function setCallUi(peer,type,status){
     $("remoteCallAudio").classList.toggle("hidden",type==="video");
     show($("callOverlay"));
 }
+/* Incoming-call ringtone and vibration.
+   Alerting only: this code never sends a signal, never touches the offer and
+   never hides the call overlay, so a ringing call is always answerable. The
+   tone is synthesised with WebAudio, so no extra asset file is needed.
+
+   Browser rules handled here:
+   - Audio may only start after a user gesture. A shared AudioContext is
+     unlocked on the first interaction; if it is still suspended the ringtone
+     simply stays silent instead of throwing.
+   - Vibration is optional (iOS has none). Every call is feature-checked.
+   - Ringing is keyed by call id, so repeated offers for the same call cannot
+     start a second sound. */
+let callRingAudio=null;
+let callRingTimer=null;
+let callRingActiveId="";
+let callRingVibration=false;
+// Read-only snapshot used by the automated tests.
+const callRingState={active:false,callId:"",vibration:false,audioBlocked:false,starts:0};
+// Expose the snapshot (not a control surface) so tests can observe ringing.
+window.callRingState=callRingState;
+
+function callRingAudioContext(){
+    if(callRingAudio)return callRingAudio;
+    const Factory=window.AudioContext||window.webkitAudioContext;
+    if(!Factory)return null;
+    try{callRingAudio=new Factory();}catch{return null;}
+    return callRingAudio;
+}
+
+// Browsers hold a fresh AudioContext suspended until the user interacts with
+// the page. Unlocking early means an incoming call can actually ring.
+function unlockCallRingAudio(){
+    try{
+        const context=callRingAudioContext();
+        if(context&&context.state==="suspended")context.resume().catch(()=>{});
+    }catch{}
+}
+["pointerdown","keydown","touchstart"].forEach(eventName=>{
+    window.addEventListener(eventName,unlockCallRingAudio,{passive:true});
+});
+
+function callVibrationSupported(){
+    return typeof navigator!=="undefined"&&typeof navigator.vibrate==="function";
+}
+
+function callRingPlayCycle(context){
+    const now=context.currentTime;
+    // Two short beeps per cycle, then a pause before the next cycle.
+    [[0,0.38,660],[0.5,0.86,880]].forEach(([start,end,frequency])=>{
+        const oscillator=context.createOscillator();
+        const gain=context.createGain();
+        oscillator.type="sine";
+        oscillator.frequency.value=frequency;
+        gain.gain.setValueAtTime(0.0001,now+start);
+        gain.gain.exponentialRampToValueAtTime(0.16,now+start+0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001,now+end);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(now+start);
+        oscillator.stop(now+end+0.05);
+    });
+}
+
+function startCallRingtone(peer,callId){
+    const id=String(callId||"");
+    // Already ringing for this exact call: a duplicate offer must not restart
+    // the sound or stack a second timer.
+    if(callRingState.active&&callRingActiveId===id)return;
+    stopCallRingtone();
+
+    callRingActiveId=id;
+    callRingState.active=true;
+    callRingState.callId=id;
+    callRingState.audioBlocked=false;
+    // Counted so a duplicate offer can be proven not to restart the sound.
+    callRingState.starts=Number(callRingState.starts||0)+1;
+
+    // Sound. Failure here must never break the call itself.
+    try{
+        const context=callRingAudioContext();
+        if(context){
+            const play=()=>{
+                try{
+                    if(!callRingState.active)return;
+                    if(context.state==="suspended"){
+                        // No gesture yet: stay silent rather than error.
+                        callRingState.audioBlocked=true;
+                        return;
+                    }
+                    callRingState.audioBlocked=false;
+                    callRingPlayCycle(context);
+                }catch{}
+            };
+            play();
+            callRingTimer=setInterval(play,2600);
+        }else{
+            callRingState.audioBlocked=true;
+        }
+    }catch{callRingState.audioBlocked=true;}
+
+    // Vibration. Pattern has no trailing pause, so it repeats until stopped.
+    try{
+        if(callVibrationSupported()){
+            callRingVibration=true;
+            callRingState.vibration=true;
+            navigator.vibrate([500,300,500,1700]);
+        }
+    }catch{}
+}
+
+function stopCallRingtone(){
+    try{if(callRingTimer)clearInterval(callRingTimer);}catch{}
+    callRingTimer=null;
+    callRingActiveId="";
+    callRingState.active=false;
+    callRingState.callId="";
+    if(callRingVibration){
+        try{if(callVibrationSupported())navigator.vibrate(0);}catch{}
+    }
+    callRingVibration=false;
+    callRingState.vibration=false;
+}
+
 async function startKchatCall(type,peer){
     if(!peer){alert("Open a private conversation before starting a call.");return;}
     if(!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection){alert("This browser does not support WebRTC calling. Try an updated browser.");return;}
@@ -4354,10 +4700,16 @@ async function startKchatCall(type,peer){
 async function handleKchatCallSignal(item){
     const signal=item.signal||{},peer=item.from,callId=item.call_id,type=item.call_type||"audio";
     if(signal.offer){
+        // A repeat offer for the call already ringing is a duplicate, not a
+        // new call. Ignoring it keeps the ring single and stops this device
+        // from telling the caller "busy", which would drop the live call.
+        if(kchatCall&&String(kchatCall.id)===String(callId))return;
         if(kchatCall){sendKchatCallSignal(peer,callId,type,{end:true,reason:"busy"});return;}
         incomingCallPending={peer,callId,type,offer:signal.offer};
         kchatCall={id:callId,peer,type,direction:"incoming",pc:null,local:null,started:0,accepted:false,pendingIce:[],timeout:null};
         setCallUi(peer,type,"Incoming "+type+" call");
+        // Ring only once per call id, even if the same offer arrives twice.
+        startCallRingtone(peer,callId);
         $("acceptCallButton").classList.remove("hidden");
         $("muteCallButton").classList.add("hidden");$("cameraCallButton").classList.add("hidden");
         kchatCall.timeout=setTimeout(()=>{if(kchatCall&&kchatCall.id===callId&&!kchatCall.accepted)finishKchatCall("missed",true);},35000);
@@ -4372,6 +4724,8 @@ async function handleKchatCallSignal(item){
 async function acceptKchatCall(){
     if(!incomingCallPending||!kchatCall)return;
     const pending=incomingCallPending;
+    // Answering silences the ring immediately, before any async work.
+    stopCallRingtone();
     try{
         kchatCall.local=await navigator.mediaDevices.getUserMedia({audio:true,video:pending.type==="video"});
         $("localCallVideo").srcObject=pending.type==="video"?kchatCall.local:null;
@@ -4391,6 +4745,8 @@ async function acceptKchatCall(){
     }catch(error){alert(error.message||"Could not accept the call. Check device permissions.");await finishKchatCall("declined",true);}
 }
 async function finishKchatCall(status,notifyPeer=true){
+    // Every way a call ends passes through here, so the ring always stops.
+    stopCallRingtone();
     if(!kchatCall){hide($("callOverlay"));incomingCallPending=null;return;}
     const call=kchatCall,duration=call.started?Math.max(0,Math.floor((Date.now()-call.started)/1000)):0;
     if(call.timeout)clearTimeout(call.timeout);
@@ -6218,7 +6574,11 @@ async function openChat(username) {
     try { stopLocalTyping(); } catch (error) { console.warn("Could not stop typing indicator:", error); }
     try { updateChatMenuPinLabel(); } catch (error) { console.warn("Could not update chat menu:", error); }
 
+    hideAiTagSuggestions();
     await loadMessages(username);
+    // The private AI exchange for this chat is loaded separately from the
+    // human history, so it never joins `messages` or the conversation cache.
+    loadInChatAi(username);
     // Refresh the inbox after the server marks this conversation as read.
     // This keeps the unread badge in sync with the open conversation.
     await loadContacts();
@@ -6262,7 +6622,21 @@ $("backToChats").addEventListener("click", returnToConversations);
 async function loadMessages(username) {
     const requestedChat = String(username || "");
     const area = $("messagesArea");
-    if (area) area.innerHTML = '<p class="muted" style="text-align:center;">Loading conversation…</p>';
+    const cached = readConversationCache(requestedChat);
+
+    // A previously loaded conversation paints from its own cache immediately;
+    // only a first-ever open shows a loading state.
+    if (cached && cached.loaded) {
+        messages = cached.messages.slice();
+        renderMessages();
+    } else if (area) {
+        area.innerHTML = '<p class="muted" style="text-align:center;">Loading conversation…</p>';
+    }
+
+    // Never run two full-history requests for the same conversation at once.
+    const refreshKey = conversationCacheKey(requestedChat);
+    if (refreshKey && conversationRefreshInFlight.has(refreshKey)) return;
+    if (refreshKey) conversationRefreshInFlight.add(refreshKey);
 
     try {
         const data = await apiRequest("/api/messages/" + encodeURIComponent(requestedChat));
@@ -6277,15 +6651,20 @@ async function loadMessages(username) {
         }
 
         messages = data.messages;
+        writeConversationCache(requestedChat, data.messages.slice());
         renderMessages();
     } catch (error) {
-        // A failed history request must be visible, not silently leave a blank chat.
+        // A failed or offline refresh must leave any cached conversation in
+        // place. Only a conversation with nothing to show reports the failure.
         if (String(currentChat || "").toLowerCase() === requestedChat.toLowerCase()) {
             console.error("KCHAT message history could not be refreshed:", error);
-            if (area) {
+            const hasCachedMessages = Boolean(readConversationCache(requestedChat)?.loaded);
+            if (area && !hasCachedMessages) {
                 area.innerHTML = '<p class="muted" style="text-align:center;">Could not load messages. Check your connection and reopen this chat.</p>';
             }
         }
+    } finally {
+        if (refreshKey) conversationRefreshInFlight.delete(refreshKey);
     }
 }
 
@@ -6573,12 +6952,47 @@ function renderMessages() {
     const area = $("messagesArea");
     closeMessageActionMenu();
     renderPinnedMessageBanner();
-    if (!messages.length) {
+    // AI turns are kept apart from human messages and merged only for display,
+    // in chronological order, so neither list can leak into the other.
+    const aiTurns = currentChat ? readInChatAi(currentChat) : [];
+    const timeline = aiTurns.length
+        ? messages.map(item => ({ item, ord: 1 })).concat(aiTurns.map(item => ({ item, ord: 0 })))
+            .sort((a, b) => {
+                const ta = new Date(a.item.created_at || 0).getTime() || 0;
+                const tb = new Date(b.item.created_at || 0).getTime() || 0;
+                return ta === tb ? a.ord - b.ord : ta - tb;
+            })
+            .map(entry => entry.item)
+        : messages;
+    if (!timeline.length) {
         area.innerHTML = '<p class="muted" style="text-align:center;">No messages yet. Say hello!</p>';
         return;
     }
 
-    area.innerHTML = messages.map(message => {
+    area.innerHTML = timeline.map(message => {
+        if (message.ai) {
+            const aiMine = message.role === "user";
+            const aiTime = message.created_at ? new Date(message.created_at) : new Date();
+            const aiClock = aiTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            const aiStatus = aiMine && message.failed
+                ? '<span class="message-receipt-label" style="color:#ff6b6b;">Not answered</span>'
+                : aiMine && message.pending
+                    ? '<span class="message-receipt-label">Asking KCHAT AI…</span>'
+                    : '<span class="message-receipt-label">KCHAT AI · private</span>';
+            const aiAvatar = '<div class="message-avatar ai-avatar" aria-label="KCHAT AI"><img src="/kchat-ai-logo.svg" alt="KCHAT AI logo"></div>';
+            const aiBubble = `
+                <div class="message-bubble kchat-ai-chat-bubble" data-ai-message="1" tabindex="0" aria-label="Private KCHAT AI message">
+                    <div class="kchat-ai-chat-tag">@KCHAT AI</div>
+                    <div class="message-text">${escapeHTML(message.text || "")}</div>
+                    <div class="message-meta"><span>${aiClock}</span>${aiStatus}</div>
+                </div>`;
+            return `
+            <div class="message-row ${aiMine ? "mine" : ""} ai-message-row">
+                ${aiMine ? aiBubble + aiAvatar : aiAvatar + aiBubble}
+            </div>
+        `;
+        }
+
         const sender = message.username || message.sender || "";
         const mine = sender.toLowerCase() === String(currentUser || "").toLowerCase();
         const date = message.created_at ? new Date(message.created_at) : new Date();
@@ -6612,13 +7026,20 @@ function renderMessages() {
             ? `<div class="message-meta">Deleted for everyone${message.revoked_retained ? " · retained by Anti-Revoke" : ""}</div>`
             : `<div class="message-meta"><span>${time}</span>${receiptMarkup}${message.edited ? '<span class="message-edited-label">edited</span>' : ''}${message.pinned_by_me ? '<span class="message-pinned-label">pinned</span>' : ''}</div>`;
 
-        return `
-            <div class="message-row ${mine ? "mine" : ""} ${isAudio ? "voice-message-row" : ""}">
-                ${isAudio ? `<div class="voice-message-avatar" data-voice-avatar="${escapeHTML(sender)}" aria-label="${escapeHTML(sender)} profile picture">${escapeHTML(sender.charAt(0).toUpperCase())}</div>` : ""}
+        // Alignment is decided only by the authenticated sender identity, so
+        // every message type follows the same rule. The avatar is placed after
+        // the bubble on the outgoing side and before it on the incoming side,
+        // which puts the sender's photo on the outer edge for both.
+        const avatarMarkup = `<div class="message-avatar${isAudio ? " voice-message-avatar" : ""}" data-voice-avatar="${escapeHTML(sender)}" aria-label="${escapeHTML(sender)} profile picture">${escapeHTML(sender.charAt(0).toUpperCase())}</div>`;
+        const bubbleMarkup = `
                 <div class="message-bubble" data-message-id="${escapeHTML(message.id || "")}" tabindex="0" aria-label="Hold or right-click for message options">
                     ${messageContent}
                     ${revokedLabel}
-                </div>
+                </div>`;
+
+        return `
+            <div class="message-row ${mine ? "mine" : ""} ${isAudio ? "voice-message-row" : ""}">
+                ${mine ? bubbleMarkup + avatarMarkup : avatarMarkup + bubbleMarkup}
             </div>
         `;
     }).join("");
@@ -6783,6 +7204,7 @@ function renderMessages() {
     });
 
     area.scrollTop = area.scrollHeight;
+    rememberOpenConversation();
 }
 
 async function revokeMessageForEveryone(messageId) {
@@ -6810,16 +7232,104 @@ document.addEventListener("keydown", event => {
 });
 
 $("sendMessageButton").addEventListener("click", sendMessage);
-$("kchatAiMentionButton").addEventListener("click", () => {
+
+/* ---------------------------------------------------------------------------
+   @KCHAT AI tag: parsing, composer autocomplete and keyboard selection
+--------------------------------------------------------------------------- */
+// Mirrors the backend rule: the tag must be at the start of the message.
+const AI_TAG_PATTERN = /^\s*@KCHAT\s+AI\b[,:]?\s*([\s\S]*)$/i;
+
+function parseKchatAiTag(text) {
+    const value = typeof text === "string" ? text : "";
+    const match = AI_TAG_PATTERN.exec(value);
+    if (!match) return null;
+    return match[1].trim();
+}
+
+let aiTagSuggestionIndex = -1;
+
+function aiTagSuggestionsElement() {
+    return $("aiTagSuggestions");
+}
+
+function hideAiTagSuggestions() {
+    const panel = aiTagSuggestionsElement();
+    if (panel) {
+        panel.classList.add("hidden");
+        panel.replaceChildren();
+    }
+    aiTagSuggestionIndex = -1;
+}
+
+function applyAiTagSuggestion() {
     const input = $("messageInput");
-    const token = "@KCHAT AI ";
-    if (!input.value.trim()) input.value = token;
-    else input.value = input.value.replace(/\s*$/, " ") + token;
+    if (!input) return;
+    input.value = "@KCHAT AI ";
+    hideAiTagSuggestions();
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
-});
+    // Start the AI conversation from this chat, not a hidden screen.
+    if (currentChat) loadInChatAi(currentChat);
+}
+
+// Offer the tag while the start of the composer looks like the beginning of
+// "@KCHAT AI", so users can select it instead of typing it exactly.
+function updateAiTagSuggestions() {
+    const input = $("messageInput");
+    const panel = aiTagSuggestionsElement();
+    if (!input || !panel) return;
+
+    const value = input.value;
+    const target = "@KCHAT AI";
+    const typed = value.trimStart();
+    const looksLikeTag = typed.length > 0
+        && target.toLowerCase().startsWith(typed.toLowerCase())
+        && !/\s/.test(typed.replace(/\s+$/, ""));
+
+    if (!looksLikeTag) {
+        hideAiTagSuggestions();
+        return;
+    }
+
+    panel.replaceChildren();
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ai-tag-suggestion";
+    button.setAttribute("role", "option");
+    button.dataset.aiTag = target;
+    button.innerHTML = '<img src="/kchat-ai-logo.svg" alt=""><span><strong>@KCHAT AI</strong><small>Ask the assistant privately — this chat will not see it</small></span>';
+    button.addEventListener("mousedown", event => {
+        event.preventDefault();
+        applyAiTagSuggestion();
+    });
+    panel.appendChild(button);
+    panel.classList.remove("hidden");
+    aiTagSuggestionIndex = 0;
+}
+
+function handleAiTagKeydown(event) {
+    const panel = aiTagSuggestionsElement();
+    if (!panel || panel.classList.contains("hidden")) return false;
+    if (event.key === "Enter" || event.key === "Tab") {
+        event.preventDefault();
+        applyAiTagSuggestion();
+        return true;
+    }
+    if (event.key === "Escape") {
+        event.preventDefault();
+        hideAiTagSuggestions();
+        return true;
+    }
+    return false;
+}
+
+$("kchatAiMentionButton").addEventListener("click", () => applyAiTagSuggestion());
+$("messageInput").addEventListener("input", updateAiTagSuggestions);
+// The typing indicator still runs alongside the tag suggestion.
 $("messageInput").addEventListener("input", handleTypingInput);
+$("messageInput").addEventListener("blur", () => setTimeout(hideAiTagSuggestions, 120));
 $("messageInput").addEventListener("keydown", event => {
+    if (handleAiTagKeydown(event)) return;
     if (event.key === "Enter") sendMessage();
 });
 
@@ -6883,22 +7393,31 @@ function handleTypingInput() {
 async function sendMessage() {
     const input = $("messageInput");
     const text = input.value.trim();
-    const aiMention = text.match(/^@KCHAT\s+AI\b[,:]?\s*([\s\S]*)$/i);
-    if (aiMention) {
-        const question = aiMention[1].trim();
-        if (!question) {
+    // The tag is matched with the same rule the backend applies. A tagged
+    // message belongs to KCHAT AI only: it is sent to /api/ai/inchat and never
+    // enters `messages`, so it cannot reach the contact, the inbox or a socket.
+    const aiMention = parseKchatAiTag(text);
+    if (aiMention !== null) {
+        if (!currentChat) {
+            alert("Open a chat before asking KCHAT AI a question.");
+            return;
+        }
+        if (!aiMention) {
             input.value = "@KCHAT AI ";
             input.focus();
             return;
         }
-        input.value = "";
-        if (typeof window.openKchatAI === "function") {
-            window.openKchatAI(question);
-            const aiForm = $("kchatAiForm");
-            if (aiForm) aiForm.requestSubmit();
-        } else {
-            alert("KCHAT AI is not ready. Please try again.");
+        if (aiMention.length > 10000) {
+            alert("Messages cannot exceed 10,000 characters.");
+            return;
         }
+        input.value = "";
+        clearReplyToMessage();
+        hideAiTagSuggestions();
+        // AI text is not a human reply, so no typing indicator is sent.
+        stopLocalTyping();
+        try { rememberOpenConversation(); } catch {}
+        await sendInChatAiMessage(aiMention, currentChat);
         return;
     }
     if (dndMode) {
@@ -8472,6 +8991,8 @@ $("chatVideoCallButton").addEventListener("click", () => startKchatCall("video",
 
 function logout() {
     cancelVoiceRecordingWhenLeavingChat();
+    // A call ringing on this device must not continue after sign-out.
+    try { stopCallRingtone(); } catch {}
     // Revoke the server-side session and clear the HttpOnly cookie as well.
     try {
         fetch("/api/logout", {
@@ -8487,6 +9008,13 @@ function logout() {
     }
     clearTimeout(reconnectTimer);
     clearKchatSession();
+    // Account-scoped caches must not survive a sign-out.
+    clearConversationCache();
+    clearInChatAiCache();
+    // Wipe everything this account left on screen before the login form is
+    // shown, so a different person signing in next cannot see the previous
+    // user's conversation, chat header or contact profile.
+    resetChatUiForAccountSwitch();
     currentChat = "";
     contacts = [];
     messages = [];
@@ -8495,6 +9023,56 @@ function logout() {
     hide($("settingsPanel"));
     hide($("profilePanel"));
     showLogin();
+}
+
+/* Clear account-specific chat UI state after a sign-out.
+   The conversation screen keeps its last rendered messages in the DOM; those
+   are removed here, together with the chat header, reply preview, composer
+   draft, pinned banner and contact profile, so no residue carries over to the
+   next account that signs in on the same device. */
+function resetChatUiForAccountSwitch() {
+    try { clearReplyToMessage(); } catch {}
+
+    // Message list and everything derived from it.
+    const area = $("messagesArea");
+    if (area) area.innerHTML = "";
+    const banner = $("pinnedMessageBanner");
+    if (banner) {
+        banner.classList.add("hidden");
+        banner.innerHTML = "";
+        banner.onclick = null;
+        banner.onkeydown = null;
+    }
+
+    // Composer draft and inline panels.
+    const input = $("messageInput");
+    if (input) input.value = "";
+    hide($("emojiPicker"));
+    hide($("replyComposerPreview"));
+    hide($("aiTagSuggestions"));
+    const suggestions = $("aiTagSuggestions");
+    if (suggestions) suggestions.innerHTML = "";
+
+    // Chat header identifies the previous conversation partner.
+    if ($("activeChatName")) $("activeChatName").textContent = "";
+    if ($("activeChatAvatar")) $("activeChatAvatar").textContent = "";
+    if ($("activeChatStatus")) $("activeChatStatus").textContent = "";
+
+    // Leave the conversation screen, showing the neutral welcome state.
+    hide($("chatScreen"));
+    show($("welcomeScreen"));
+    const app = $("appScreen");
+    if (app) app.classList.remove("mobile-chat-open", "mobile-ai-open", "status-open");
+
+    // Contact profile overlay holds the previous contact's name and number.
+    hide($("contactProfilePanel"));
+    if ($("contactProfileName")) $("contactProfileName").textContent = "";
+    if ($("contactProfilePhone")) $("contactProfilePhone").textContent = "";
+    if ($("contactProfileAbout")) $("contactProfileAbout").textContent = "";
+    if ($("contactProfileAvatar")) $("contactProfileAvatar").textContent = "";
+
+    // Restore default chat appearance so the next account starts neutral.
+    try { applyChatAppearance("default", ""); } catch {}
 }
 
 function connectWebSocket() {
@@ -8787,6 +9365,53 @@ if (document.readyState === "loading") {
     restoreSession();
 }
 
+/* KCHAT installable app (PWA).
+   The service worker caches only the static shell (see service-worker.js).
+   Registration is deliberately quiet: any failure leaves KCHAT working
+   exactly as before, and an update is picked up without a reinstall. */
+(function(){
+    if(!("serviceWorker" in navigator)) return;
+    // Service workers require a secure context (https, or localhost).
+    if(location.protocol!=="https:" && location.hostname!=="localhost" && location.hostname!=="127.0.0.1") return;
+
+    let refreshing=false;
+    // A reload is only safe when no recording is in progress. Any other state
+    // is fine: the app restores the session and reopens the same chat.
+    function isRecordingNow(){
+        try{
+            const active=recorder=>!!recorder&&(recorder.state==="recording"||recorder.state==="paused");
+            return active(typeof chatVoiceRecorder!=="undefined"?chatVoiceRecorder:null)
+                || active(typeof voiceStatusRecorder!=="undefined"?voiceStatusRecorder:null)
+                || active(typeof statusCameraRecorder!=="undefined"?statusCameraRecorder:null);
+        }catch{
+            return true; // Be conservative if the state cannot be read.
+        }
+    }
+    // Reload only when an EXISTING worker is replaced by a new version, so the
+    // updated code is used without a reinstall. A first install has no old
+    // version to replace, so it never reloads - that would interrupt someone
+    // who is mid-way through the login form, typing a message or recording.
+    const hadController=!!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange",()=>{
+        if(!hadController) return;
+        if(refreshing) return;
+        if(isRecordingNow()) return;
+        refreshing=true;
+        location.reload();
+    });
+
+    window.addEventListener("load",async()=>{
+        try{
+            const registration=await navigator.serviceWorker.register("/service-worker.js",{scope:"/",updateViaCache:"none"});
+            // Check for a new version on each launch.
+            registration.update().catch(()=>{});
+        }catch(error){
+            console.warn("KCHAT offline shell unavailable:",error);
+        }
+    },{once:true});
+})();
+
+
 /* KCHAT AI: text-only assistant with private conversation history and memory. */
 (function(){
  const fab=document.getElementById("kchatAiFab"),screen=document.getElementById("kchatAiScreen"),back=document.getElementById("kchatAiBack"),form=document.getElementById("kchatAiForm"),input=document.getElementById("kchatAiInput"),messages=document.getElementById("kchatAiMessages"),historySelect=document.getElementById("kchatAiConversationSelect"),newChatButton=document.getElementById("kchatAiNewChat"),memoryButton=document.getElementById("kchatAiMemoryButton"),note=screen&&screen.querySelector(".kchat-ai-connection-note"),welcome=screen&&screen.querySelector(".kchat-ai-welcome");
@@ -8816,7 +9441,7 @@ if (document.readyState === "loading") {
   updateLatestButton();
  }
  let history=[],currentConversationId="",sending=false,historyLoaded=false,historyOwner="";
- const searchFab=document.getElementById("kchatAiSearchShortcut"),chatFab=document.getElementById("kchatAiChatFab");
+ const searchFab=document.getElementById("kchatAiSearchShortcut");
  function addBubble(role,text){const bubble=document.createElement("div");bubble.className=role==="user"?"kchat-ai-user-message":"kchat-ai-assistant-message";const content=document.createElement("div");content.textContent=text;content.style.whiteSpace="pre-wrap";content.style.overflowWrap="anywhere";bubble.appendChild(content);if(role==="user"&&text.trim()){const remember=document.createElement("button");remember.type="button";remember.textContent="Remember";remember.title="Save this detail to your private KCHAT AI memory";remember.style.cssText="display:block;margin-top:7px;padding:3px 8px;border:1px solid currentColor;border-radius:12px;background:transparent;color:inherit;font-size:11px;opacity:.8;cursor:pointer";remember.addEventListener("click",async()=>{remember.disabled=true;try{const saved=await apiRequest("/api/ai/memories",{method:"POST",body:JSON.stringify({memory:text.slice(0,500)})});if(!saved?.success)throw new Error(saved?.error||"Could not save memory.");remember.textContent="Saved to memory";setStatus("This detail is now saved to your private KCHAT AI memory.",false);}catch(error){remember.disabled=false;setStatus(error.message||"Could not save memory.",true);}});bubble.appendChild(remember);}messages.appendChild(bubble);messages.scrollTop=messages.scrollHeight;return bubble;}
  function setStatus(text,isError){if(note){note.textContent=text;note.style.color=isError?"#ff647c":"";}}
  function lock(value){sending=value;const send=form.querySelector('button[type="submit"]');if(send)send.disabled=value;if(newChatButton)newChatButton.disabled=value;}
@@ -8847,7 +9472,6 @@ if (document.readyState === "loading") {
   screen.classList.remove("hidden");
   fab.classList.add("hidden");
   if(searchFab)searchFab.classList.add("hidden");
-  if(chatFab)chatFab.classList.add("hidden");
   if(historyOwner!==currentUser){
    historyOwner=currentUser;historyLoaded=false;currentConversationId="";history=[];clearConversation();
   }
@@ -8880,8 +9504,8 @@ if (document.readyState === "loading") {
   const launcher=event.target instanceof Element?event.target.closest("#kchatAiFab"):null;
   if(launcher)launchKchatAI(event);
  },true);
- if(searchFab)searchFab.addEventListener("click",()=>openScreen());if(chatFab)chatFab.addEventListener("click",()=>openScreen());
- back.addEventListener("click",()=>{document.getElementById("appScreen")?.classList.remove("mobile-ai-open");screen.classList.add("hidden");fab.classList.remove("hidden");if(searchFab)searchFab.classList.remove("hidden");if(chatFab&&currentChat)chatFab.classList.remove("hidden");});
+ if(searchFab)searchFab.addEventListener("click",()=>openScreen());
+ back.addEventListener("click",()=>{document.getElementById("appScreen")?.classList.remove("mobile-ai-open");screen.classList.add("hidden");fab.classList.remove("hidden");if(searchFab)searchFab.classList.remove("hidden");});
  if(historySelect)historySelect.addEventListener("change",()=>{if(historySelect.value)loadConversation(historySelect.value);});
  if(memoryButton)memoryButton.addEventListener("click",async()=>{try{const result=await apiRequest("/api/ai/memories");if(!result?.success)throw new Error(result?.error||"Could not load memories.");const rows=result.memories||[];const summary=rows.length?rows.map(row=>row.id+". "+row.memory).join("\n"):"No saved memories yet.";const choice=window.prompt("Your private KCHAT AI memories:\n"+summary+"\n\nEnter a memory ID to delete it, or leave blank to add a new memory:");if(choice===null)return;if(choice.trim()&&/^\d+$/.test(choice.trim())){const id=Number(choice.trim());const target=rows.find(row=>row.id===id);if(!target){setStatus("That memory ID was not found.",true);return;}if(window.confirm("Delete this saved memory?\n"+target.memory)){const removed=await apiRequest("/api/ai/memories/"+id,{method:"DELETE"});if(!removed?.success)throw new Error(removed?.error||"Could not delete memory.");setStatus("Saved memory deleted.",false);}return;}if(choice.trim()){const added=await apiRequest("/api/ai/memories",{method:"POST",body:JSON.stringify({memory:choice.trim()})});if(!added?.success)throw new Error(added?.error||"Could not save memory.");setStatus("Memory saved privately to your KCHAT account.",false);}}catch(error){setStatus(error.message||"Memory manager failed.",true);}});
  if(newChatButton)newChatButton.addEventListener("click",async()=>{try{const result=await apiRequest("/api/ai/conversations",{method:"POST",body:JSON.stringify({})});if(!result?.success||!result.conversation?.id)throw new Error(result?.error||"Could not start a new chat.");currentConversationId=result.conversation.id;clearConversation();await loadConversationList(false);if(historySelect)historySelect.value=currentConversationId;setStatus("New conversation started.",false);input.focus();}catch(error){setStatus(error.message||"Could not start a new chat.",true);}});
@@ -8982,7 +9606,6 @@ if (document.readyState === "loading") {
       const screen=document.getElementById("kchatAiScreen");
       const fab=document.getElementById("kchatAiFab");
       const searchFab=document.getElementById("kchatAiSearchShortcut");
-      const chatFab=document.getElementById("kchatAiChatFab");
       if(app) app.classList.remove("mobile-ai-open");
       if(screen) screen.classList.add("hidden");
       if(fab) fab.classList.remove("hidden");

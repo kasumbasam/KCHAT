@@ -18,3 +18,6 @@ test-results/
 
 # Local archives
 *.zip
+
+# Deployment credentials (private SSH keys must never enter the repository)
+.deploy/
