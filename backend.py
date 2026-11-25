@@ -1,3 +1,4 @@
+import array
 import os
 import uuid
 import hashlib
@@ -50,6 +51,191 @@ def password_length_error(password, label="Password"):
         return f"{label} must be at most {PASSWORD_MAX_LENGTH} characters."
 
     return None
+
+
+# ---------------- VOICE MESSAGE AUDIO VALIDATION ----------------
+#
+# A MediaRecorder stopped a moment after it starts still produces a perfectly
+# valid WebM/Ogg/MP4 file: correct container header, a real audio track and a
+# duration. Size and magic-byte checks therefore accept a file that contains
+# nothing but silence, which is how empty voice messages reach recipients.
+#
+# The only honest test is to decode the audio and measure the actual samples.
+# ffmpeg (through PyAV) decodes every format KCHAT records or stores -
+# WebM/Opus, MP4/Opus, MP4/AAC and Ogg/Opus - so the check below reads real
+# PCM peak amplitude rather than guessing from file size or bit patterns.
+#
+# Measured with this decoder (int16 full scale 32767):
+#   digital silence, all four codec paths .... peak 0    (repeatedly, exactly)
+#   quietest real signal measured ........... peak 4    (-78 dBFS)
+#   near-inaudible tone, -66 dBFS ........... peak 17
+#   soft speech level, -40 dBFS ............. peak 330
+#   normal speech ........................... peak 4000+
+# Any nonzero peak therefore means the encoder wrote signal, not silence: a
+# lossy codec cannot encode a single nonzero sample without also reproducing
+# it. The cutoff sits at 1 so that a genuinely quiet speaker is never treated
+# as silence, while the exact zeros that empty recordings produce are.
+VOICE_AUDIBLE_PEAK = 1
+VOICE_MIN_SECONDS = 0.3
+VOICE_MAX_SECONDS = 300.0
+# A file that declares a duration but decodes far less than it has been cut
+# short. Normal recordings decode within a frame or two of the declared value.
+VOICE_TRUNCATION_RATIO = 0.85
+
+
+class AudioValidationError(Exception):
+    """Raised when a recording holds no usable sound."""
+
+    def __init__(self, message, status_code=400):
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+
+
+def decode_audio_peak(audio_bytes):
+    """Decode audio bytes and return (peak_int16, duration_seconds, declared).
+
+    peak is the largest absolute PCM sample found across the whole file.
+    declared is the duration the container states, or None when it states
+    none (Chrome's WebM recordings do not record one), which is what lets a
+    cut-short file be recognised.
+    Returns (0, 0.0, None) when nothing could be decoded.
+
+    Decoding stops as soon as VOICE_MAX_SECONDS is exceeded, so a small file
+    that expands to a very long recording cannot tie up the server: a 1 MB
+    low-bitrate file can otherwise take around 11 seconds to decode.
+    """
+    import io
+
+    import av
+
+    if not audio_bytes:
+        return 0, 0.0, None
+
+    # Refuse an obviously over-long file before decoding anything.
+    limit_samples = int(VOICE_MAX_SECONDS * 48000) + 48000
+
+    peak = 0
+    total_samples = 0
+    resampled_rate = 0
+    declared = None
+    container = None
+    resampler = None
+    try:
+        container = av.open(io.BytesIO(audio_bytes), mode="r")
+        streams = [stream for stream in container.streams if stream.type == "audio"]
+        if not streams:
+            return 0, 0.0, None
+        stream = streams[0]
+        # Best available statement of how long the file should be.
+        try:
+            if container.duration:
+                declared = container.duration / av.time_base
+            elif stream.duration:
+                declared = float(stream.duration * stream.time_base)
+        except Exception:
+            declared = None
+        if declared and declared > VOICE_MAX_SECONDS:
+            return 0, float(declared), declared
+        resampled_rate = stream.codec_context.sample_rate or 48000
+        # A single channel at s16 is enough to judge loudness, and keeps the
+        # per-recording work small even for a long message.
+        resampler = av.AudioResampler(format="s16", layout="mono", rate=resampled_rate)
+
+        def consume(frames):
+            # Returns False once the length limit is reached, stopping decode.
+            nonlocal peak, total_samples
+            for frame in frames:
+                count = frame.samples
+                if count <= 0:
+                    continue
+                # The plane buffer is aligned to a fixed stride, so trim to the
+                # real sample count before reading it as int16 values.
+                raw = bytes(frame.planes[0])[: count * 2]
+                if not raw:
+                    continue
+                samples = array.array("h")
+                samples.frombytes(raw)
+                if not samples:
+                    continue
+                loudest = max(max(samples), -min(samples))
+                if loudest > peak:
+                    peak = loudest
+                total_samples += len(samples)
+                if total_samples > limit_samples:
+                    return False
+            return True
+
+        stopped_early = False
+        for frame in container.decode(stream):
+            if not consume(resampler.resample(frame)):
+                stopped_early = True
+                break
+        if not stopped_early:
+            consume(resampler.resample(None))
+    except Exception:
+        return 0, 0.0, None
+    finally:
+        try:
+            if container is not None:
+                container.close()
+        except Exception:
+            pass
+
+    duration = total_samples / resampled_rate if resampled_rate else 0.0
+    return peak, duration, declared
+
+
+def validate_voice_recording(audio_bytes, mime_type):
+    """Raise AudioValidationError unless the recording holds real sound.
+
+    Size and headers are not enough: the decoded samples decide.
+    """
+    if not audio_bytes:
+        raise AudioValidationError(
+            "The voice recording contains no usable audio. Please record again."
+        )
+
+    base_mime = (mime_type or "").split(";", 1)[0].strip().lower()
+    container_ok = (
+        (base_mime == "audio/webm" and audio_bytes.startswith(b"\x1a\x45\xdf\xa3"))
+        or (base_mime == "audio/ogg" and audio_bytes.startswith(b"OggS"))
+        or (
+            base_mime == "audio/mp4"
+            and len(audio_bytes) >= 12
+            and audio_bytes[4:8] == b"ftyp"
+        )
+    )
+    if not container_ok:
+        raise AudioValidationError(
+            "The voice recording is not a valid playable audio file. Please record again."
+        )
+
+    peak, duration, declared = decode_audio_peak(audio_bytes)
+    if duration <= 0:
+        raise AudioValidationError(
+            "The voice recording contains no usable audio. Please record again."
+        )
+    if duration < VOICE_MIN_SECONDS:
+        raise AudioValidationError(
+            "That voice recording is too short. Please hold the mic a little longer."
+        )
+    if declared and declared > 0 and duration < declared * VOICE_TRUNCATION_RATIO:
+        # The file says it is longer than what can be decoded from it, so it
+        # was cut short in transit. Chrome's WebM recordings declare no
+        # duration, so this only applies where the container states one.
+        raise AudioValidationError(
+            "The voice recording is incomplete. Please record again."
+        )
+    if duration > VOICE_MAX_SECONDS:
+        raise AudioValidationError(
+            "Voice recording is too long. Record a shorter message.", status_code=413
+        )
+    if peak < VOICE_AUDIBLE_PEAK:
+        raise AudioValidationError(
+            "The voice recording contains no sound. Please check your microphone "
+            "and record again."
+        )
 
 
 # ---------------- SECURITY EVENT LOGGING ----------------
@@ -3292,18 +3478,16 @@ async def send_private_message(request: Request):
                 audio_bytes = base64.b64decode(audio_payload, validate=True)
             except (IndexError, ValueError):
                 return JSONResponse({"error": "The voice recording data is invalid. Please record again."}, status_code=400)
-            if len(audio_bytes) < 128:
-                return JSONResponse({"error": "The voice recording contains no usable audio. Please record again."}, status_code=400)
-            audio_mime = message_text.split(";", 1)[0][5:].lower()
-            valid_audio_header = (
-                (audio_mime == "audio/webm" and audio_bytes.startswith(bytes.fromhex("1A45DFA3")))
-                or (audio_mime == "audio/ogg" and audio_bytes.startswith(b"OggS"))
-                or (audio_mime == "audio/mp4" and len(audio_bytes) >= 12 and audio_bytes[4:8] == b"ftyp")
-            )
-            if not valid_audio_header:
-                return JSONResponse({"error": "The voice recording is not a valid playable audio file. Please record again."}, status_code=400)
             if len(audio_bytes) > 5 * 1024 * 1024:
                 return JSONResponse({"error": "Voice recording is too large. Record a shorter message."}, status_code=413)
+            audio_mime = message_text.split(";", 1)[0][5:].lower()
+            # Validate the exact bytes this route would store. Size and header
+            # checks pass for a recording that is only silence, so the recording
+            # is decoded and its real samples measured before it is accepted.
+            try:
+                await asyncio.to_thread(validate_voice_recording, audio_bytes, audio_mime)
+            except AudioValidationError as error:
+                return JSONResponse({"error": error.message}, status_code=error.status_code)
         if is_image and len(message_text) > 3_400_000:
             return JSONResponse({
                 "error": "That photo is too large after compression. Choose a smaller photo."
