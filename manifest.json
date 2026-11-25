@@ -8,11 +8,12 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#0B1220",
+  "theme_color": "#0B1220",
   "lang": "en",
   "dir": "ltr",
   "categories": ["social", "communication"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icons/icon-192.png",

@@ -16,7 +16,10 @@
  * soon as it activates, so an update is picked up without reinstalling.
  */
 
-const VERSION = 'v1';
+// v2: new app icon plus standalone-app shell updates (pull-to-refresh guard).
+// Changing this string is what makes installed copies replace their cached
+// shell, so bump it whenever any SHELL_ASSETS file changes.
+const VERSION = 'v2';
 const SHELL_CACHE = `kchat-shell-${VERSION}`;
 
 // Only these exact same-origin paths may be cached.

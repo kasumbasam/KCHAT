@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>KCHAT - WhatsApp Layout</title>
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#0B1220">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2092,6 +2092,34 @@ html, body {
         max-width:100vw !important;
         height:100dvh !important;
         z-index:99999 !important;
+    }
+}
+</style>
+<style id="kchatStandaloneShell">
+/* Installed-app behaviour.
+
+   In standalone mode the page has no browser chrome, so an accidental
+   pull-to-refresh gesture only reloads KCHAT - losing scroll position and any
+   half-typed message. Disabling the *page-level* overscroll bounce stops that
+   gesture while leaving ordinary scrolling untouched: every scrollable region
+   in KCHAT (.chat-list, message lists, settings, status lists) has its own
+   overflow container and keeps scrolling normally. Horizontal tab swipes are
+   unaffected; only the vertical page bounce is suppressed.
+
+   The media query means an ordinary Chrome tab keeps its usual refresh. */
+@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+    html, body {
+        overscroll-behavior-y: none;
+        /* Avoid the grey tap flash over the dark shell. */
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+/* Keep the shell exactly viewport-tall in an installed app, so the keyboard
+   and the URL-less window do not introduce a second scroll container. */
+@media (display-mode: standalone) {
+    #appScreen {
+        height: 100vh;
+        height: 100dvh;
     }
 }
 </style>
